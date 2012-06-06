@@ -350,3 +350,5 @@
     <snapshot_distribution_url>dav:http://repo.opengeo.org</snapshot_distribution_url>
   </properties>
 </project>
+
+<!-- NOOP -->
