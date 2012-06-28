@@ -43,6 +43,10 @@ public class TransitNarrative extends DelegatingEdgeNarrative {
         return GtfsLibrary.getRouteName(trip.getRoute());
     }
 
+    public String getTransitModeName() {
+        return trip.getRoute().getTypeName();
+    }
+
     @Override
     public Trip getTrip() {
         if (headsign == null) {

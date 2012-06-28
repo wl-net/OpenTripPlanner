@@ -36,8 +36,14 @@ public interface EdgeNarrative {
     public TraverseMode getMode();
 
     public String getName();
+    
+    /** The name of the transit mode used; null when no name is specified, or
+     * the edge is not a transit edge
+     * @return
+     */
+    public String getTransitModeName();
 
-    /* True if the name is automatically generated rather than coming from OSM or GTFS */
+    /** True if the name is automatically generated rather than coming from OSM or GTFS */
     public boolean hasBogusName();
 
     public Geometry getGeometry();

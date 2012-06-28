@@ -248,4 +248,8 @@ public abstract class AbstractEdge implements Edge {
         }
     }
 
+    @Override
+    public String getTransitModeName() {
+        return null;
+    }
 }
