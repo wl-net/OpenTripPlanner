@@ -251,7 +251,7 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
         if (options.isArriveBy())
             return options.getBoardCostLowerBound();
         else
-            return timeLowerBound(options);
+            return timeLowerBound(options.rctx);
     }
 
     public int getStopIndex() {

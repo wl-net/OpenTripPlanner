@@ -231,7 +231,7 @@ public class FrequencyAlight extends AbstractEdge  implements OnBoardReverseEdge
      */
     public double weightLowerBound(RoutingRequest options) {
         if (options.isArriveBy())
-            return timeLowerBound(options);
+            return timeLowerBound(options.rctx);
         else
             return options.getBoardCostLowerBound();
     }

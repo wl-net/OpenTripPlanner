@@ -228,7 +228,7 @@ public class FrequencyBoard extends AbstractEdge  implements OnBoardForwardEdge 
      */
     public double weightLowerBound(RoutingRequest options) {
         if (options.isArriveBy())
-            return timeLowerBound(options);
+            return timeLowerBound(options.rctx);
         else
             return options.getBoardCostLowerBound();
     }
