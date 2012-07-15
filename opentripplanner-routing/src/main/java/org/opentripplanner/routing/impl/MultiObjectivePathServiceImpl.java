@@ -148,7 +148,7 @@ public class MultiObjectivePathServiceImpl implements PathService {
             options.setMaxWalkDistance(maxWalk);
             
             // cap search / heuristic weight
-            final double AVG_TRANSIT_SPEED = 25; // m/sec 
+            final double AVG_TRANSIT_SPEED = 10; // m/sec 
             double cutoff = (distanceLibrary.distance(originVertex.getCoordinate(),
                     targetVertex.getCoordinate()) * 1.5) / AVG_TRANSIT_SPEED; // wait time is irrelevant in the heuristic
             cutoff += options.getMaxWalkDistance() * options.walkReluctance;
@@ -292,7 +292,7 @@ public class MultiObjectivePathServiceImpl implements PathService {
         if (s0.similarRouteSequence(s1)) {
             return s0.getWeight() <= s1.getWeight() * (1 + EPSILON) &&
                     s0.getElapsedTime() <= s1.getElapsedTime() * (1 + EPSILON) &&
-                    s0.getWalkDistance() <= s1.getWalkDistance() * (1 + EPSILON) && 
+                    s0.getWalkDistance() <= s1.getWalkDistance() * (1 + EPSILON) &&
                     s0.getNumBoardings() <= s1.getNumBoardings() &&
                     (s0.getWeight() < s1.getWeight() ||
                      s0.getElapsedTime() < s1.getElapsedTime() ||
