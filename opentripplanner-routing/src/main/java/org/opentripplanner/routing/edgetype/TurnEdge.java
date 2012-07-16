@@ -309,15 +309,15 @@ public class TurnEdge extends StreetEdge {
         return (((TurnVertex) fromv).getLength() + turnCost/20) / options.getSpeedUpperBound();
     }
     
-	    private void writeObject(ObjectOutputStream out) throws IOException, ClassNotFoundException {
-	        if (fromv == null)
-	            System.out.printf("fromv null %s \n", this);
+    private void writeObject(ObjectOutputStream out) throws IOException, ClassNotFoundException {
+        if (fromv == null)
+            System.out.printf("fromv null %s \n", this);
 
-	        if (tov == null)
-	            System.out.printf("tov null %s \n", this);
-	        
-	        out.defaultWriteObject();
-	    }
+        if (tov == null)
+            System.out.printf("tov null %s \n", this);
+
+        out.defaultWriteObject();
+    }
 
     @Override
     public int getStreetClass() {
