@@ -28,6 +28,7 @@ import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.pathparser.PathParser;
+import org.opentripplanner.routing.trippattern.TripTimes;
 
 public class State implements Cloneable {
     /* Data which is likely to change at most traversals */
@@ -193,8 +194,8 @@ public class State implements Cloneable {
         return activeTime;            
     }
 
-    public int getTrip() {
-        return stateData.trip;
+    public TripTimes getTripTimes() {
+        return stateData.tripTimes;    
     }
 
     public AgencyAndId getTripId() {
@@ -386,6 +387,8 @@ public class State implements Cloneable {
         return stateData.opt;
     }
     
+    /* will return BICYCLE if routing with an owned bicycle, or if at this state the user is holding
+     * on to a rented bicycle */
     public TraverseMode getNonTransitMode(RoutingRequest options) {
         TraverseModeSet modes = options.getModes();
         if (modes.getCar())
@@ -538,13 +541,20 @@ public class State implements Cloneable {
      * path that passes through all the same edges, but which may have a shorter overall duration
      * due to different weights on time-dependent (e.g. transit boarding) edges.
      * 
-     * @return a state at the other end of a reversed, optimized path
+     * @param forward This is a reverse optimization inside a forward search, the returned state
+     * should be the same end the user started with.
+     * @return a state at the other end (or this end, in the case of a forward search) 
+     * of a reversed, optimized path
      */
     // optimize is now very similar to reverse, and the two could conceivably be combined
-    public State optimize() {
+    public State optimize(boolean forward) {
         State orig = this;
         State unoptimized = orig;
         State ret = orig.reversedClone();
+        
+        // This state is kept around and returned in a forward search
+        State front = ret;
+
         Edge edge = null;
         try {
             while (orig.getBackState() != null) {
@@ -560,9 +570,22 @@ public class State implements Cloneable {
                     + " returning unoptimized path. If edge is a PatternInterlineDwell,"
                     + " this is not totally unexpected; otherwise, you might want to"
                     + " look into it");
-            return unoptimized.reverse();
+            if (forward)
+                // since we didn't modify it, no reason to clone it.
+                return this;
+            else
+                return unoptimized.reverse();
         }
-        return ret;
+
+        if (forward)
+            return front;
+        else
+            return ret;
+    }
+
+    /** Default to reversing during reverse search */
+    public State optimize () {
+        return optimize(false);
     }
 
     private static void copyExistingNarrativeToNewNarrativeAsAppropriate(EdgeNarrative from,

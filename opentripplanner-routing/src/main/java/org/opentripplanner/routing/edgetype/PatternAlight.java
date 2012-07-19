@@ -26,6 +26,7 @@ import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.vertextype.PatternStopVertex;
 import org.opentripplanner.routing.vertextype.TransitStopArrive;
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
 
     public PatternAlight(PatternStopVertex fromPatternStop, TransitStopArrive toStationVertex,
             TableTripPattern pattern, int stopIndex, TraverseMode mode) {
-        super(fromPatternStop, toStationVertex, pattern);
+        super(fromPatternStop, toStationVertex);
         this.stopIndex = stopIndex;
         this.modeMask = new TraverseModeSet(mode).getMask();
     }
@@ -82,7 +83,7 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
         RoutingRequest options = state0.getOptions();
         if (options.isArriveBy()) {
             /* backward traversal: find a transit trip on this pattern */
-            if (state0.getLastPattern() == pattern) {
+            if (state0.getLastPattern() == this.getPattern()) {
                 return null;
             }
             if (!options.getModes().get(modeMask)) {
@@ -97,9 +98,11 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
              */
             long current_time = state0.getTime();
             int bestWait = -1;
-            int bestPatternIndex = -1;
+            TripTimes bestTripTimes = null;
             AgencyAndId serviceId = getPattern().getExemplar().getServiceId();
-            TraverseMode mode = state0.getNonTransitMode(options);
+            // get the non-transit mode, mostly to determine whether the user is carrying a bike
+            // this should maybe be done differently (using mode only for traversal permissions).
+            TraverseMode nonTransitMode = state0.getNonTransitMode(options);
             SD: for (ServiceDay sd : rctx.serviceDays) {
                 int secondsSinceMidnight = sd.secondsSinceMidnight(current_time);
                 // only check for service on days that are not in the future
@@ -107,31 +110,19 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
                 if (secondsSinceMidnight < 0)
                     continue;
                 if (sd.serviceIdRunning(serviceId)) {
-                    int patternIndex = pattern.getPreviousTrip(stopIndex, secondsSinceMidnight,
-                            options.wheelchairAccessible, mode == TraverseMode.BICYCLE, false);
-                    if (patternIndex >= 0) {
-                        Trip trip = pattern.getTrip(patternIndex);
-                        while (options.bannedTrips.contains(trip.getId())) {
-                            /* trip banned, try previous trip */
-                            patternIndex -= 1;
-                            if (patternIndex < 0) {
-                                /* ran out of trips today */
-                                continue SD;
-                            }
-                            trip = pattern.getTrip(patternIndex);
-                        }
-
+                    TripTimes tripTimes = getPattern().getPreviousTrip(stopIndex, 
+                            secondsSinceMidnight, nonTransitMode == TraverseMode.BICYCLE, options);
+                    if (tripTimes != null) {
                         // a trip was found, index is valid, wait will be defined.
                         // even though we are going backward I tend to think waiting
                         // should be expressed as non-negative.
-                        int wait = (int) (current_time - sd.time(pattern.getArrivalTime(stopIndex,
-                                patternIndex)));
+                        int wait = (int) (current_time - sd.time(tripTimes.getArrivalTime(stopIndex)));
                         if (wait < 0)
                             _log.error("negative wait time on alight");
                         if (bestWait < 0 || wait < bestWait) {
                             // track the soonest arrival over all relevant schedules
                             bestWait = wait;
-                            bestPatternIndex = patternIndex;
+                            bestTripTimes = tripTimes;
                         }
                     }
                 }
@@ -139,7 +130,7 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
             if (bestWait < 0) {
                 return null;
             }
-            Trip trip = getPattern().getTrip(bestPatternIndex);
+            Trip trip = bestTripTimes.getTrip();
 
             /* check if route banned for this plan */
             if (options.bannedRoutes != null) {
@@ -174,15 +165,15 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
 
             EdgeNarrative en = new TransitNarrative(trip, this);
             StateEditor s1 = state0.edit(this, en);
-            int type = pattern.getAlightType(stopIndex + 1);
+            int type = getPattern().getAlightType(stopIndex + 1);
             if (TransitUtils.handleBoardAlightType(s1, type)) {
                 return null;
             }
-            s1.setTrip(bestPatternIndex);
+            s1.setTripTimes(bestTripTimes);
             s1.incrementTimeInSeconds(bestWait);
             s1.incrementNumBoardings();
             s1.setTripId(trip.getId());
-            s1.setZone(pattern.getZone(stopIndex + 1));
+            s1.setZone(getPattern().getZone(stopIndex + 1));
             s1.setRoute(trip.getRoute().getId());
 
             long wait_cost = bestWait;
@@ -194,9 +185,8 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
                 wait_cost *= options.waitReluctance;
             }
             s1.incrementWeight(preferences_penalty);
-            s1.incrementWeight(wait_cost + options.getBoardCost(mode));
+            s1.incrementWeight(wait_cost + options.getBoardCost(nonTransitMode));
             return s1.makeState();
-
         } else {
             /* forward traversal: not so much to do */
             // do not alight immediately when arrive-depart dwell has been eliminated
@@ -204,10 +194,9 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
             if (state0.getBackEdge() instanceof PatternBoard) {
                 return null;
             }
-            Trip trip = pattern.getTrip(state0.getTrip());
-            EdgeNarrative en = new TransitNarrative(trip, this);
+            EdgeNarrative en = new TransitNarrative(state0.getTripTimes().trip, this);
             StateEditor s1 = state0.edit(this, en);
-            int type = pattern.getAlightType(stopIndex + 1);
+            int type = getPattern().getAlightType(stopIndex + 1);
             if (TransitUtils.handleBoardAlightType(s1, type)) {
                 return null;
             }
@@ -215,7 +204,7 @@ public class PatternAlight extends PatternEdge implements OnBoardReverseEdge {
             s1.setTripId(null);
             s1.setLastAlightedTime(state0.getTime());
             s1.setPreviousStop(tov);
-            s1.setLastPattern(pattern);
+            s1.setLastPattern(this.getPattern());
             return s1.makeState();
         }
     }

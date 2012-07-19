@@ -26,6 +26,7 @@ import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.vertextype.PatternStopVertex;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
 import org.slf4j.Logger;
@@ -52,11 +53,17 @@ public class PatternBoard extends PatternEdge implements OnBoardForwardEdge {
 
     public PatternBoard(TransitStopDepart fromStopVertex, PatternStopVertex toPatternVertex, 
             TableTripPattern pattern, int stopIndex, TraverseMode mode) {
-        super(fromStopVertex, toPatternVertex, pattern);
+        super(fromStopVertex, toPatternVertex);
         this.stopIndex = stopIndex;
         this.modeMask = new TraverseModeSet(mode).getMask();
     }
 
+    /** look for pattern in tov (instead of fromv as is done for all other pattern edges) */
+    @Override 
+    public TableTripPattern getPattern() {
+        return ((PatternStopVertex) tov).getTripPattern();
+    }
+                           
     public String getDirection() {
         return null;
     }
@@ -87,21 +94,20 @@ public class PatternBoard extends PatternEdge implements OnBoardForwardEdge {
             if (state0.getBackEdge() instanceof PatternAlight) {
                 return null;
             }
-            Trip trip = pattern.getTrip(state0.getTrip());
-            EdgeNarrative en = new TransitNarrative(trip, this);
+            EdgeNarrative en = new TransitNarrative(state0.getTripTimes().trip, this);
             StateEditor s1 = state0.edit(this, en);
-            int type = pattern.getBoardType(stopIndex);
+            int type = getPattern().getBoardType(stopIndex);
             if (TransitUtils.handleBoardAlightType(s1, type)) {
                 return null;
             }
             s1.setTripId(null);
             s1.setLastAlightedTime(state0.getTime());
             s1.setPreviousStop(fromv);
-            s1.setLastPattern(pattern);
+            s1.setLastPattern(this.getPattern());
             return s1.makeState();
         } else {
             /* forward traversal: look for a transit trip on this pattern */
-            if (state0.getLastPattern() == pattern) {
+            if (state0.getLastPattern() == this.getPattern()) {
                 return null;
             }
             if (!options.getModes().get(modeMask)) {
@@ -115,48 +121,39 @@ public class PatternBoard extends PatternEdge implements OnBoardForwardEdge {
              */
             long current_time = state0.getTime();
             int bestWait = -1;
-            int bestPatternIndex = -1;
-            TraverseMode mode = state0.getNonTransitMode(options);
+            TripTimes bestTripTimes = null;
+            ServiceDay bestServiceDay = null;
             AgencyAndId serviceId = getPattern().getExemplar().getServiceId();
-            SD: for (ServiceDay sd : rctx.serviceDays) {
+            // this method is on State not RoutingRequest because we care whether the user is in
+            // possession of a rented bike.
+            TraverseMode mode = state0.getNonTransitMode(options); 
+            for (ServiceDay sd : rctx.serviceDays) {
                 int secondsSinceMidnight = sd.secondsSinceMidnight(current_time);
                 // only check for service on days that are not in the future
                 // this avoids unnecessarily examining tomorrow's services
                 if (secondsSinceMidnight < 0)
                     continue;
                 if (sd.serviceIdRunning(serviceId)) {
-                    int patternIndex = getPattern().getNextTrip(stopIndex, secondsSinceMidnight,
-                            options.wheelchairAccessible, mode == TraverseMode.BICYCLE, true);
-                    if (patternIndex >= 0) {
-                        Trip trip = pattern.getTrip(patternIndex);
-                        while (options.bannedTrips.contains(trip.getId())) {
-                            /* trip banned, try next trip */
-                            patternIndex += 1;
-                            if (patternIndex >= pattern.getTrips().size()) {
-                                /* ran out of trips today */
-                                continue SD;
-                            }
-                            trip = pattern.getTrip(patternIndex);
-                        }
-
+                    TripTimes tripTimes = getPattern().getNextTrip(stopIndex, secondsSinceMidnight, 
+                            mode == TraverseMode.BICYCLE, options);
+                    if (tripTimes != null) {
                         // a trip was found, index is valid, wait will be non-negative
-                        int wait = (int) (sd.time(pattern.getDepartureTime(stopIndex,
-                                patternIndex)) - current_time);
+                        int wait = (int) (sd.time(tripTimes.getDepartureTime(stopIndex)) - current_time);
                         if (wait < 0)
                             _log.error("negative wait time on board");
                         if (bestWait < 0 || wait < bestWait) {
                             // track the soonest departure over all relevant schedules
                             bestWait = wait;
-                            bestPatternIndex = patternIndex;
+                            bestTripTimes = tripTimes;
+                            bestServiceDay = sd;
                         }
                     }
-
                 }
             }
             if (bestWait < 0) {
                 return null;
             }
-            Trip trip = getPattern().getTrip(bestPatternIndex);
+            Trip trip = bestTripTimes.getTrip();
 
             /* check if route banned for this plan */
             if (options.bannedRoutes != null) {
@@ -191,11 +188,12 @@ public class PatternBoard extends PatternEdge implements OnBoardForwardEdge {
 
             EdgeNarrative en = new TransitNarrative(trip, this);
             StateEditor s1 = state0.edit(this, en);
-            int type = pattern.getBoardType(stopIndex);
+            int type = getPattern().getBoardType(stopIndex);
             if (TransitUtils.handleBoardAlightType(s1, type)) {
                 return null;
             }
-            s1.setTrip(bestPatternIndex);
+            // save the trip times to ensure that router has a consistent view of them 
+            s1.setTripTimes(bestTripTimes); 
             s1.incrementTimeInSeconds(bestWait);
             s1.incrementNumBoardings();
             s1.setTripId(trip.getId());
@@ -213,6 +211,46 @@ public class PatternBoard extends PatternEdge implements OnBoardForwardEdge {
             }
             s1.incrementWeight(preferences_penalty);
             s1.incrementWeight(wait_cost + options.getBoardCost(mode));
+
+            if (state0.getNumBoardings() > 0) {
+                // determine if this needs to be reverse-optimized.
+                long lastAlight = state0.getLastAlightedTime();
+                // The last alight can be moved forward by bestWait (but no further) without
+                // impacting the possibility of this trip
+                long latestPossibleAlight = lastAlight + bestWait;
+
+                boolean needToReverseOptimize = false;
+
+                // convert the latest possible alight to seconds since midnight.
+                // TODO: this may perform strangely at service day boundaries, or if the previous
+                // alight was in a different time zone.
+                int secondsSinceMidnight = bestServiceDay
+                    .secondsSinceMidnight(latestPossibleAlight);
+                
+                // if that's clearly not right, assume we need to reverse-optimize
+                // we can still have issues if the original time is, say 25:00
+                // it would logically be in the next day (and that's where this algorithm will put
+                // it) but it shouldn't be.
+                if (secondsSinceMidnight < 0)
+                    needToReverseOptimize = true;
+
+                TripTimes possibleTripTimes = getPattern()
+                    .getPreviousTrip(stopIndex, secondsSinceMidnight,
+                                     mode == TraverseMode.BICYCLE, options);
+
+                // if it was really on the previous service day, the only way this would be true
+                // is it was the last trip on the previous service day, in which case reverse
+                // optimization wouldn't help.
+                if (possibleTripTimes != bestTripTimes)
+                    needToReverseOptimize = true;
+
+                if (needToReverseOptimize)
+                    // true because it is a forward search
+                    return s1.makeState().optimize(true);
+                
+            }
+            
+            // if we didn't return an optimized path, return an unoptimized one
             return s1.makeState();
         }
     }
