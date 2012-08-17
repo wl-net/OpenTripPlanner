@@ -386,7 +386,7 @@ public class TransitIndex {
                 state = segment.board.traverse(s0);
                 if (state == null)
                     continue;
-                if (state.getBackEdge().getTrip().getId().equals(trip)) {
+                if (state.getBackTrip().getId().equals(trip)) {
                     start = segment;
                     StopTime st = new StopTime();
                     st.time = state.getTime();
@@ -437,7 +437,7 @@ public class TransitIndex {
                 break;
             StopTime stopTime = new StopTime();
             stopTime.time = time;
-            stopTime.trip = new TripType(result.getBackEdge().getTrip(), extended);
+            stopTime.trip = new TripType(result.getBackTrip(), extended);
             out.add(stopTime);
 
             time += 1; // move to the next board time
@@ -462,7 +462,7 @@ public class TransitIndex {
                 break;
             StopTime stopTime = new StopTime();
             stopTime.time = time;
-            stopTime.trip = new TripType(result.getBackEdge().getTrip(), extended);
+            stopTime.trip = new TripType(result.getBackTrip(), extended);
             out.add(stopTime);
             time -= 1; // move to the previous alight time
         } while (true);
