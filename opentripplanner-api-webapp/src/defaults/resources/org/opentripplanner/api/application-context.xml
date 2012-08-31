@@ -18,10 +18,12 @@
 		<!-- Set default routing parameters here -->
 	</bean>
 
-	<bean id="pathService" class="org.opentripplanner.routing.impl.RetryingPathServiceImpl">
+	<!--bean id="pathService" class="org.opentripplanner.routing.impl.RetryingPathServiceImpl">
         <property name="firstPathTimeout" value="10.0" />
         <property name="multiPathTimeout" value="1.0" />
-	</bean>
+	</bean-->
+
+  <bean id="pathService" class="org.opentripplanner.routing.impl.raptor.Raptor"/>
  
 	<!-- Replacement pathService for testing multi-objective search -->
 	<!--

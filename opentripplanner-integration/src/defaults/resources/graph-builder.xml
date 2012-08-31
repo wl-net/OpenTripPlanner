@@ -62,9 +62,12 @@
                 <ref bean="gtfsBuilder" />
                 <ref bean="streetBuilder" />
                 <ref bean="transitStreetLink" />
+                <bean id="raptorDataBuilder" class="org.opentripplanner.graph_builder.impl.raptor.RaptorDataBuilder" />
+                <bean id="transitLocalStreets" class="org.opentripplanner.graph_builder.impl.transit_local_streets.TransitLocalStreetComputer" />
                 <ref bean="checkGeometry" />
             </list>
         </property>
     </bean>
 
 </beans>
+<
