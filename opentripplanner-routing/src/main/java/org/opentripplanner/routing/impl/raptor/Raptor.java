@@ -100,7 +100,7 @@ public class Raptor implements PathService {
         TraverseModeSet modes = options.getModes().clone();
         modes.setTransit(false);
         walkOptions.setModes(modes);
-        RaptorSearch search = new RaptorSearch(data, options);
+        RaptorSearch search = new RaptorSearchGPU(data, options);
 
         if (data.maxTransitRegions != null) {
             Calendar tripDate = Calendar.getInstance(graph.getTimeZone());
@@ -126,6 +126,7 @@ public class Raptor implements PathService {
         long searchBeginTime = System.currentTimeMillis();
 
         int bestElapsedTime = Integer.MAX_VALUE;
+        options.setMaxTransfers(7);
         RETRY: do {
             for (int i = 0; i < options.getMaxTransfers() + 2; ++i) {
                 round(data, options, walkOptions, search, i);

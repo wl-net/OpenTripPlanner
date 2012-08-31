@@ -107,11 +107,12 @@ public class TargetBound implements SearchTerminationStrategy, SkipTraverseResul
         }
         if (vertex == realTarget) {
             addBounder(current);
+            return false;
         }
         return true;
     }
 
-    private void addBounder(State bounder) {
+    private synchronized void addBounder(State bounder) {
         for (Iterator<State> it = bounders.iterator(); it.hasNext(); ) {
             State old = it.next();
             if (bounder.dominates(old)) {
@@ -141,22 +142,8 @@ public class TargetBound implements SearchTerminationStrategy, SkipTraverseResul
     public boolean shouldSkipTraversalResult(Vertex origin, Vertex target, State parent,
             State current, ShortestPathTree spt, RoutingRequest traverseOptions) {
         final Vertex vertex = current.getVertex();
-        int vertexIndex = vertex.getIndex();
-        if (vertexIndex < distance.length) {
-            if (distance[vertexIndex] > 0.0) {
-                targetDistance = distance[vertexIndex];
-            } else {
-                targetDistance = distanceLibrary.fastDistance(realTargetCoordinate.y, realTargetCoordinate.x,
-                        vertex.getY(), vertex.getX());
-                distance[vertexIndex] = targetDistance;
-                if (vertex instanceof TransitStop && targetDistance < bestTargetDistance) {
-                    bestTargetDistance = targetDistance;
-                }
-            }
-        } else {
-            targetDistance = distanceLibrary.fastDistance(realTargetCoordinate.y, realTargetCoordinate.x,
-                    vertex.getY(), vertex.getX());
-        }
+        targetDistance = distanceLibrary.fastDistance(realTargetCoordinate.y, realTargetCoordinate.x,
+                vertex.getY(), vertex.getX());
 
         final double remainingWalk = traverseOptions.maxWalkDistance
                 - current.getWalkDistance();
@@ -316,7 +303,7 @@ public class TargetBound implements SearchTerminationStrategy, SkipTraverseResul
     public void addSptStates(List<MaxWalkState> states) {
         for (MaxWalkState state : states) {
             if (state.getVertex() instanceof TransitStop) {
-                transitStopsVisited.add(state);
+                //transitStopsVisited.add(state);
             }
             spt.add(state);
         }

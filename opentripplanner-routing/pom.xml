@@ -43,6 +43,11 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-aop</artifactId>
         </dependency>
+        <dependency>            
+    		<groupId>edu.syr.pcpratts</groupId>
+    		<artifactId>rootbeer</artifactId>
+    		<version>0.1.0</version>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -113,6 +118,59 @@
             <dotGitDirectory>${project.basedir}/../.git</dotGitDirectory>
           </configuration>
         </plugin>
+        <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>jar-with-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>opentripplanner-routing</finalName>
+                            <!-- archive>
+                                <manifest>
+                                    <mainClass>org.opentripplanner.gui.VizGui</mainClass>
+                                </manifest>
+                            </archive-->
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+              <plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-antrun-plugin</artifactId>
+    <version>1.7</version>
+    <executions>
+      <execution>
+        <id>rootbeer</id>
+        <phase>package</phase>
+        <goals>
+          <goal>run</goal>
+        </goals>
+        <configuration>
+		 <target>
+        	<exec executable="java">
+        	    <arg value="-Xmx9000m"/>
+        	    <arg value="-XX:MaxPermSize=512M"/>
+				<arg value="-jar"/>
+				<arg value="-Xdebug"/>
+				<!-- arg value="-Xrunjdwp:transport=dt_socket,address=8998,server=y"/-->
+                <arg value="/home/novalis/otp/opentripplanner/opentripplanner/rootbeer1/Rootbeer.jar"/>
+				<arg value="-disable-class-remapping"/>
+                <arg value="${project.build.directory}/opentripplanner-routing-jar-with-dependencies.jar"/>
+                <arg value="${project.build.directory}/${project.build.finalName}.jar"/>
+            </exec>
+         </target>
+        </configuration>
+      </execution>
+    </executions>
+  </plugin>
       </plugins>
     </build>
 </project>

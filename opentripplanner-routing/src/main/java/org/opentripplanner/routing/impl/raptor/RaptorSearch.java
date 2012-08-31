@@ -40,7 +40,7 @@ public class RaptorSearch {
 
     List<RaptorState>[] statesByStop;
 
-    private List<RaptorState> targetStates = new ArrayList<RaptorState>();
+    protected List<RaptorState> targetStates = new ArrayList<RaptorState>();
 
     Set<RaptorStop> visitedEver = new HashSet<RaptorStop>();
 
@@ -58,7 +58,7 @@ public class RaptorSearch {
 
     public int maxTimeDayIndex;
 
-    private RaptorData data;
+    protected RaptorData data;
 
     @SuppressWarnings("unchecked")
     RaptorSearch(RaptorData data, RoutingRequest options) {
