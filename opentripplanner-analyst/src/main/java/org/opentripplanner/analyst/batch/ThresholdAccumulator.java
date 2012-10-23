@@ -16,7 +16,7 @@ public class ThresholdAccumulator implements Accumulator {
         if (current.population != accumulated.population) {
             return;
         }
-        int n = accumulated.population.size();
+        int n = accumulated.population.totalSize();
         for (int i = 0; i < n; i++) {
             double t = current.results[i]; 
             if (t > 0 && t < threshold) {

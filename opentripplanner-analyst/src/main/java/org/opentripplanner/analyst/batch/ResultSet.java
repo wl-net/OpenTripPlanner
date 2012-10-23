@@ -16,7 +16,7 @@ public class ResultSet {
     public double[] results;
     
     public static ResultSet forTravelTimes(Population population, ShortestPathTree spt) {
-        double[] results = new double[population.size()];
+        double[] results = new double[population.totalSize()];
         int i = 0;
         for (Individual indiv : population) {
             Sample s = indiv.sample;
@@ -42,7 +42,7 @@ public class ResultSet {
     /* currently used by the batch processor but should probably be eliminated */
     protected ResultSet(Population population) {
         this.population = population;
-        this.results = new double[population.size()];
+        this.results = new double[population.totalSize()];
     }
 
     public void writeAppropriateFormat(String outFileName) {

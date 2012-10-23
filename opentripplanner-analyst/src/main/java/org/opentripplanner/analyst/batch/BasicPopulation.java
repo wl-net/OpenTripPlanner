@@ -62,10 +62,15 @@ public class BasicPopulation implements Population {
     }
 
     @Override
-    public int size() {
+    public int totalSize() {
         return this.individuals.size();
     }
         
+    @Override
+    public int filteredSize() {
+        return -1;
+    }
+
     protected void writeCsv(String outFileName, ResultSet results) {
         LOG.debug("Writing population to CSV: {}", outFileName);
         try {

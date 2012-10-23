@@ -23,8 +23,11 @@ public interface Population extends Iterable<Individual> {
 
     public void clearIndividuals(List<Individual> individuals);
 
-    /** @return the number of individuals in this population. */
-    public int size();
+    /** @return the total number of individuals in this population. */
+    public int totalSize();
+
+    /** @return the number of individuals in this population that are not filtered. */
+    public int filteredSize();
 
     /**
      * Prepare the population for use. This includes loading or generating the individuals, 

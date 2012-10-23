@@ -28,7 +28,7 @@ public abstract class SampleOperator {
     public abstract int evaluate(State state, double distance);
 
     public ResultSet evaluate(ShortestPathTree spt, Population population) {
-        double[] results = new double[population.size()];
+        double[] results = new double[population.totalSize()];
         
         // replace Sample with Sample[] or Pair<Sample>?
         int i = 0;
