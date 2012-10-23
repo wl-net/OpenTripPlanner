@@ -17,6 +17,10 @@ import org.opentripplanner.routing.spt.ShortestPathTree;
  * 
  * i.e. a SampleOperator produces a ResultSet by combining a ShortestPathTree with a SampleSet.
  * 
+ * The method that actually iterates over the Samples is implemented in Population itself.
+ * This allows for optimizations to avoid re-fetching vertices, as well as population
+ * compression.
+ * 
  * @author abyrd
  */
 public abstract class SampleOperator {
@@ -28,6 +32,8 @@ public abstract class SampleOperator {
     public abstract int evaluate(State state, double distance);
 
     public ResultSet evaluate(ShortestPathTree spt, Population population) {
+        
+        
         double[] results = new double[population.totalSize()];
         
         // replace Sample with Sample[] or Pair<Sample>?
