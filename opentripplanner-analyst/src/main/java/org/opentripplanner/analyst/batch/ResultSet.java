@@ -1,6 +1,7 @@
 package org.opentripplanner.analyst.batch;
 
 import org.opentripplanner.analyst.core.Sample;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ public class ResultSet {
     private static final Logger LOG = LoggerFactory.getLogger(ResultSet.class);
 
     public Population population;
+    public RoutingRequest routingRequest; // do not store the SPT to allow garbage collection
     public double[] results;
     
     public static ResultSet forTravelTimes(Population population, ShortestPathTree spt) {
@@ -28,14 +30,16 @@ public class ResultSet {
             results[i] = t;
             i++;
         }
-        return new ResultSet(population, results);
+        return new ResultSet(population, spt, results);
     }
     
-    public ResultSet(Population population, double[] results) {
+    public ResultSet(Population population, ShortestPathTree spt, double[] results) {
         this.population = population;
+        this.routingRequest = spt.getOptions();
         this.results = results;
     }
     
+    /* currently used by the batch processor but should probably be eliminated */
     protected ResultSet(Population population) {
         this.population = population;
         this.results = new double[population.size()];

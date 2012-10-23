@@ -55,7 +55,7 @@ public abstract class SampleOperator {
             results[i] = (bestResult == extreme) ? Integer.MAX_VALUE : bestResult;
         }
         // maybe change result sets to use ints instead of doubles? do we need FP values?
-        return new ResultSet(population, results);
+        return new ResultSet(population, spt, results);
     }
     
 }
