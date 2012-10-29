@@ -29,40 +29,48 @@ public abstract class SampleOperator {
     protected boolean minimize = true;
     
     /** Implement this method to supply logic for converting States to result numbers */
-    public abstract int evaluate(State state, double distance);
+    public abstract float evaluate(State state, double distance);
 
     /**
      * Find the States in the ShortestPathTree for the given Sample, evaluate each Sample, and
      * return the better of the two results if there is more than one.
+     * 
+     * Ideally we would want to take the true weight of the path into consideration when choosing
+     * which result to return. This would involve adding in the walk weight and making sure
+     * walk limits are not exceeded. 
+     * 
+     * We also need a simple way to show travel time for a pure earliest arrival search.
      */
     private float evaluate(ShortestPathTree spt, Sample sample) {
         float bestResult = minimize ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
-        State s0 = spt.getState(sample.v0);
-        State s1 = spt.getState(sample.v1);
-        if (s0 != null)
-            bestResult = evaluate(s0, sample.d0);
-        if (s1 != null) {
-            int r = evaluate(s1, sample.d1);
-            if (minimize) {
-                if (r < bestResult)
-                    bestResult = r;
-            } else {
-                if (r > bestResult)
-                    bestResult = r;
+        if (sample != null) {
+            State s0 = spt.getState(sample.v0);
+            State s1 = spt.getState(sample.v1);
+            if (s0 != null)
+                bestResult = evaluate(s0, sample.d0);
+            if (s1 != null) {
+                float r = evaluate(s1, sample.d1);
+                if (minimize) {
+                    if (r < bestResult)
+                        bestResult = r;
+                } else {
+                    if (r > bestResult)
+                        bestResult = r;
+                }
             }
         }
         return bestResult;
     }
 
-    public ResultSet evaluate(ShortestPathTree spt, Population population) {        
+    public ResultSet evaluate(ShortestPathTree spt, Tile tile) { // tile will eventually be Population        
         
-        float[] results = new float[population.totalSize()];
+        float[] results = new float[tile.totalSize()];
         int i = 0;
-        for (Individual indiv : population) { // iterate over samples that have not been filtered out            
-            Sample sample = indiv.sample;
+        for (Sample sample : tile.sampleIterable) { // iterate over samples that have not been filtered out            
             results[i] = evaluate(spt, sample);
+            i += 1;
         }
-        return new ResultSet(population, spt, results);
+        return new ResultSet(null, spt, results); //eventually Population, spt, results
     }
     
     // TODO implement these obsolete methods in subclasses

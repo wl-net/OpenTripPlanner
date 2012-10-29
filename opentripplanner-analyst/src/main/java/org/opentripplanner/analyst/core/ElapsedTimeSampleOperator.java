@@ -22,9 +22,9 @@ public class ElapsedTimeSampleOperator extends SampleOperator {
     }
 
     @Override
-    public int evaluate(State state, double distance) {
-        int seconds = (int) (distance / walkSpeed);
-        return seconds + (int) state.getElapsedTime();
+    public float evaluate(State state, double distance) {
+        float seconds = (float) (distance / walkSpeed);
+        return seconds + state.getElapsedTime();
     }
 
 }
