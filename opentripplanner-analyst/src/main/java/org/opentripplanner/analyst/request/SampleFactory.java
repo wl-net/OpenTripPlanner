@@ -60,7 +60,6 @@ public class SampleFactory implements SampleSource {
      * 
      * Here we want to compare squared distances to all line segments until we find the best one, 
      * then do the precise calculations.
-     * 
      */
     public Sample findClosest(List<Edge> edges, Coordinate pt, double xscale) {
         Candidate c = new Candidate();
@@ -104,11 +103,9 @@ public class SampleFactory implements SampleSource {
             double d = best.distanceTo(pt);
             if (d > searchRadiusM)
                 return null;
-            double d0 = d + best.distanceAlong();
-            int t0 = (int) (d0 / 1.33);
-            double d1 = d + best.distanceToEnd();
-            int t1 = (int) (d1 / 1.33);
-            Sample s = new Sample(v0, t0, v1, t1);
+            float d0 = (float) (d + best.distanceAlong());
+            float d1 = (float) (d + best.distanceToEnd());
+            Sample s = new Sample(v0, d0, v1, d1);
             //System.out.println(s.toString());
             return s;
         } 
