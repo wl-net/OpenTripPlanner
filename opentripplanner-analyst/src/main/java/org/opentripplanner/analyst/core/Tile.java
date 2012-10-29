@@ -10,6 +10,9 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.coverage.grid.GridEnvelope2D;
@@ -21,10 +24,11 @@ import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class Tile {
+public class Tile {
 
     /* STATIC */
     private static final Logger LOG = LoggerFactory.getLogger(Tile.class);
+    
     public static final Map<Style, IndexColorModel> modelsByStyle; 
     static {
         modelsByStyle = new EnumMap<Style, IndexColorModel>(Style.class);
@@ -38,8 +42,9 @@ public abstract class Tile {
     /* INSTANCE */
     final GridGeometry2D gg;
     final int width, height;
+    Iterable<Sample> sampleIterable;
     
-    Tile(TileRequest req) {
+    public Tile(TileRequest req, SampleSource ss) {
         GridEnvelope2D gridEnv = new GridEnvelope2D(0, 0, req.width, req.height);
         this.gg = new GridGeometry2D(gridEnv, (org.opengis.geometry.Envelope)(req.bbox));
         // TODO: check that gg intersects graph area 
@@ -47,6 +52,11 @@ public abstract class Tile {
         // Envelope2D worldEnv = gg.getEnvelope2D();
         this.width = gridEnv.width;
         this.height = gridEnv.height;
+        this.sampleIterable = new RasterSampleGenerator(this, ss);
+    }
+
+    public int totalSize() {
+        return width * height;
     }
     
     private static IndexColorModel buildDefaultColorMap() {
@@ -192,17 +202,18 @@ public abstract class Tile {
         byte[] imagePixelData = ((DataBufferByte)image.getRaster().getDataBuffer()).getData();
         int i = 0;
         final byte TRANSPARENT = (byte) 255;
-        for (Sample s : getSamples()) {
+        SampleOperator so = new ElapsedTimeSampleOperator();
+        for (float f : so.evaluate(spt, this).results) {
             byte pixel;
-            if (s != null) {
-                if (renderRequest.style == Style.BOARDINGS) {
-                    pixel = s.evalBoardings(spt);
-                } else {
-                    pixel = s.evalByte(spt); // renderRequest.style
-                }
+            if ( ! Float.isInfinite(f)) {
+                float t = f / 60;
+                if (t >= 255)
+                    t = 255;
+                pixel = (byte) t;
             } else {
                 pixel = TRANSPARENT;
             }
+            //LOG.debug("f = {}, pixel = {}", f, pixel);
             imagePixelData[i] = pixel;
             i++;
         }
@@ -220,16 +231,17 @@ public abstract class Tile {
         byte[] imagePixelData = ((DataBufferByte)image.getRaster().getDataBuffer()).getData();
         int i = 0;
         final byte TRANSPARENT = (byte) 255;
-        for (Sample s : getSamples()) {
-            byte pixel;
-            if (s != null) {
-                double t = (k1 * s.eval(spt1) + k2 * s.eval(spt2)) / 60 + intercept; 
-                if (t < 0 || t > 255)
-                    t = TRANSPARENT;
-                pixel = (byte) t;
-            } else {
-                pixel = TRANSPARENT;
-            }
+        SampleOperator so = new ElapsedTimeSampleOperator();
+        for (float f : so.evaluate(spt1, this).results) {
+            byte pixel = 0;
+//            if ( ! Float.isInfinite(f)) {
+//                double t = (k1 * s.eval(spt1) + k2 * s.eval(spt2)) / 60 + intercept; 
+//                if (t < 0 || t > 255)
+//                    t = TRANSPARENT;
+//                pixel = (byte) t;
+//            } else {
+//                pixel = TRANSPARENT;
+//            }
             imagePixelData[i] = pixel;
             i++;
         }
@@ -243,8 +255,6 @@ public abstract class Tile {
             .create("isochrone", image, gg.getEnvelope2D());
         return gridCoverage;
     }
-
-    public abstract Sample[] getSamples();
 
     public static BufferedImage getLegend(Style style, int width, int height) {
         final int NBANDS = 150;

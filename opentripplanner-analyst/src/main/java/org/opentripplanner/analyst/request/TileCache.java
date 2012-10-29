@@ -1,6 +1,5 @@
 package org.opentripplanner.analyst.request;
 
-import org.opentripplanner.analyst.core.DynamicTile;
 import org.opentripplanner.analyst.core.Tile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,7 @@ public class TileCache extends CacheLoader<TileRequest, Tile>
         //return new TemplateTile(req, sampleFactory);
         //return new TemplateTile(req, hashSampler);
         //return new DynamicTile(req, hashSampler);
-        return new DynamicTile(req, sampleFactory);
+        return new Tile(req, sampleFactory);
     }
 
     /** delegate to the tile LoadingCache */
@@ -51,7 +50,7 @@ public class TileCache extends CacheLoader<TileRequest, Tile>
     
     @Override
     public int weigh(TileRequest req, Tile tile) {
-        return tile.getSamples().length;
+        return tile.totalSize();
     }
     
 }
