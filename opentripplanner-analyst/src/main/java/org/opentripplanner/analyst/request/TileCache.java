@@ -9,10 +9,13 @@ import org.springframework.stereotype.Component;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.cache.RemovalListener;
+import com.google.common.cache.RemovalNotification;
 import com.google.common.cache.Weigher;
 
 @Component
-public class TileCache extends CacheLoader<Tile, Tile> implements  Weigher<Tile, Tile> { 
+public class TileCache extends CacheLoader<Tile, Tile> 
+    implements Weigher<Tile, Tile>, RemovalListener<Tile, Tile> { 
     
     private static final Logger LOG = LoggerFactory.getLogger(TileCache.class);
 
@@ -21,9 +24,12 @@ public class TileCache extends CacheLoader<Tile, Tile> implements  Weigher<Tile,
     
     private final LoadingCache<Tile, Tile> tileCache = CacheBuilder
             .newBuilder()
-            .concurrencyLevel(32)
-            .maximumSize(1000000) // 1GB in kB
+            .concurrencyLevel(4)
+            .maximumWeight(200000) // weight as determined by weigher (1GB in kB)
+            .weigher(this)
+            //.maximumSize(200000) // size as in number of entries
             //.softValues()
+            .removalListener(this)
             .build(this);
 
     /** 
@@ -48,9 +54,16 @@ public class TileCache extends CacheLoader<Tile, Tile> implements  Weigher<Tile,
     @Override
     public int weigh(Tile req, Tile tile) {
         final int refSize = 6; // bytes
-        int nrefs = 5 + tile.totalSize();
-        int nBytes = nrefs * refSize;
-        return nBytes / 1000 + 1;
+        final int sampleSize = 4 * 2 + refSize * 2;
+        int nBytes = tile.totalSize() * sampleSize;
+        int nkBytes = nBytes / 1000 + 1; 
+        LOG.debug("weighed tile as {} kilobytes", nkBytes);
+        return nkBytes;
+    }
+
+    @Override
+    public void onRemoval(RemovalNotification<Tile, Tile> notification) {
+        LOG.debug("removed tile: {}", notification);
     }
     
 }

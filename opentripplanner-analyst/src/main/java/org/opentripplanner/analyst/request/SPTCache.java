@@ -24,8 +24,8 @@ public class SPTCache extends CacheLoader<RoutingRequest, ShortestPathTree> {
 
     private LoadingCache<RoutingRequest, ShortestPathTree> sptCache = CacheBuilder
             .newBuilder()
-            .concurrencyLevel(16)
-            .maximumSize(16)
+            .concurrencyLevel(4)
+            .maximumSize(6)
             .build(this);
 
     @Override /** completes the abstract CacheLoader superclass */
