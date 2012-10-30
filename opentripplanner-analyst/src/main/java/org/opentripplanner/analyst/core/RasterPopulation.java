@@ -29,14 +29,10 @@ import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Superclass of slippytile -- combination of Tile and TileRequest
- * should actually be called 'raster' and combined with RasterPopulation 
- */
-public class Tile extends AbstractPopulation { 
+public class RasterPopulation extends AbstractPopulation { 
 
     /* STATIC */
-    private static final Logger LOG = LoggerFactory.getLogger(Tile.class);        
+    private static final Logger LOG = LoggerFactory.getLogger(RasterPopulation.class);        
     
     /* INSTANCE */
     public final Envelope2D bbox; // includes CRS
@@ -44,7 +40,7 @@ public class Tile extends AbstractPopulation {
     public final int height; 
     final GridGeometry2D gg;      // maps grid coordinates to CRS coordinates
 
-    public Tile(Envelope2D bbox, Integer width, Integer height) {
+    public RasterPopulation(Envelope2D bbox, Integer width, Integer height) {
         this.bbox = bbox;
         this.width = width;
         this.height = height;
@@ -76,8 +72,8 @@ public class Tile extends AbstractPopulation {
     
     @Override
     public boolean equals(Object other) {
-        if (other instanceof Tile) {
-            Tile that = (Tile) other;
+        if (other instanceof RasterPopulation) {
+            RasterPopulation that = (RasterPopulation) other;
             return this.bbox.equals(that.bbox) &&
                    this.width  == that.width   &&
                    this.height == that.height;
@@ -199,10 +195,10 @@ public class Tile extends AbstractPopulation {
 
     public void writeGeotiff(String fileName, ResultSet results) {
         LOG.info("writing geotiff.");
-        float[][] imagePixelData = new float[rows][cols]; 
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                int index = row * cols + col;
+        float[][] imagePixelData = new float[height][width]; 
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                int index = row * width + col;
                 float pixel = (float) results.results[index];
                 imagePixelData[row][col] = pixel;
             }

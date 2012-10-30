@@ -12,7 +12,7 @@ import javax.ws.rs.core.Response;
 import org.geotools.geometry.Envelope2D;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opentripplanner.analyst.core.GeometryIndex;
-import org.opentripplanner.analyst.core.Tile;
+import org.opentripplanner.analyst.core.RasterPopulation;
 import org.opentripplanner.analyst.parameter.Layer;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
 import org.opentripplanner.analyst.parameter.Style;
@@ -57,7 +57,7 @@ public class Raster {
             width  = (int) Math.ceil(bbox.width  / resolution);
             height = (int) Math.ceil(bbox.height / resolution);
         }
-        Tile tileRequest = new Tile(bbox, width, height);
+        RasterPopulation tileRequest = new RasterPopulation(bbox, width, height);
         SPTRequest sptRequest = new SPTRequest(x, y, time);
         RenderRequest renderRequest = new RenderRequest(format, Layer.TRAVELTIME, Style.GRAY, false, false);
 

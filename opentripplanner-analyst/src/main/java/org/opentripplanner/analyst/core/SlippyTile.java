@@ -4,7 +4,7 @@ import org.geotools.geometry.Envelope2D;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 
 /* http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames */
-public class SlippyTile extends Tile {
+public class SlippyTile extends RasterPopulation {
 
     final int x, y, z;
     

@@ -24,15 +24,15 @@ public class RasterSampleList implements SampleList {
 
     private static final Logger LOG = LoggerFactory.getLogger(RasterSampleList.class);
     
-    final Tile tile; // eventually RasterPopulation
+    final RasterPopulation rpop;
     final SampleSource ss;
     final CoordinateReferenceSystem crs;
     MathTransform tr;
 
-    public RasterSampleList (Tile tile, SampleSource ss) {
-        this.tile = tile;
+    public RasterSampleList (RasterPopulation rasterPopulation, SampleSource ss) {
+        this.rpop = rasterPopulation;
         this.ss = ss;
-        crs = tile.gg.getCoordinateReferenceSystem2D();
+        crs = rpop.gg.getCoordinateReferenceSystem2D();
         try {
             tr = CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84);
         } catch (FactoryException e) {
@@ -49,7 +49,7 @@ public class RasterSampleList implements SampleList {
             
             @Override
             public boolean hasNext() {
-                return (gc.y < tile.height);
+                return (gc.y < rpop.height);
             }
 
             @Override
@@ -57,7 +57,7 @@ public class RasterSampleList implements SampleList {
                 Sample s = null;
                 try {
                     // find coordinates for current raster cell in tile CRS
-                    DirectPosition sourcePos = tile.gg.gridToWorld(gc);
+                    DirectPosition sourcePos = rpop.gg.gridToWorld(gc);
                     // convert coordinates in tile CRS to WGS84
                     tr.transform(sourcePos, sourcePos);
                     // axis order can vary
@@ -69,7 +69,7 @@ public class RasterSampleList implements SampleList {
                 }
                 // advance to the next grid cell
                 gc.x += 1;
-                if (gc.x >= tile.width) {
+                if (gc.x >= rpop.width) {
                     gc.x = 0;
                     gc.y += 1; 
                 }
@@ -91,7 +91,7 @@ public class RasterSampleList implements SampleList {
 
     @Override
     public int size() {
-        return tile.;
+        return rpop.height * rpop.width;
     }
     
 }

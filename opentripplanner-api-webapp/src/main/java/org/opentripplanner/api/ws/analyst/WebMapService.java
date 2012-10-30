@@ -15,7 +15,7 @@ import org.geotools.geometry.Envelope2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opentripplanner.analyst.core.Tile;
+import org.opentripplanner.analyst.core.RasterPopulation;
 import org.opentripplanner.analyst.parameter.Layer;
 import org.opentripplanner.analyst.parameter.LayerList;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
@@ -111,7 +111,7 @@ public class WebMapService extends RoutingResource {
 //            sptRequestB = new SPTRequest(originLonB, originLatB, timeB);
 //        } 
 //        
-        Tile tileRequest = new Tile(bbox, width, height);
+        RasterPopulation tileRequest = new RasterPopulation(bbox, width, height);
         Layer layer = layers.get(0);
         Style style = styles.get(0);
         RenderRequest renderRequest = new RenderRequest(format, layer, style, transparent, timestamp);

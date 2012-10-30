@@ -9,7 +9,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
 import org.opentripplanner.analyst.core.SlippyTile;
-import org.opentripplanner.analyst.core.Tile;
+import org.opentripplanner.analyst.core.RasterPopulation;
 import org.opentripplanner.analyst.parameter.Layer;
 import org.opentripplanner.analyst.parameter.LayerList;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
@@ -46,7 +46,7 @@ public class TileService extends RoutingResource {
     @GET @Produces("image/*")
     public Response tileGet() throws Exception { 
         
-        Tile tileRequest = new SlippyTile(x, y, z);
+        RasterPopulation tileRequest = new SlippyTile(x, y, z);
         RoutingRequest sptRequestA = buildRequest(0);
         RoutingRequest sptRequestB = buildRequest(1);
 

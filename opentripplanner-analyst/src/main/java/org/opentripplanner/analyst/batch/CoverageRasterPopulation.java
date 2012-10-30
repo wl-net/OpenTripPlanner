@@ -30,8 +30,6 @@ public class CoverageRasterPopulation {
     private static final Logger LOG = LoggerFactory.getLogger(RasterPopulation.class);
 
     /* configuration fields */
-    @Setter int rows = 200, cols = 200; // these are the raster (gridEnvelope) dimensions
-    @Setter double left, right, top, bottom; // bounding box values in CRS
     @Setter int band = 0; // raster band to read
     
     /* derived fields */

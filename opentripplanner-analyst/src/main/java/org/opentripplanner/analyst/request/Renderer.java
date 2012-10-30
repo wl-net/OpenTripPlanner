@@ -24,7 +24,7 @@ import org.geotools.gce.geotiff.GeoTiffWriteParams;
 import org.geotools.gce.geotiff.GeoTiffWriter;
 import org.opengis.parameter.GeneralParameterValue;
 import org.opengis.parameter.ParameterValueGroup;
-import org.opentripplanner.analyst.core.Tile;
+import org.opentripplanner.analyst.core.RasterPopulation;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.spt.ShortestPathTree;
@@ -52,11 +52,11 @@ public class Renderer {
     @Autowired
     private SPTCache sptCache;
 
-    public Response getResponse (Tile tileRequest, 
+    public Response getResponse (RasterPopulation tileRequest, 
             RoutingRequest routingRequestA, RoutingRequest routingRequestB, 
             RenderRequest renderRequest) throws Exception {
 
-        Tile tile = tileCache.get(tileRequest);
+        RasterPopulation tile = tileCache.get(tileRequest);
         ShortestPathTree sptA = sptCache.get(routingRequestA);
         ShortestPathTree sptB = sptCache.get(routingRequestB);
         
@@ -84,7 +84,7 @@ public class Renderer {
 
             Graphics2D g2d = image.createGraphics();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC));
-            BufferedImage legend = Tile.getLegend(renderRequest.style, 300, 50);
+            BufferedImage legend = RasterPopulation.getLegend(renderRequest.style, 300, 50);
             g2d.drawImage(legend, 0, image.getHeight()-50, null);
             g2d.dispose();
         }

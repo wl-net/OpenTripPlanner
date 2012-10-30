@@ -10,7 +10,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-import org.opentripplanner.analyst.core.Tile;
+import org.opentripplanner.analyst.core.RasterPopulation;
 import org.opentripplanner.analyst.request.Renderer;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
 import org.opentripplanner.analyst.parameter.Style;
@@ -34,7 +34,7 @@ public class LegendResource {
     		format = "jpeg";
         MIMEImageFormat mimeFormat = new MIMEImageFormat("image/" + format);
         Style style = styles.get(0);
-        BufferedImage image = Tile.getLegend(style, width, height);
+        BufferedImage image = RasterPopulation.getLegend(style, width, height);
         return Renderer.generateStreamingImageResponse(image, mimeFormat);
     }
 

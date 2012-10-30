@@ -1,6 +1,6 @@
 package org.opentripplanner.analyst.request;
 
-import org.opentripplanner.analyst.core.Tile;
+import org.opentripplanner.analyst.core.RasterPopulation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +14,15 @@ import com.google.common.cache.RemovalNotification;
 import com.google.common.cache.Weigher;
 
 @Component
-public class TileCache extends CacheLoader<Tile, Tile> 
-    implements Weigher<Tile, Tile>, RemovalListener<Tile, Tile> { 
+public class TileCache extends CacheLoader<RasterPopulation, RasterPopulation> 
+    implements Weigher<RasterPopulation, RasterPopulation>, RemovalListener<RasterPopulation, RasterPopulation> { 
     
     private static final Logger LOG = LoggerFactory.getLogger(TileCache.class);
 
     @Autowired
     private SampleFactory sampleFactory;
     
-    private final LoadingCache<Tile, Tile> tileCache = CacheBuilder
+    private final LoadingCache<RasterPopulation, RasterPopulation> tileCache = CacheBuilder
             .newBuilder()
             .concurrencyLevel(4)
             .maximumWeight(200000) // weight as determined by weigher (1GB in kB)
@@ -38,7 +38,7 @@ public class TileCache extends CacheLoader<Tile, Tile>
      * when there is a cache miss.
      */
     @Override
-    public Tile load(Tile req) throws Exception {
+    public RasterPopulation load(RasterPopulation req) throws Exception {
         LOG.debug("tile cache miss; cache size is {}", this.tileCache.size());
         req.resampleDynamic(sampleFactory);
         req.materializeSamples();
@@ -46,13 +46,13 @@ public class TileCache extends CacheLoader<Tile, Tile>
     }
 
     /** Delegate to the tile LoadingCache */
-    public Tile get(Tile req) throws Exception {
+    public RasterPopulation get(RasterPopulation req) throws Exception {
         return tileCache.get(req);
     }
     
     /** Roughly estimate the size of a tile in kilobytes */
     @Override
-    public int weigh(Tile req, Tile tile) {
+    public int weigh(RasterPopulation req, RasterPopulation tile) {
         final int refSize = 6; // bytes
         final int sampleSize = 4 * 2 + refSize * 2;
         int nBytes = tile.totalSize() * sampleSize;
@@ -62,7 +62,7 @@ public class TileCache extends CacheLoader<Tile, Tile>
     }
 
     @Override
-    public void onRemoval(RemovalNotification<Tile, Tile> notification) {
+    public void onRemoval(RemovalNotification<RasterPopulation, RasterPopulation> notification) {
         LOG.debug("removed tile: {}", notification);
     }
     
