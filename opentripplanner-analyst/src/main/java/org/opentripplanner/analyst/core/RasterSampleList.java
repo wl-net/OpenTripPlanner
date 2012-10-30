@@ -88,5 +88,10 @@ public class RasterSampleList implements SampleList {
     public int getSize() {
         return tile.totalSize();
     }
+
+    @Override
+    public boolean isDynamic() {
+        return true;
+    }
     
 }

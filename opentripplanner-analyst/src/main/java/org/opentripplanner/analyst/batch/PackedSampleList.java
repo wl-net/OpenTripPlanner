@@ -56,4 +56,9 @@ public class PackedSampleList implements SampleList {
         return length;
     }
 
+    @Override
+    public boolean isDynamic() {
+        return false;
+    }
+
 }

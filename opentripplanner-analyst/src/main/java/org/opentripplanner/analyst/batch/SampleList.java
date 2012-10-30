@@ -9,6 +9,12 @@ import org.opentripplanner.analyst.core.Sample;
  */
 public interface SampleList extends Iterable<Sample> {
 
-    public abstract int getSize();
+    public int getSize();
+    
+    /** 
+     * Return true if the SampleList implementation performs expensive distance calculations 
+     * every time it is iterated over.
+     */
+    public boolean isDynamic();
 
 }

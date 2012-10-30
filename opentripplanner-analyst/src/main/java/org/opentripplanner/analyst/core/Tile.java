@@ -57,7 +57,7 @@ public class Tile {
     public void materializeSamples() {
 //        if (sampleList == null)
 //            resampleDynamic(); // push ssource injection down into generator 
-        if (! (sampleList instanceof List))
+        if (sampleList.isDynamic())
             sampleList = new PackedSampleList(sampleList);
     }    
     
