@@ -25,10 +25,7 @@ import org.opengis.referencing.operation.MathTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Individuals should be in a random-access-friendly List implementation in row-major order
- */
-public class RasterPopulation extends BasicPopulation {
+public class CoverageRasterPopulation {
 
     private static final Logger LOG = LoggerFactory.getLogger(RasterPopulation.class);
 
