@@ -69,7 +69,7 @@ public abstract class SampleOperator {
             results[i] = evaluate(spt, sample);
             i += 1;
         }
-        return new ResultSet(null, spt, results); //eventually Population, spt, results
+        return new ResultSet(population, spt, results);
     }
     
     // TODO implement these obsolete methods in subclasses

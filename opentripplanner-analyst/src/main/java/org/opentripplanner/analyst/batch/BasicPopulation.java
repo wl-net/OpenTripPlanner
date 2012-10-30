@@ -15,11 +15,11 @@ import org.slf4j.LoggerFactory;
 import com.csvreader.CsvWriter;
 
 /**
- * A Population backed by a list of Individuals. 
+ * A simple Population backed by a list of Individuals. 
  * It can be directly instantiated in Spring DI configuration XML, or subclassed to represent
  * non-gridded input like a shapefile or CSV.
  */
-public class BasicPopulation implements Population {
+public class BasicPopulation extends AbstractPopulation {
 
     private static final Logger LOG = LoggerFactory.getLogger(BasicPopulation.class);
     
@@ -27,31 +27,13 @@ public class BasicPopulation implements Population {
     public String sourceFilename;
     
     @Setter @Getter 
-    public List<Individual> individuals = new ArrayList<Individual>(); 
-    
-    @Setter @Getter 
     public List<IndividualFilter> filterChain = null; 
 
     private boolean[] skip = null;
     
-    @Override 
-    public Iterator<Individual> iterator() {
-        return new PopulationIterator();
-    }
-
     @Override
     public void createIndividuals() {
         // nothing to do in the basic population case
-    }
-
-    @Override
-    public int totalSize() {
-        return this.individuals.size();
-    }
-        
-    @Override
-    public int filteredSize() {
-        return -1;
     }
 
     protected void writeCsv(String outFileName, ResultSet results) {
@@ -61,7 +43,7 @@ public class BasicPopulation implements Population {
             writer.writeRecord( new String[] {"label", "lat", "lon", "input", "output"} );
             int i = 0;
             // using internal list rather than filtered iterator
-            for (Individual indiv : this.individuals) {
+            for (Individual indiv : this.getIndividualList()) {
                 if ( ! this.skip[i]) {
                     String[] entries = new String[] { 
                             indiv.label, Double.toString(indiv.lat), Double.toString(indiv.lon), 

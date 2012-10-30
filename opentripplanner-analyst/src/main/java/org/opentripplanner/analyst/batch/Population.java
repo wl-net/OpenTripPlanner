@@ -10,7 +10,7 @@ package org.opentripplanner.analyst.batch;
  * 
  * @author andrewbyrd
  */
-public interface Population extends Iterable<Individual> {
+public interface Population {
 
     /** @return the total number of individuals in this population. */
     public int totalSize();
@@ -20,6 +20,8 @@ public interface Population extends Iterable<Individual> {
 
     public SampleList getSampleList();
 
+    public IndividualList getIndividualList();
+    
     /**
      * Prepare the population for use. This includes loading or generating the individuals, 
      * filtering them, but not sampling (linking them into the graph) because origin populations

@@ -14,6 +14,8 @@ public class Individual {
     public final double lon;
     public final double lat;
     @NonNull public double input;  // not final to allow clamping and scaling by filters
+    
+    // remove below
     public Sample sample= null; // not final, allowing sampling to occur after filterings
     
     // public boolean rejected;
