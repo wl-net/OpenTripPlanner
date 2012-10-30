@@ -1,6 +1,7 @@
 package org.opentripplanner.api.ws.analyst;
  
 import java.io.InputStream;
+
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -14,19 +15,20 @@ import org.geotools.geometry.Envelope2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opentripplanner.analyst.request.RenderRequest;
-import org.opentripplanner.analyst.request.Renderer;
-import org.opentripplanner.analyst.request.TileRequest;
-import org.opentripplanner.api.common.RoutingResource;
+import org.opentripplanner.analyst.core.Tile;
 import org.opentripplanner.analyst.parameter.Layer;
 import org.opentripplanner.analyst.parameter.LayerList;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
 import org.opentripplanner.analyst.parameter.Style;
 import org.opentripplanner.analyst.parameter.StyleList;
 import org.opentripplanner.analyst.parameter.WMSVersion;
+import org.opentripplanner.analyst.request.RenderRequest;
+import org.opentripplanner.analyst.request.Renderer;
+import org.opentripplanner.api.common.RoutingResource;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.sun.jersey.api.core.InjectParam;
 import com.sun.jersey.api.spring.Autowire;
 
@@ -109,7 +111,7 @@ public class WebMapService extends RoutingResource {
 //            sptRequestB = new SPTRequest(originLonB, originLatB, timeB);
 //        } 
 //        
-        TileRequest tileRequest = new TileRequest(bbox, width, height);
+        Tile tileRequest = new Tile(bbox, width, height);
         Layer layer = layers.get(0);
         Style style = styles.get(0);
         RenderRequest renderRequest = new RenderRequest(format, layer, style, transparent, timestamp);

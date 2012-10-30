@@ -12,13 +12,13 @@ import javax.ws.rs.core.Response;
 import org.geotools.geometry.Envelope2D;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opentripplanner.analyst.core.GeometryIndex;
-import org.opentripplanner.analyst.request.RenderRequest;
-import org.opentripplanner.analyst.request.Renderer;
-import org.opentripplanner.analyst.request.SPTRequest;
-import org.opentripplanner.analyst.request.TileRequest;
+import org.opentripplanner.analyst.core.Tile;
 import org.opentripplanner.analyst.parameter.Layer;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
 import org.opentripplanner.analyst.parameter.Style;
+import org.opentripplanner.analyst.request.RenderRequest;
+import org.opentripplanner.analyst.request.Renderer;
+import org.opentripplanner.analyst.request.SPTRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
@@ -57,7 +57,7 @@ public class Raster {
             width  = (int) Math.ceil(bbox.width  / resolution);
             height = (int) Math.ceil(bbox.height / resolution);
         }
-        TileRequest tileRequest = new TileRequest(bbox, width, height);
+        Tile tileRequest = new Tile(bbox, width, height);
         SPTRequest sptRequest = new SPTRequest(x, y, time);
         RenderRequest renderRequest = new RenderRequest(format, Layer.TRAVELTIME, Style.GRAY, false, false);
 
