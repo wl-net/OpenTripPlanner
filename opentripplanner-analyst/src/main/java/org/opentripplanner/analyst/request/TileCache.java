@@ -12,45 +12,45 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 
 @Component
-public class TileCache extends CacheLoader<TileRequest, Tile> 
-    implements  Weigher<TileRequest, Tile> { 
+public class TileCache extends CacheLoader<Tile, Tile> implements  Weigher<Tile, Tile> { 
     
     private static final Logger LOG = LoggerFactory.getLogger(TileCache.class);
 
     @Autowired
     private SampleFactory sampleFactory;
     
-//    @Autowired
-//    private HashGridSampler hashSampler;
-//
-//    @Autowired
-//    private SampleCache sampleCache;
-
-    private final LoadingCache<TileRequest, Tile> tileCache = CacheBuilder
+    private final LoadingCache<Tile, Tile> tileCache = CacheBuilder
             .newBuilder()
             .concurrencyLevel(32)
-            .maximumSize(900)
+            .maximumSize(1000000) // 1GB in kB
             //.softValues()
             .build(this);
 
+    /** 
+     * Completes the abstract CacheLoader superclass by implementing cache miss behavior. 
+     * We use tiles as their own keys, but add a sample generator and materialize the samples 
+     * when there is a cache miss.
+     */
     @Override
-    /** completes the abstract CacheLoader superclass */
-    public Tile load(TileRequest req) throws Exception {
+    public Tile load(Tile req) throws Exception {
         LOG.debug("tile cache miss; cache size is {}", this.tileCache.size());
-        //return new TemplateTile(req, sampleFactory);
-        //return new TemplateTile(req, hashSampler);
-        //return new DynamicTile(req, hashSampler);
-        return new Tile(req, sampleFactory);
+        req.resampleDynamic(sampleFactory);
+        req.materializeSamples();
+        return req;
     }
 
-    /** delegate to the tile LoadingCache */
-    public Tile get(TileRequest req) throws Exception {
+    /** Delegate to the tile LoadingCache */
+    public Tile get(Tile req) throws Exception {
         return tileCache.get(req);
     }
     
+    /** Roughly estimate the size of a tile in kilobytes */
     @Override
-    public int weigh(TileRequest req, Tile tile) {
-        return tile.totalSize();
+    public int weigh(Tile req, Tile tile) {
+        final int refSize = 6; // bytes
+        int nrefs = 5 + tile.totalSize();
+        int nBytes = nrefs * refSize;
+        return nBytes / 1000 + 1;
     }
     
 }

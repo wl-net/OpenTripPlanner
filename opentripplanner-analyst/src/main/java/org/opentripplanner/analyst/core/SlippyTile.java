@@ -4,14 +4,38 @@ import org.geotools.geometry.Envelope2D;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 
 /* http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames */
-public class SlippyTile {
+public class SlippyTile extends Tile {
 
+    final int x, y, z;
+    
+    public SlippyTile(int x, int y, int z) {
+        super(tile2Envelope(x, y, z), 256, 256);
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+    
+    @Override
+    public boolean equals(Object other) {
+        if ( ! (other instanceof SlippyTile))
+            return false;
+        SlippyTile that = (SlippyTile) other;
+        return that.x == this.x &&
+               that.y == this.y &&
+               that.z == this.z;
+    }
+
+    @Override public int hashCode() {
+        return z * 7919 + y * 3049 + x;
+    }
+    
+    /* STATIC METHODS */
+    
     public static String getTileNumber(final double lat, final double lon, final int zoom) {
         int xtile = (int)Math.floor( (lon + 180) / 360 * (1<<zoom) ) ;
         int ytile = (int)Math.floor( (1 - Math.log(Math.tan(Math.toRadians(lat)) + 1 / Math.cos(Math.toRadians(lat))) / Math.PI) / 2 * (1<<zoom) ) ;
         return("" + zoom + "/" + xtile + "/" + ytile);
     }
-
 
     public static double tile2lon(int x, int z) {
         return x / Math.pow(2.0, z) * 360.0 - 180;
