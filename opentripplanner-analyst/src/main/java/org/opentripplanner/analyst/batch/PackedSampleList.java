@@ -1,56 +1,59 @@
 package org.opentripplanner.analyst.batch;
 
-import java.util.List;
+import java.util.Iterator;
 
 import org.opentripplanner.analyst.core.Sample;
-import org.opentripplanner.analyst.core.SampleOperator;
-import org.opentripplanner.analyst.request.SampleFactory;
-import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.ShortestPathTree;
 
-import com.vividsolutions.jts.geom.Coordinate;
+public class PackedSampleList implements SampleList {
 
-public class PackedSampleList extends SampleList {
-
-    private int length;
+    private final int length;
     
-    private Vertex[] vertices;
+    private final Vertex[] vertices;
     
-    private float[] distances;
+    private final float[] distances;
 
-    public PackedSampleList(List<Coordinate> lc, SampleFactory sf) {
-        length = lc.size();
+    public PackedSampleList(SampleList sl) {
+        length = sl.getSize();
+        vertices = new Vertex[length * 2];
+        distances = new float[length * 2];
         int i = 0;
-        for (Coordinate c : lc) {
-            Sample s = sf.getSample(c.x, c.y);
+        for (Sample s : sl) {
             vertices[i] = s.v0;
-            distances[i] = s.t0;
+            distances[i] = s.d0;
             i += 1;
             vertices[i] = s.v1;
-            distances[i] = s.t1;
+            distances[i] = s.d1;
             i += 1;
         }
     }
     
     @Override
-    public float[] evaluate(SampleOperator sop, ShortestPathTree spt) {
-        int i = 0;
-        int j = 0;
-        float[] results = new float[length];
-        while (i < vertices.length) {
-            State s0 = spt.getState(vertices[i]);
-            float d0 = distances[i];
-            float r0 = sop.evaluate(s0, d0);
-            ++i;
-            State s1 = spt.getState(vertices[i]);
-            float d1 = distances[i];
-            float r1 = sop.evaluate(s1, d1);
-            ++i;
-            results[j] = r0 < r1 ? r0 : r1;
-            ++j;
-        }
-        return results;
+    public Iterator<Sample> iterator() {
+        return new Iterator<Sample>() {
+            int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < length;
+            }
+
+            @Override
+            public Sample next() {
+                return new Sample(vertices[i], distances[i], vertices[i+1], distances[i+1]);
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+            
+        };
+    }
+
+    @Override
+    public int getSize() {
+        return length;
     }
 
 }

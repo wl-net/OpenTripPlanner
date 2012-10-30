@@ -8,6 +8,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Stores the results of applying a SampleOperator to a SampleSet and an SPT.
  * Allows populations to be reused in several places.
+ * 
+ * An IEEE 754 float has 23 bits of significand. It can therefore exactly represent all 
+ * integers up to 2**24 or 16777216. If the float is storing times in seconds (the OTP time 
+ * quantum) this is equivalent to 4660 hours. This should be sufficient for most applications 
+ * while still allowing some headroom for aggregation, scaling etc. without much loss of 
+ * precision. 
  */
 public class ResultSet {
 
