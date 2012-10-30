@@ -1,6 +1,5 @@
 package org.opentripplanner.analyst.core;
 
-import org.opentripplanner.analyst.batch.Individual;
 import org.opentripplanner.analyst.batch.Population;
 import org.opentripplanner.analyst.batch.ResultSet;
 import org.opentripplanner.routing.core.State;
@@ -62,11 +61,11 @@ public abstract class SampleOperator {
         return bestResult;
     }
 
-    public ResultSet evaluate(ShortestPathTree spt, Tile tile) { // tile will eventually be Population        
-        
-        float[] results = new float[tile.totalSize()];
+    public ResultSet evaluate(ShortestPathTree spt, Population population) {         
+        float[] results = new float[population.totalSize()];
         int i = 0;
-        for (Sample sample : tile.sampleList) { // iterate over samples that have not been filtered out            
+        // iterate over samples that have not been filtered out
+        for (Sample sample : population.getSampleList()) {             
             results[i] = evaluate(spt, sample);
             i += 1;
         }

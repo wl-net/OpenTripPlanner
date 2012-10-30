@@ -12,8 +12,8 @@ import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.geometry.Envelope2D;
+import org.opentripplanner.analyst.batch.AbstractPopulation;
 import org.opentripplanner.analyst.batch.PackedSampleList;
-import org.opentripplanner.analyst.batch.SampleList;
 import org.opentripplanner.analyst.parameter.Style;
 import org.opentripplanner.analyst.request.ColorModels;
 import org.opentripplanner.analyst.request.RenderRequest;
@@ -21,11 +21,11 @@ import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Tile { 
-    /* 
-     * superclass of slippytile -- combination of Tile and TileRequest
-     * should actually be called 'raster' and combined with RasterPopulation 
-     */
+/**
+ * Superclass of slippytile -- combination of Tile and TileRequest
+ * should actually be called 'raster' and combined with RasterPopulation 
+ */
+public class Tile extends AbstractPopulation { 
 
     /* STATIC */
     private static final Logger LOG = LoggerFactory.getLogger(Tile.class);        
@@ -36,20 +36,17 @@ public class Tile {
     public final int height; 
     final GridGeometry2D gg;      // maps grid coordinates to CRS coordinates
 
-    // an iterable over the samples in this population, or null if not yet computed
-    SampleList sampleList; 
-
     public Tile(Envelope2D bbox, Integer width, Integer height) {
         this.bbox = bbox;
         this.width = width;
         this.height = height;
         GridEnvelope2D gridEnv = new GridEnvelope2D(0, 0, width, height);
         this.gg = new GridGeometry2D(gridEnv, (org.opengis.geometry.Envelope)(this.bbox));
+        LOG.debug("preparing tile for {}", gg.getEnvelope2D());
     }
     
     public void resampleDynamic(SampleSource ss) {
         // TODO: check that gg intersects graph area 
-        LOG.debug("preparing tile for {}", gg.getEnvelope2D());
         this.sampleList = new RasterSampleList(this, ss);
     }
 
@@ -185,6 +182,8 @@ public class Tile {
         return legend;
     }
 
-
+    /////////////////////
+    
+    
             
 }

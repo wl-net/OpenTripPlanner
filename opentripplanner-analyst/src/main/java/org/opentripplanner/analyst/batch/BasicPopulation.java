@@ -2,8 +2,6 @@ package org.opentripplanner.analyst.batch;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -16,6 +14,11 @@ import org.slf4j.LoggerFactory;
 
 import com.csvreader.CsvWriter;
 
+/**
+ * A Population backed by a list of Individuals. 
+ * It can be directly instantiated in Spring DI configuration XML, or subclassed to represent
+ * non-gridded input like a shapefile or CSV.
+ */
 public class BasicPopulation implements Population {
 
     private static final Logger LOG = LoggerFactory.getLogger(BasicPopulation.class);
@@ -31,29 +34,9 @@ public class BasicPopulation implements Population {
 
     private boolean[] skip = null;
     
-    public BasicPopulation() {  }
-
-    public BasicPopulation(Individual... individuals) {
-        this.individuals = Arrays.asList(individuals);
-    }
-    
-    public BasicPopulation(Collection<Individual> individuals) {
-        this.individuals = new ArrayList<Individual>(individuals);
-    }
-
-    @Override 
-    public void addIndividual(Individual individual) {
-        this.individuals.add(individual);
-    }
-
     @Override 
     public Iterator<Individual> iterator() {
         return new PopulationIterator();
-    }
-
-    @Override
-    public void clearIndividuals(List<Individual> individuals) {
-        this.individuals.clear();
     }
 
     @Override
@@ -174,6 +157,12 @@ public class BasicPopulation implements Population {
             throw new UnsupportedOperationException(); 
         }
         
+    }
+
+    @Override
+    public SampleList getSampleList() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

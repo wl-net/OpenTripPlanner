@@ -1,6 +1,5 @@
 package org.opentripplanner.analyst.batch;
 
-import java.util.List;
 
 /**
  * A collection of individual locations that will be used as either the origin set or the 
@@ -13,21 +12,13 @@ import java.util.List;
  */
 public interface Population extends Iterable<Individual> {
 
-    /** 
-     * @return a list of all Individuals in this Population, including those that have been 
-     * marked as rejected by the filter chain.
-     */
-    public List<Individual> getIndividuals();
-
-    public void addIndividual(Individual individual);
-
-    public void clearIndividuals(List<Individual> individuals);
-
     /** @return the total number of individuals in this population. */
     public int totalSize();
 
     /** @return the number of individuals in this population that are not filtered. */
     public int filteredSize();
+
+    public SampleList getSampleList();
 
     /**
      * Prepare the population for use. This includes loading or generating the individuals, 
