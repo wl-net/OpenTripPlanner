@@ -13,14 +13,14 @@ import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.geometry.Envelope2D;
+import org.opentripplanner.analyst.batch.PackedSampleList;
+import org.opentripplanner.analyst.batch.SampleList;
 import org.opentripplanner.analyst.parameter.Style;
 import org.opentripplanner.analyst.request.ColorModels;
 import org.opentripplanner.analyst.request.RenderRequest;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Lists;
 
 public class Tile { 
     /* 
@@ -38,7 +38,7 @@ public class Tile {
     final GridGeometry2D gg;      // maps grid coordinates to CRS coordinates
 
     // an iterable over the samples in this population, or null if not yet computed
-    Iterable<Sample> sampleIterable; 
+    SampleList sampleList; 
 
     public Tile(Envelope2D bbox, Integer width, Integer height) {
         this.bbox = bbox;
@@ -51,14 +51,14 @@ public class Tile {
     public void resampleDynamic(SampleSource ss) {
         // TODO: check that gg intersects graph area 
         LOG.debug("preparing tile for {}", gg.getEnvelope2D());
-        this.sampleIterable = new RasterSampleGenerator(this, ss);
+        this.sampleList = new RasterSampleGenerator(this, ss);
     }
 
     public void materializeSamples() {
-//        if (sampleIterable == null)
+//        if (sampleList == null)
 //            resampleDynamic(); // push ssource injection down into generator 
-        if (! (sampleIterable instanceof List))
-            sampleIterable = Lists.newArrayList(sampleIterable);
+        if (! (sampleList instanceof List))
+            sampleList = new PackedSampleList(sampleList);
     }    
     
     public int totalSize() {

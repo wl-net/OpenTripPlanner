@@ -9,6 +9,7 @@ import org.opengis.geometry.DirectPosition;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
+import org.opentripplanner.analyst.batch.SampleList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * This replicates the functionality of DynamicTile but without the overhead of storing 
  * all the Samples in an array -- they are generated one by one as needed.
  */
-public class RasterSampleGenerator implements Iterable<Sample> {
+public class RasterSampleGenerator implements SampleList {
 
     private static final Logger LOG = LoggerFactory.getLogger(RasterSampleGenerator.class);
     
@@ -81,6 +82,11 @@ public class RasterSampleGenerator implements Iterable<Sample> {
             }
 
         };
+    }
+
+    @Override
+    public int getSize() {
+        return tile.totalSize();
     }
     
 }

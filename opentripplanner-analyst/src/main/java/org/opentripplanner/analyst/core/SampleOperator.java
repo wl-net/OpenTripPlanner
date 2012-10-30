@@ -66,7 +66,7 @@ public abstract class SampleOperator {
         
         float[] results = new float[tile.totalSize()];
         int i = 0;
-        for (Sample sample : tile.sampleIterable) { // iterate over samples that have not been filtered out            
+        for (Sample sample : tile.sampleList) { // iterate over samples that have not been filtered out            
             results[i] = evaluate(spt, sample);
             i += 1;
         }
