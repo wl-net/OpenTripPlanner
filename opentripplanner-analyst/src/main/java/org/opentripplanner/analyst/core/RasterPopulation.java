@@ -20,7 +20,7 @@ import org.geotools.geometry.Envelope2D;
 import org.opengis.parameter.GeneralParameterValue;
 import org.opengis.parameter.ParameterValueGroup;
 import org.opentripplanner.analyst.batch.AbstractPopulation;
-import org.opentripplanner.analyst.batch.PackedSampleList;
+import org.opentripplanner.analyst.batch.GridCoverageIndividualList;
 import org.opentripplanner.analyst.batch.ResultSet;
 import org.opentripplanner.analyst.parameter.Style;
 import org.opentripplanner.analyst.request.ColorModels;
@@ -41,6 +41,7 @@ public class RasterPopulation extends AbstractPopulation {
     final GridGeometry2D gg; // maps grid coordinates to CRS coordinates
 
     public RasterPopulation(GridGeometry2D gg) {
+        super(new RasterSampleList(gg));
         this.gg = gg;
         LOG.debug("tile for {}", gg);
     }
@@ -50,17 +51,11 @@ public class RasterPopulation extends AbstractPopulation {
                 (org.opengis.geometry.Envelope)(bbox)));
     }
     
-    public void resampleDynamic(SampleSource ss) {
-        this.sampleList = new RasterSampleList(gg, ss); 
+    public RasterPopulation(GridCoverage2D coverage) {
+        super(new GridCoverageIndividualList(coverage));
+        this.gg = coverage.getGridGeometry();
     }
 
-    public void materializeSamples() {
-//        if (sampleList == null)
-//            resampleDynamic(); // push ssource injection down into generator 
-        if (sampleList.isDynamic())
-            sampleList = new PackedSampleList(sampleList);
-    }    
-    
     @Override
     public int hashCode() {
         return gg.hashCode();
