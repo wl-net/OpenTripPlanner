@@ -1,4 +1,4 @@
-/* This program is free software: you can redistribute it and/or
+    /* This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public License
 as published by the Free Software Foundation, either version 3 of
 the License, or (props, at your option) any later version.
@@ -44,8 +44,6 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         /* PEDESTRIAN */
         setProperties(props, "highway=steps", 
             StreetTraversalPermission.PEDESTRIAN);
-        setProperties(props, "highway=crossing", 
-                StreetTraversalPermission.PEDESTRIAN);
         setProperties(props, "highway=platform", 
             StreetTraversalPermission.PEDESTRIAN);
         setProperties(props, "public_transport=platform", 
@@ -57,13 +55,13 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
                 
         /* PEDESTRIAN_AND_BICYCLE */
         setProperties(props, "highway=cycleway", 
-            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.68, 0.68);
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.65, 0.65);
         setProperties(props, "highway=path", 
             StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.75, 0.75);
         setProperties(props, "highway=pedestrian", 
             StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.90, 0.90);
         setProperties(props, "highway=footway", 
-            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 1.1, 1.1);
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.8, 0.8);
         setProperties(props, "highway=bridleway", 
             StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 1.3, 1.3);
 
@@ -112,25 +110,25 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
 
         /* cycleway=lane */
         setProperties(props, "highway=*;cycleway=lane", 
-            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.87, 0.87);
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.7, 0.7);
         setProperties(props, "highway=service;cycleway=lane",
-            StreetTraversalPermission.ALL, 0.77, 0.77);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=residential;cycleway=lane", 
-            StreetTraversalPermission.ALL, 0.77, 0.77);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=residential_link;cycleway=lane", 
-            StreetTraversalPermission.ALL, 0.77, 0.77);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=tertiary;cycleway=lane", 
-            StreetTraversalPermission.ALL, 0.87, 0.87);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=tertiary_link;cycleway=lane", 
-            StreetTraversalPermission.ALL, 0.87, 0.87);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=secondary;cycleway=lane", 
-            StreetTraversalPermission.ALL, 0.96, 0.96);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=secondary_link;cycleway=lane", 
-            StreetTraversalPermission.ALL, 0.96, 0.96);
+            StreetTraversalPermission.ALL, 0.7, 0.7);
         setProperties(props, "highway=primary;cycleway=lane", 
-            StreetTraversalPermission.ALL, 1.15, 1.15);
+            StreetTraversalPermission.ALL, 0.8, 0.8);
         setProperties(props, "highway=primary_link;cycleway=lane", 
-            StreetTraversalPermission.ALL, 1.15, 1.15);
+            StreetTraversalPermission.ALL, 0.8, 0.8);
         setProperties(props, "highway=trunk;cycleway=lane", 
             StreetTraversalPermission.BICYCLE_AND_CAR, 1.5, 1.5);
         setProperties(props, "highway=trunk_link;cycleway=lane", 
@@ -158,9 +156,9 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         setProperties(props, "highway=secondary_link;cycleway=share_busway", 
             StreetTraversalPermission.ALL, 0.99, 0.99);
         setProperties(props, "highway=primary;cycleway=share_busway", 
-            StreetTraversalPermission.ALL, 1.25, 1.25);
+            StreetTraversalPermission.ALL, 1.1, 1.1);
         setProperties(props, "highway=primary_link;cycleway=share_busway", 
-            StreetTraversalPermission.ALL, 1.25, 1.25);
+            StreetTraversalPermission.ALL, 1.1, 1.1);
         setProperties(props, "highway=trunk;cycleway=share_busway", 
             StreetTraversalPermission.BICYCLE_AND_CAR, 1.75, 1.75);
         setProperties(props, "highway=trunk_link;cycleway=share_busway", 
@@ -172,7 +170,7 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
 
         /* cycleway=opposite_lane */
         setProperties(props, "highway=*;cycleway=opposite_lane", 
-            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 1.0, 0.87);
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 1.0, 0.9);
         setProperties(props, "highway=service;cycleway=opposite_lane", 
             StreetTraversalPermission.ALL, 1.1, 0.77);         
         setProperties(props, "highway=residential;cycleway=opposite_lane",
@@ -198,29 +196,29 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
 
         /* cycleway=track */
         setProperties(props, "highway=*;cycleway=track", 
-            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.73, 0.73);
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.9, 0.9);
         setProperties(props, "highway=service;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.7, 0.7);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=residential;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.7, 0.7);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=residential_link;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.7, 0.7);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=tertiary;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.75, 0.75);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=tertiary_link;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.75, 0.75);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=secondary;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.8, 0.8);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=secondary_link;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.8, 0.8);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=primary;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.85, 0.85);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=primary_link;cycleway=track", 
-            StreetTraversalPermission.ALL, 0.85, 0.85);
+            StreetTraversalPermission.ALL);
         setProperties(props, "highway=trunk;cycleway=track", 
-            StreetTraversalPermission.BICYCLE_AND_CAR, 0.9, 0.9);
+            StreetTraversalPermission.BICYCLE_AND_CAR);
         setProperties(props, "highway=trunk_link;cycleway=track", 
-            StreetTraversalPermission.BICYCLE_AND_CAR, 0.85, 0.85);
+            StreetTraversalPermission.BICYCLE_AND_CAR);
 
         /* cycleway=opposite_track */
         setProperties(props, "highway=*;cycleway=opposite_track", 
@@ -247,6 +245,10 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
             StreetTraversalPermission.BICYCLE_AND_CAR, 7.47, 0.9);
         setProperties(props, "highway=trunk_link;cycleway=opposite_track",
             StreetTraversalPermission.BICYCLE_AND_CAR, 2.06, 0.85);
+
+
+        setProperties(props, "cycle_road=yes", 
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.65, 0.65);
 
         /* cycleway=shared_lane a.k.a. bike boulevards or neighborhood greenways */
         setProperties(props, "highway=*;cycleway=shared_lane", 
@@ -298,7 +300,9 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
 
         /* footway */
         setProperties(props, "highway=footway;bicycle=designated",
-            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.75, 0.75);     
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.70, 0.70); 
+        setProperties(props, "highway=footway;bicycle=yes",
+            StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.70, 0.70);     
         /* Portland area specific tags */
         setProperties(props, "highway=footway;RLIS:bicycle=designated",
             StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.77, 0.77);
@@ -363,36 +367,6 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
             StreetTraversalPermission.BICYCLE_AND_CAR, 7.76, 7.76);
         setProperties(props, "highway=motorway_link;bicycle=designated",
             StreetTraversalPermission.BICYCLE_AND_CAR, 2, 2);
-        
-        /* Automobile speeds in the United States: Based on my (mattwigway) personal experience,
-         * primarily in California */
-        setCarSpeed(props, "highway=motorway", 29); // 29 m/s ~= 65 mph
-        setCarSpeed(props, "highway=motorway_link", 15); // ~= 35 mph
-        setCarSpeed(props, "highway=trunk", 24.6f); // ~= 55 mph
-        setCarSpeed(props, "highway=trunk_link", 15); // ~= 35 mph
-        setCarSpeed(props, "highway=primary", 20); // ~= 45 mph
-        setCarSpeed(props, "highway=primary_link", 11.2f); // ~= 25 mph
-        setCarSpeed(props, "highway=secondary", 15); // ~= 35 mph
-        setCarSpeed(props, "highway=secondary_link", 11.2f); // ~= 25 mph
-        setCarSpeed(props, "highway=tertiary", 11.2f); // ~= 25 mph
-        setCarSpeed(props, "highway=tertiary_link", 11.2f); // ~= 25 mph
-        setCarSpeed(props, "highway=living_street", 2.2f); // ~= 5 mph
-        
-        // generally, these will not allow cars at all, but the docs say
-        // "For roads used mainly/exclusively for pedestrians . . . which may allow access by
-        // motorised vehicles only for very limited periods of the day."
-        // http://wiki.openstreetmap.org/wiki/Key:highway
-        // This of course makes the street network time-dependent
-        setCarSpeed(props, "highway=pedestrian", 2.2f); // ~= 5 mph
-        
-        setCarSpeed(props, "highway=residential", 11.2f); // ~= 25 mph
-        setCarSpeed(props, "highway=unclassified", 11.2f); // ~= 25 mph
-        setCarSpeed(props, "highway=service", 6.7f); // ~= 15 mph
-        setCarSpeed(props, "highway=track", 4.5f); // ~= 10 mph
-        setCarSpeed(props, "highway=road", 11.2f); // ~= 25 mph 
-        
-        // default ~= 25 mph
-        props.setDefaultSpeed(11.2f);
 
         /*** special situations ****/
 
@@ -418,9 +392,9 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
 
         /* sand and fine gravel are deadly for bikes */
         setProperties(props, "surface=fine_gravel", 
-            StreetTraversalPermission.ALL, 100.0, 100.0, true);
+            StreetTraversalPermission.ALL, 1.3, 1.3, true);
         setProperties(props, "surface=sand", 
-            StreetTraversalPermission.ALL, 100.0, 100.0, true);
+            StreetTraversalPermission.ALL, 1.3, 1.3, true);
 
         /* unpaved, etc */
         setProperties(props, "surface=unpaved", 
@@ -434,7 +408,7 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         setProperties(props, "surface=grass_paver", 
             StreetTraversalPermission.ALL, 1.5, 1.5, true);
         setProperties(props, "surface=pebblestone", 
-            StreetTraversalPermission.ALL, 1.5, 1.5, true);
+            StreetTraversalPermission.ALL, 2, 2, true);
         setProperties(props, "surface=gravel",
             StreetTraversalPermission.ALL, 1.5, 1.5, true);
         setProperties(props, "surface=ground", 
@@ -448,7 +422,7 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         setProperties(props, "surface=mud", 
             StreetTraversalPermission.ALL, 1.5, 1.5, true);
         setProperties(props, "surface=wood", 
-            StreetTraversalPermission.ALL, 1.5, 1.5, true);
+            StreetTraversalPermission.ALL, 4.5, 4.5, true);
         setProperties(props, "surface=metal", 
             StreetTraversalPermission.ALL, 1.5, 1.5, true);
         setProperties(props, "surface=artifical_turf", 
@@ -457,6 +431,11 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         // it is extremly unsafe to ride directly on the Scotsman
         setProperties(props, "surface=tartan", 
             StreetTraversalPermission.ALL, 3.0, 3.0, true);
+
+        setProperties(props, "maxspeed=30", 
+            StreetTraversalPermission.ALL, 0.9, 0.9, true);
+        setProperties(props, "maxspeed=20", 
+            StreetTraversalPermission.ALL, 0.8, 0.8, true);
         
         /* Portland-local mixins */
         
@@ -507,7 +486,7 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         createNames(props, "highway=footway", "path");
         createNames(props, "highway=bridleway", "bridleway");
         createNames(props, "highway=footway;bicycle=no", "footpath");
-        
+
         // Platforms
         createNames(props, "otp:route_ref=*", "Route {otp:route_ref}");
         createNames(props, "highway=platform;ref=*", "Platform {ref}");
@@ -562,7 +541,6 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
 
         //slope overrides
         props.setSlopeOverride(new OSMSpecifier("bridge=*"), true);
-        props.setSlopeOverride(new OSMSpecifier("embankment=*"), true);
         props.setSlopeOverride(new OSMSpecifier("tunnel=*"), true);
 
         return props;
@@ -599,12 +577,5 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         properties.setPermission(permission);
         properties.setSafetyFeatures(new P2<Double>(safety, safetyBack));
         propset.addProperties(new OSMSpecifier(spec), properties, mixin);
-    }
-    
-    private void setCarSpeed(WayPropertySet propset, String spec, float speed) {
-        SpeedPicker picker = new SpeedPicker();
-        picker.setSpecifier(new OSMSpecifier(spec));
-        picker.setSpeed(speed);
-        propset.addSpeedPicker(picker);
     }
 }
