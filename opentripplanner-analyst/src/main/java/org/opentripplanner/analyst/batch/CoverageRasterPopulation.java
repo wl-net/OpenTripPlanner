@@ -41,37 +41,6 @@ public class CoverageRasterPopulation {
     protected GridGeometry2D gridGeometry; // relationship between the grid envelope and the CRS envelope
     
     @Override
-    public void writeAppropriateFormat(String outFileName, ResultSet results) {
-        this.writeGeotiff(outFileName, results);
-    }
-
-    public void writeGeotiff(String fileName, ResultSet results) {
-        LOG.info("writing geotiff.");
-        float[][] imagePixelData = new float[rows][cols]; 
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                int index = row * cols + col;
-                float pixel = (float) results.results[index];
-                imagePixelData[row][col] = pixel;
-            }
-        }
-        GridCoverage2D coverage = new GridCoverageFactory().create("OTPAnalyst", imagePixelData, refEnvelope);
-        try {
-            GeoTiffWriteParams wp = new GeoTiffWriteParams();
-            wp.setCompressionMode(GeoTiffWriteParams.MODE_EXPLICIT);
-            wp.setCompressionType("LZW");
-            ParameterValueGroup params = new GeoTiffFormat().getWriteParameters();
-            params.parameter(AbstractGridFormat.GEOTOOLS_WRITE_PARAMS.getName().toString()).setValue(wp);
-            GeoTiffWriter writer = new GeoTiffWriter(new File(fileName));
-            writer.write(coverage, (GeneralParameterValue[]) params.values().toArray(new GeneralParameterValue[1]));
-        } catch (Exception e) {
-            LOG.error("exception while writing geotiff.");
-            e.printStackTrace();
-        }
-        LOG.info("done writing geotiff.");
-    }
-    
-    @Override
     public void createIndividuals() {
         LOG.info("Loading population from raster file {}", sourceFilename);
         try {

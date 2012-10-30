@@ -6,14 +6,22 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.awt.image.IndexColorModel;
 import java.awt.image.WritableRaster;
+import java.io.File;
 
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.coverage.grid.GridGeometry2D;
+import org.geotools.coverage.grid.io.AbstractGridFormat;
+import org.geotools.gce.geotiff.GeoTiffFormat;
+import org.geotools.gce.geotiff.GeoTiffWriteParams;
+import org.geotools.gce.geotiff.GeoTiffWriter;
 import org.geotools.geometry.Envelope2D;
+import org.opengis.parameter.GeneralParameterValue;
+import org.opengis.parameter.ParameterValueGroup;
 import org.opentripplanner.analyst.batch.AbstractPopulation;
 import org.opentripplanner.analyst.batch.PackedSampleList;
+import org.opentripplanner.analyst.batch.ResultSet;
 import org.opentripplanner.analyst.parameter.Style;
 import org.opentripplanner.analyst.request.ColorModels;
 import org.opentripplanner.analyst.request.RenderRequest;
@@ -184,6 +192,47 @@ public class Tile extends AbstractPopulation {
 
     /////////////////////
     
-    
+    @Override
+    public void writeAppropriateFormat(String outFileName, ResultSet results) {
+        this.writeGeotiff(outFileName, results);
+    }
+
+    public void writeGeotiff(String fileName, ResultSet results) {
+        LOG.info("writing geotiff.");
+        float[][] imagePixelData = new float[rows][cols]; 
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                int index = row * cols + col;
+                float pixel = (float) results.results[index];
+                imagePixelData[row][col] = pixel;
+            }
+        }
+        GridCoverage2D coverage = new GridCoverageFactory().create("OTPAnalyst", imagePixelData, refEnvelope);
+        try {
+            GeoTiffWriteParams wp = new GeoTiffWriteParams();
+            wp.setCompressionMode(GeoTiffWriteParams.MODE_EXPLICIT);
+            wp.setCompressionType("LZW");
+            ParameterValueGroup params = new GeoTiffFormat().getWriteParameters();
+            params.parameter(AbstractGridFormat.GEOTOOLS_WRITE_PARAMS.getName().toString()).setValue(wp);
+            GeoTiffWriter writer = new GeoTiffWriter(new File(fileName));
+            writer.write(coverage, (GeneralParameterValue[]) params.values().toArray(new GeneralParameterValue[1]));
+        } catch (Exception e) {
+            LOG.error("exception while writing geotiff.");
+            e.printStackTrace();
+        }
+        LOG.info("done writing geotiff.");
+    }
+
+    @Override
+    public void setup() {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void createIndividuals() {
+        // TODO Auto-generated method stub
+        
+    }    
             
 }

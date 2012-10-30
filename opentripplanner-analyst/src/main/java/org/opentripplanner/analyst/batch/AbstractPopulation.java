@@ -8,8 +8,8 @@ public abstract class AbstractPopulation implements Population {
     //private int size = 0;
     
     // an Iterable over the samples in this population, or null if not yet computed
-    @Getter @Setter 
-    private SampleList sampleList = null; 
+    @Getter @Setter
+    protected SampleList sampleList = null; 
 
     // this will store the lat/lon/input data and can be a data source for a basic SampleList 
     @Getter @Setter 
