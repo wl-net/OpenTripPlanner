@@ -20,16 +20,16 @@ import org.slf4j.LoggerFactory;
  * This replicates the functionality of DynamicTile but without the overhead of storing 
  * all the Samples in an array -- they are generated one by one as needed.
  */
-public class RasterSampleGenerator implements SampleList {
+public class RasterSampleList implements SampleList {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RasterSampleGenerator.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RasterSampleList.class);
     
     final Tile tile; // eventually RasterPopulation
     final SampleSource ss;
     final CoordinateReferenceSystem crs;
     MathTransform tr;
 
-    public RasterSampleGenerator (Tile tile, SampleSource ss) {
+    public RasterSampleList (Tile tile, SampleSource ss) {
         this.tile = tile;
         this.ss = ss;
         crs = tile.gg.getCoordinateReferenceSystem2D();

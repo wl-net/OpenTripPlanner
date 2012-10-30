@@ -51,7 +51,7 @@ public class Tile {
     public void resampleDynamic(SampleSource ss) {
         // TODO: check that gg intersects graph area 
         LOG.debug("preparing tile for {}", gg.getEnvelope2D());
-        this.sampleList = new RasterSampleGenerator(this, ss);
+        this.sampleList = new RasterSampleList(this, ss);
     }
 
     public void materializeSamples() {
