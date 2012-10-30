@@ -40,7 +40,7 @@ public class TileService extends RoutingResource {
     @PathParam("z") int z;
     
     @QueryParam("layers")  @DefaultValue("traveltime") LayerList layers; 
-    @QueryParam("styles")  @DefaultValue("mask")       StyleList styles;
+    @QueryParam("styles")  @DefaultValue("color30")       StyleList styles;
     @QueryParam("format")  @DefaultValue("image/png")  MIMEImageFormat format;
 
     @GET @Produces("image/*")

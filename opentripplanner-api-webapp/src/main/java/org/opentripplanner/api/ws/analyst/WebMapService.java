@@ -46,7 +46,7 @@ public class WebMapService extends RoutingResource {
            @QueryParam("version") @DefaultValue("1.1.1")         WMSVersion version,
            @QueryParam("request") @DefaultValue("GetMap")        String request,
            @QueryParam("layers")  @DefaultValue("traveltime")    LayerList layers, 
-           @QueryParam("styles")  @DefaultValue("gray")          StyleList styles,
+           @QueryParam("styles")  @DefaultValue("color30")          StyleList styles,
            // SRS is called CRS in 1.3.0
            @QueryParam("srs")     @DefaultValue("EPSG:4326")     CoordinateReferenceSystem srs,
            @QueryParam("crs")     CoordinateReferenceSystem crs,
