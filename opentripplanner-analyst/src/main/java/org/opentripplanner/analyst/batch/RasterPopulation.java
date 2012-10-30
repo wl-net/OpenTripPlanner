@@ -42,8 +42,6 @@ public class RasterPopulation extends BasicPopulation {
     protected GridEnvelope2D gridEnvelope; // the envelope for the pixels
     protected ReferencedEnvelope refEnvelope; // the envelope in the CRS
     protected GridGeometry2D gridGeometry; // relationship between the grid envelope and the CRS envelope
-    protected MathTransform gridToWGS84; // composed transform from the grid to the CRS to WGS84
-    protected GridCoverage2D coverage; // null if synthetic (no coverage to load)
     
     @Override
     public void writeAppropriateFormat(String outFileName, ResultSet results) {
@@ -99,50 +97,5 @@ public class RasterPopulation extends BasicPopulation {
         }
         LOG.info("Done loading raster from file.");
     }
-    
-    /** Shared internal createIndividuals method allowing synthetic subclass to reuse projection code */
-    protected void createIndividuals0() {
-        MathTransform tr; 
-        try {
-            final CoordinateReferenceSystem WGS84 = CRS.decode("EPSG:4326", true);
-            tr = CRS.findMathTransform(coverageCRS, WGS84);
-        } catch (Exception e) {
-            LOG.equals("error creating CRS transform.");
-            e.printStackTrace();
-            return;
-        }
-        // grid coordinate object to be reused for reading each cell in the raster
-        GridCoordinates2D coord = new GridCoordinates2D();
-        // evaluating a raster returns an array of results, in this case 1D
-        int[] val = new int[1];
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                coord.x = col;
-                coord.y = row;
-                try {
-                    // find coordinates for current raster cell in raster CRS
-                    DirectPosition sourcePos = gridGeometry.gridToWorld(coord);
-                    // TODO: we are performing 2 transforms here, it would probably be more efficient to compose 
-                    // the grid-to-crs and crs-to-WGS84 transforms into grid-to-WGS84.
-                    // cf. MathTransformFactory and CoordinateOperationFactory
-                    // convert coordinates in raster CRS to WGS84
-                    DirectPosition targetPos = tr.transform(sourcePos, null);
-                    double lon = targetPos.getOrdinate(0);
-                    double lat = targetPos.getOrdinate(1);
-                    // evaluate using grid coordinates, which should be more efficient than using world coordinates
-                    if (coverage != null)
-                        coverage.evaluate(coord, val); 
-                    // add this grid cell to the population
-                    String label = row + "_" + col;
-                    Individual individual = new Individual(label, lon, lat, val[band]);
-                    this.addIndividual(individual);
-                } catch (Exception e) {
-                    LOG.error("error creating individuals for raster");
-                    e.printStackTrace();
-                    return;
-                }
-            }
-        }
-    }
-    
+        
 }
