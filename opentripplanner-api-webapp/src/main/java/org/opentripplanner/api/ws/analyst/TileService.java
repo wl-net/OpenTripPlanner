@@ -8,24 +8,24 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-import org.geotools.geometry.Envelope2D;
 import org.opentripplanner.analyst.core.SlippyTile;
-import org.opentripplanner.analyst.request.RenderRequest;
-import org.opentripplanner.analyst.request.Renderer;
-import org.opentripplanner.analyst.request.TileRequest;
-import org.opentripplanner.api.common.RoutingResource;
+import org.opentripplanner.analyst.core.Tile;
 import org.opentripplanner.analyst.parameter.Layer;
 import org.opentripplanner.analyst.parameter.LayerList;
 import org.opentripplanner.analyst.parameter.MIMEImageFormat;
 import org.opentripplanner.analyst.parameter.Style;
 import org.opentripplanner.analyst.parameter.StyleList;
+import org.opentripplanner.analyst.request.RenderRequest;
+import org.opentripplanner.analyst.request.Renderer;
+import org.opentripplanner.api.common.RoutingResource;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.sun.jersey.api.core.InjectParam;
 import com.sun.jersey.api.spring.Autowire;
 
-// removed component, mixing spring and jersey annotations is bad?
+// removed @Component, mixing spring and jersey annotations is bad?
 @Path("/tile/{z}/{x}/{y}.png") 
 @Autowire
 public class TileService extends RoutingResource {
@@ -46,8 +46,7 @@ public class TileService extends RoutingResource {
     @GET @Produces("image/*")
     public Response tileGet() throws Exception { 
         
-        Envelope2D env = SlippyTile.tile2Envelope(x, y, z);
-        TileRequest tileRequest = new TileRequest(env, 256, 256);
+        Tile tileRequest = new SlippyTile(x, y, z);
         RoutingRequest sptRequestA = buildRequest(0);
         RoutingRequest sptRequestB = buildRequest(1);
 
