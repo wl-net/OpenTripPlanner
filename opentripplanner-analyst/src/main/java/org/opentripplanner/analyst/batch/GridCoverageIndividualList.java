@@ -1,3 +1,4 @@
+package org.opentripplanner.analyst.batch;
 import java.util.Iterator;
 
 import org.geotools.coverage.grid.GridCoordinates2D;
@@ -10,11 +11,8 @@ import org.opengis.geometry.DirectPosition;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
-import org.opentripplanner.analyst.batch.Individual;
-import org.opentripplanner.analyst.batch.IndividualList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /** Wraps a GridCoverage2D so you can iterate over it as a series of Individuals. */
 public class GridCoverageIndividualList implements IndividualList {
