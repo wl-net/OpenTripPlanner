@@ -13,6 +13,7 @@ import org.opengis.referencing.operation.MathTransform;
 import org.opentripplanner.analyst.batch.SampleList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Produces samples from a regular grid of the given size in the given spatial reference system,
@@ -26,16 +27,16 @@ public class RasterSampleList implements SampleList {
     private static final Logger LOG = LoggerFactory.getLogger(RasterSampleList.class);
     
     final GridGeometry2D gg; // maps grid coordinates to CRS coordinates
-    final SampleSource ss;
     final CoordinateReferenceSystem crs;
     int width;
     int height;
     MathTransform tr = null;
-    public RasterSampleList (GridGeometry2D gg, SampleSource ss) {
+    @Autowired SampleSource ss;
+
+    public RasterSampleList (GridGeometry2D gg) {
         this.gg = gg;
         this.width = gg.getGridRange2D().width;
         this.height = gg.getGridRange2D().height;
-        this.ss = ss;
         crs = gg.getCoordinateReferenceSystem2D();
         try {
             tr = CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84);
