@@ -33,6 +33,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+/**
+ * This component provides the shared logic for the WMS endpoint and any other raster endpoints
+ * providing travel time maps or map tiles. It places caches in front of the SPTs and tiles to
+ * allow rapid re-use of intermediate computations.
+ * 
+ * True rendering logic (color tables, bit depth scaling etc.) should probably be associated with
+ * the name "Renderer" and this component renamed to something like RasterService.
+ */
 @Component
 public class Renderer {
 
@@ -44,13 +52,13 @@ public class Renderer {
     @Autowired
     private SPTCache sptCache;
 
-    public Response getResponse (TileRequest tileRequest, 
-            RoutingRequest sptRequestA, RoutingRequest sptRequestB, 
+    public Response getResponse (Tile tileRequest, 
+            RoutingRequest routingRequestA, RoutingRequest routingRequestB, 
             RenderRequest renderRequest) throws Exception {
 
         Tile tile = tileCache.get(tileRequest);
-        ShortestPathTree sptA = sptCache.get(sptRequestA);
-        ShortestPathTree sptB = sptCache.get(sptRequestB);
+        ShortestPathTree sptA = sptCache.get(routingRequestA);
+        ShortestPathTree sptB = sptCache.get(routingRequestB);
         
         BufferedImage image;
         switch (renderRequest.layer) {
@@ -58,7 +66,7 @@ public class Renderer {
             image = tile.linearCombination(1, sptA, -1, sptB, 128, renderRequest);
             break;
         case HAGERSTRAND :
-            long elapsed = Math.abs(sptRequestB.dateTime - sptRequestA.dateTime);
+            long elapsed = Math.abs(routingRequestB.dateTime - routingRequestA.dateTime);
             image = tile.linearCombination(-1, sptA, -1, sptB, elapsed/60, renderRequest);
             break;
         case TRAVELTIME :
@@ -71,8 +79,8 @@ public class Renderer {
         if (renderRequest.timestamp) {
             DateFormat df = DateFormat.getDateTimeInstance();
             df.setTimeZone(TimeZone.getTimeZone("America/New_York"));
-            String ds = df.format(new Date(sptRequestA.dateTime * 1000));
-            shadowWrite(image, ds, sptRequestA.from);
+            String ds = df.format(new Date(routingRequestA.dateTime * 1000));
+            shadowWrite(image, ds, routingRequestA.from);
 
             Graphics2D g2d = image.createGraphics();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC));
