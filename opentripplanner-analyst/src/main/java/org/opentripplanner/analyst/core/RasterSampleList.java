@@ -3,6 +3,7 @@ package org.opentripplanner.analyst.core;
 import java.util.Iterator;
 
 import org.geotools.coverage.grid.GridCoordinates2D;
+import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.referencing.CRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.geometry.DirectPosition;
@@ -24,15 +25,18 @@ public class RasterSampleList implements SampleList {
 
     private static final Logger LOG = LoggerFactory.getLogger(RasterSampleList.class);
     
-    final RasterPopulation rpop;
+    final GridGeometry2D gg; // maps grid coordinates to CRS coordinates
     final SampleSource ss;
     final CoordinateReferenceSystem crs;
-    MathTransform tr;
-
-    public RasterSampleList (RasterPopulation rasterPopulation, SampleSource ss) {
-        this.rpop = rasterPopulation;
+    int width;
+    int height;
+    MathTransform tr = null;
+    public RasterSampleList (GridGeometry2D gg, SampleSource ss) {
+        this.gg = gg;
+        this.width = gg.getGridRange2D().width;
+        this.height = gg.getGridRange2D().height;
         this.ss = ss;
-        crs = rpop.gg.getCoordinateReferenceSystem2D();
+        crs = gg.getCoordinateReferenceSystem2D();
         try {
             tr = CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84);
         } catch (FactoryException e) {
@@ -49,7 +53,7 @@ public class RasterSampleList implements SampleList {
             
             @Override
             public boolean hasNext() {
-                return (gc.y < rpop.height);
+                return (gc.y < height);
             }
 
             @Override
@@ -57,7 +61,7 @@ public class RasterSampleList implements SampleList {
                 Sample s = null;
                 try {
                     // find coordinates for current raster cell in tile CRS
-                    DirectPosition sourcePos = rpop.gg.gridToWorld(gc);
+                    DirectPosition sourcePos = gg.gridToWorld(gc);
                     // convert coordinates in tile CRS to WGS84
                     tr.transform(sourcePos, sourcePos);
                     // axis order can vary
@@ -69,7 +73,7 @@ public class RasterSampleList implements SampleList {
                 }
                 // advance to the next grid cell
                 gc.x += 1;
-                if (gc.x >= rpop.width) {
+                if (gc.x >= width) {
                     gc.x = 0;
                     gc.y += 1; 
                 }
@@ -91,7 +95,7 @@ public class RasterSampleList implements SampleList {
 
     @Override
     public int size() {
-        return rpop.height * rpop.width;
+        return height * width;
     }
     
 }

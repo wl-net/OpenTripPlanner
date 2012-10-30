@@ -31,27 +31,27 @@ import org.slf4j.LoggerFactory;
 
 public class RasterPopulation extends AbstractPopulation { 
 
-    /* STATIC */
     private static final Logger LOG = LoggerFactory.getLogger(RasterPopulation.class);        
     
-    /* INSTANCE */
-    public final Envelope2D bbox; // includes CRS
-    public final int width; 
-    public final int height; 
-    final GridGeometry2D gg;      // maps grid coordinates to CRS coordinates
+    /* 
+     * The fundamental thing about a RasterPopulation is that it has an attached gridGeometry,
+     * which includes grid dimensions and an envelope in a specific CRS, allowing associated 
+     * ResultSets to be written back out as rasters.
+     */
+    final GridGeometry2D gg; // maps grid coordinates to CRS coordinates
 
-    public RasterPopulation(Envelope2D bbox, Integer width, Integer height) {
-        this.bbox = bbox;
-        this.width = width;
-        this.height = height;
-        GridEnvelope2D gridEnv = new GridEnvelope2D(0, 0, width, height);
-        this.gg = new GridGeometry2D(gridEnv, (org.opengis.geometry.Envelope)(this.bbox));
-        LOG.debug("preparing tile for {}", gg.getEnvelope2D());
+    public RasterPopulation(GridGeometry2D gg) {
+        this.gg = gg;
+        LOG.debug("tile for {}", gg);
+    }
+    
+    public RasterPopulation(Envelope2D bbox, int width, int height) {
+        this( new GridGeometry2D( new GridEnvelope2D(0, 0, width, height), 
+                (org.opengis.geometry.Envelope)(bbox)));
     }
     
     public void resampleDynamic(SampleSource ss) {
-        // TODO: check that gg intersects graph area 
-        this.sampleList = new RasterSampleList(this, ss);
+        this.sampleList = new RasterSampleList(gg, ss); 
     }
 
     public void materializeSamples() {
@@ -61,29 +61,23 @@ public class RasterPopulation extends AbstractPopulation {
             sampleList = new PackedSampleList(sampleList);
     }    
     
-    public int totalSize() {
-        return width * height;
-    }
-    
     @Override
     public int hashCode() {
-        return bbox.hashCode() * 42677 + width + height * 1307;
+        return gg.hashCode();
     }
     
     @Override
     public boolean equals(Object other) {
         if (other instanceof RasterPopulation) {
             RasterPopulation that = (RasterPopulation) other;
-            return this.bbox.equals(that.bbox) &&
-                   this.width  == that.width   &&
-                   this.height == that.height;
+            return that.gg.equals(this.gg);
         }
         return false;
     }
     
     @Override
     public String toString() {
-        return String.format("<tile, bbox=%s width=%d height=%d>", bbox, width, height);
+        return String.format("<raster pop: %s>", gg.toString());
     }
     
     ////////////////////
@@ -94,6 +88,8 @@ public class RasterPopulation extends AbstractPopulation {
      */
 
     protected BufferedImage getEmptyImage(Style style) {
+        int width = gg.getGridRange2D().width;
+        int height = gg.getGridRange2D().height;
         IndexColorModel colorModel = ColorModels.forStyle(style);
         if (colorModel == null)
             return new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
@@ -195,6 +191,8 @@ public class RasterPopulation extends AbstractPopulation {
 
     public void writeGeotiff(String fileName, ResultSet results) {
         LOG.info("writing geotiff.");
+        int width = gg.getGridRange2D().width;
+        int height = gg.getGridRange2D().height;
         float[][] imagePixelData = new float[height][width]; 
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
@@ -203,7 +201,8 @@ public class RasterPopulation extends AbstractPopulation {
                 imagePixelData[row][col] = pixel;
             }
         }
-        GridCoverage2D coverage = new GridCoverageFactory().create("OTPAnalyst", imagePixelData, refEnvelope);
+        // TODO make sure CRS is preserved by Envelope2D 
+        GridCoverage2D coverage = new GridCoverageFactory().create("OTPAnalyst", imagePixelData, gg.getEnvelope2D());
         try {
             GeoTiffWriteParams wp = new GeoTiffWriteParams();
             wp.setCompressionMode(GeoTiffWriteParams.MODE_EXPLICIT);
