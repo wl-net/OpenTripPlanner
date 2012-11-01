@@ -40,7 +40,6 @@ public class TileCache extends CacheLoader<RasterPopulation, RasterPopulation>
     @Override
     public RasterPopulation load(RasterPopulation req) throws Exception {
         LOG.debug("tile cache miss; cache size is {}", this.tileCache.size());
-        req.resampleDynamic(sampleFactory);
         req.materializeSamples();
         return req;
     }
@@ -50,11 +49,18 @@ public class TileCache extends CacheLoader<RasterPopulation, RasterPopulation>
         return tileCache.get(req);
     }
     
+    /* 
+     * "Compressed oops represent managed pointers (in many but not all places in the JVM) as 
+     * 32-bit values which must be scaled by a factor of 8 and added to a 64-bit base address 
+     * to find the object they refer to."
+     * https://wikis.oracle.com/display/HotSpotInternals/CompressedOops
+     */
+    static final int floatSize = 4, oopSize = 4; // bytes
+    
     /** Roughly estimate the size of a tile in kilobytes */
     @Override
     public int weigh(RasterPopulation req, RasterPopulation tile) {
-        final int refSize = 6; // bytes
-        final int sampleSize = 4 * 2 + refSize * 2;
+        final int sampleSize = floatSize * 2 + oopSize * 2;
         int nBytes = tile.totalSize() * sampleSize;
         int nkBytes = nBytes / 1000 + 1; 
         LOG.debug("weighed tile as {} kilobytes", nkBytes);
