@@ -9,18 +9,15 @@ public class PackedSampleList implements SampleList {
 
     private final int nSamples;
     
-    private final int length; // internal length of array, 2x number of samples
-    
     private final Vertex[] vertices;
     
     private final float[] distances;
 
     // TODO: run-length encoding of null samples
     public PackedSampleList(SampleList sl) {
-        nSamples = sl.getSize();
-        length = 2 * nSamples;
-        vertices = new Vertex[length];
-        distances = new float[length];
+        nSamples = sl.size();
+        vertices = new Vertex[2 * nSamples];
+        distances = new float[2 * nSamples];
         int i = 0;
         for (Sample s : sl) {
             if (s == null) {
@@ -48,7 +45,7 @@ public class PackedSampleList implements SampleList {
 
             @Override
             public boolean hasNext() {
-                return i < length;
+                return i < vertices.length;
             }
 
             @Override
@@ -69,7 +66,7 @@ public class PackedSampleList implements SampleList {
     }
 
     @Override
-    public int getSize() {
+    public int size() {
         return nSamples;
     }
 
