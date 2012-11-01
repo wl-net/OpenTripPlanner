@@ -1,5 +1,7 @@
 package org.opentripplanner.analyst.batch;
 
+import org.opentripplanner.analyst.core.SampleSource;
+
 import lombok.Getter;
 
 public abstract class AbstractPopulation implements Population {
@@ -20,11 +22,11 @@ public abstract class AbstractPopulation implements Population {
     }
 
     public AbstractPopulation (SampleList sl) {
-        this(null,sl);
+        this(null, sl);
     }
     
-    public AbstractPopulation (IndividualList il) {
-        this(il, new IndividualBackedSampleList(il));
+    public AbstractPopulation (IndividualList il, SampleSource ss) {
+        this(il, new IndividualBackedSampleList(il, ss));
     }
 
     @Override

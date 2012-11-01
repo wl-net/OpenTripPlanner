@@ -15,6 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.sun.jersey.api.spring.Autowire;
+import com.sun.jersey.spi.inject.Inject;
+
 /**
  * Produces samples from a regular grid of the given size in the given spatial reference system,
  * Samples are produced in row-major order.
@@ -31,12 +34,13 @@ public class RasterSampleList implements SampleList {
     int width;
     int height;
     MathTransform tr = null;
-    @Autowired SampleSource ss;
+    SampleSource ss;
 
-    public RasterSampleList (GridGeometry2D gg) {
+    public RasterSampleList (GridGeometry2D gg, SampleSource ss) {
         this.gg = gg;
         this.width = gg.getGridRange2D().width;
         this.height = gg.getGridRange2D().height;
+        this.ss = ss;
         crs = gg.getCoordinateReferenceSystem2D();
         try {
             tr = CRS.findMathTransform(crs, DefaultGeographicCRS.WGS84);

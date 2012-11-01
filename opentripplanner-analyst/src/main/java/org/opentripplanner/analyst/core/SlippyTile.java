@@ -8,8 +8,8 @@ public class SlippyTile extends RasterPopulation {
 
     final int x, y, z;
     
-    public SlippyTile(int x, int y, int z) {
-        super(tile2Envelope(x, y, z), 256, 256);
+    public SlippyTile(int x, int y, int z, SampleSource ss) {
+        super(tile2Envelope(x, y, z), 256, 256, ss);
         this.x = x;
         this.y = y;
         this.z = z;

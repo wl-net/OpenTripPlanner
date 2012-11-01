@@ -8,6 +8,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
+import org.opentripplanner.analyst.core.SampleSource;
 import org.opentripplanner.analyst.core.SlippyTile;
 import org.opentripplanner.analyst.core.RasterPopulation;
 import org.opentripplanner.analyst.parameter.Layer;
@@ -21,6 +22,7 @@ import org.opentripplanner.api.common.RoutingResource;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.sun.jersey.api.core.InjectParam;
 import com.sun.jersey.api.spring.Autowire;
@@ -35,6 +37,9 @@ public class TileService extends RoutingResource {
     @InjectParam
     private Renderer renderer;
 
+    @Autowired 
+    private SampleSource ss;
+
     @PathParam("x") int x; 
     @PathParam("y") int y;
     @PathParam("z") int z;
@@ -43,10 +48,11 @@ public class TileService extends RoutingResource {
     @QueryParam("styles")  @DefaultValue("color30")       StyleList styles;
     @QueryParam("format")  @DefaultValue("image/png")  MIMEImageFormat format;
 
+    
     @GET @Produces("image/*")
     public Response tileGet() throws Exception { 
         
-        RasterPopulation tileRequest = new SlippyTile(x, y, z);
+        RasterPopulation tileRequest = new SlippyTile(x, y, z, ss);
         RoutingRequest sptRequestA = buildRequest(0);
         RoutingRequest sptRequestB = buildRequest(1);
 

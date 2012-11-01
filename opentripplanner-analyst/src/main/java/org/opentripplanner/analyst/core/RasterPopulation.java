@@ -40,19 +40,19 @@ public class RasterPopulation extends AbstractPopulation {
      */
     final GridGeometry2D gg; // maps grid coordinates to CRS coordinates
 
-    public RasterPopulation(GridGeometry2D gg) {
-        super(new RasterSampleList(gg));
+    public RasterPopulation(GridGeometry2D gg, SampleSource ss) {
+        super(new RasterSampleList(gg, ss));
         this.gg = gg;
         LOG.debug("tile for {}", gg);
     }
     
-    public RasterPopulation(Envelope2D bbox, int width, int height) {
+    public RasterPopulation(Envelope2D bbox, int width, int height, SampleSource ss) {
         this( new GridGeometry2D( new GridEnvelope2D(0, 0, width, height), 
-                (org.opengis.geometry.Envelope)(bbox)));
+                (org.opengis.geometry.Envelope)(bbox)), ss);
     }
     
-    public RasterPopulation(GridCoverage2D coverage) {
-        super(new GridCoverageIndividualList(coverage));
+    public RasterPopulation(GridCoverage2D coverage, SampleSource ss) {
+        super(new GridCoverageIndividualList(coverage), ss);
         this.gg = coverage.getGridGeometry();
     }
 
