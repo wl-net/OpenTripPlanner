@@ -19,7 +19,7 @@ otp.modules.bikeshare.BikeShareModule =
     otp.Class(otp.modules.planner.PlannerModule, {
     
     moduleName  : "Bike Share Planner",
-
+    moduleId    : "bikeshare",
     stations    : null,    
     stationLookup :   { },
     stationsLayer   : null,
