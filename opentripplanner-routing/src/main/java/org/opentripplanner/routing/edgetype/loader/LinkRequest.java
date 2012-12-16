@@ -31,6 +31,7 @@ import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.edgetype.StreetBikeParkingLink;
 import org.opentripplanner.routing.edgetype.StreetBikeRentalLink;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
@@ -38,6 +39,7 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.CandidateEdgeBundle;
 import org.opentripplanner.routing.location.StreetLocation;
+import org.opentripplanner.routing.vertextype.BikeParkingVertex;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
@@ -84,6 +86,25 @@ public class LinkRequest {
             for (StreetVertex sv : nearbyStreetVertices) {
                 addEdges(new StreetBikeRentalLink(sv, v), 
                          new StreetBikeRentalLink(v, sv));
+            }
+            result = true;
+        }
+    }
+    
+    /**
+     * The entry point for networklinker to link each bike parking area.
+     * 
+     * @param v
+     * Sets result to true if the links were successfully added, otherwise false
+     */
+    public void connectVertexToStreets(BikeParkingVertex v) {
+        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null, null);
+        if (nearbyStreetVertices == null) {
+            result = false;
+        } else {
+            for (StreetVertex sv : nearbyStreetVertices) {
+                addEdges(new StreetBikeParkingLink(sv, v), 
+                         new StreetBikeParkingLink(v, sv));
             }
             result = true;
         }

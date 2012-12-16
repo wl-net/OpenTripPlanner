@@ -66,6 +66,7 @@ import org.opentripplanner.routing.edgetype.ElevatorBoardEdge;
 import org.opentripplanner.routing.edgetype.ElevatorHopEdge;
 import org.opentripplanner.routing.edgetype.FreeEdge;
 import org.opentripplanner.routing.edgetype.NamedArea;
+import org.opentripplanner.routing.edgetype.ParkABikeEdge;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.RentABikeOffEdge;
 import org.opentripplanner.routing.edgetype.RentABikeOnEdge;
@@ -79,6 +80,7 @@ import org.opentripplanner.routing.patch.TranslatedString;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.util.ElevationUtils;
+import org.opentripplanner.routing.vertextype.BikeParkingVertex;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOffboardVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOnboardVertex;
@@ -705,7 +707,9 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         private Map<OSMWithTags, OSMLevel> wayLevels = new HashMap<OSMWithTags, OSMLevel>();
 
         private HashSet<OSMNode> _bikeRentalNodes = new HashSet<OSMNode>();
-
+        private HashSet<OSMNode> bikeParkingNodes = new HashSet<OSMNode>();
+        private HashMap<Long, OSMWay> bikeParkingWays = new HashMap<Long, OSMWay>();
+        
         private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
         private HashMap<Coordinate, IntersectionVertex> areaBoundaryVertexForCoordinate = new HashMap<Coordinate, IntersectionVertex>();
@@ -722,6 +726,9 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             if (staticBikeRental) {
                 processBikeRentalNodes();
             }
+            
+            // TODO: put this in a configurable call
+            processBikeParkingNodesAndWays();
 
             // Remove all simple islands
             HashSet<Long> _keep = new HashSet<Long>(_nodesWithNeighbors);
@@ -829,6 +836,67 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 new RentABikeOffEdge(station, station, network);
             }
             _log.debug("Created " + n + " bike rental stations.");
+        }
+        
+        /**
+         * Process the bike parking nodes and areas, preparing them to be linked to the
+         * rest of the graph.
+         */
+        private void processBikeParkingNodesAndWays () {
+            _log.debug("Processing bike parking nodes...");
+            // nodes: easy case
+            BikeParkingVertex bpv;
+            int i = 0;
+            for (OSMNode node : bikeParkingNodes) {
+                i++;
+                bpv = new BikeParkingVertex(graph, "" + node.getId(), node.getLon(),
+                        node.getLat());
+                new ParkABikeEdge(bpv);
+            }
+            
+            _log.debug("Created {} bike parking locations from nodes.", i);
+            i = 0;
+            
+            _log.debug("Processing bike parking ways...");
+            
+            double x, y;
+            
+            for (OSMWay way : bikeParkingWays.values()) {
+                // TODO: this takes the mean of the latitudes and longitudes of the constituent 
+                // nodes. This is not the right way to do it.
+                x = 0;
+                y = 0;
+                
+                OSMNode constituentNode;
+                int n = 0;
+                for (long constituentNodeId : way.getNodeRefs()) {
+                    constituentNode = _nodes.get(constituentNodeId);
+                    
+                    // I guess this happens when ways refer to nodes not in the OSM file.
+                    if (constituentNode == null)
+                        continue;
+                    
+                    x += constituentNode.getLon();
+                    y += constituentNode.getLat();
+                    n++;
+                }
+                
+                if (n == 0) {
+                    _log.warn("Bike parking area way {} has no available nodes; ignoring.", 
+                            way.getId());
+                    continue;
+                }
+                
+                // get the means
+                x /= n;
+                y /= n;
+                
+                bpv = new BikeParkingVertex(graph, "" + way.getId(), x, y);
+                new ParkABikeEdge(bpv);
+                i++;
+            }
+            
+            _log.debug("Created {} bike parking locations from ways", i);
         }
 
         final int MAX_AREA_NODES = 500;
@@ -1786,8 +1854,14 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 _bikeRentalNodes.add(node);
                 return;
             }
-            if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId())))
+            
+            if (node.isTag("amenity", "bicycle_parking")) {
+                bikeParkingNodes.add(node);
                 return;
+            }
+            
+            //if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId())))
+            //    return;
 
             if (_nodes.containsKey(node.getId()))
                 return;
@@ -1801,17 +1875,26 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         public void addWay(OSMWay way) {
             /* only add ways once */
             long wayId = way.getId();
-            if (_ways.containsKey(wayId) || _areaWaysById.containsKey(wayId))
+            if (_ways.containsKey(wayId) || bikeParkingWays.containsKey(wayId) ||
+                    _areaWaysById.containsKey(wayId))
                 return;
 
             if (_areaWayIds.contains(wayId)) {
                 _areaWaysById.put(wayId, way);
             }
 
+            // grab bike parking ways; they shouldn't be used for anything else (should they?)
+            // they often aren't "routable" per se, so this test occurs above the next one.
+            if (way.isTag("amenity", "bicycle_parking")) {
+                bikeParkingWays.put(wayId, way);
+                return;
+            }      
+            
             /* filter out ways that are not relevant for routing */
             if (!isWayRouteable(way)) {
                 return;
             }
+            
             if (way.isTag("area", "yes") && way.getNodeRefs().size() > 2) {
                 // this is an area that's a simple polygon. So we can just add it straight
                 // to the areas, if it's not part of a relation.

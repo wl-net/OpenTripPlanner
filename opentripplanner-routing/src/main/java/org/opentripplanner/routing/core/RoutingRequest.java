@@ -293,6 +293,9 @@ public class RoutingRequest implements Cloneable, Serializable {
     private AgencyAndId startingTransitStopId;
     private boolean walkingBike;
     
+    /** Time in seconds to park a bike */
+    public int bikeParkingTime = 60;
+    
     /* CONSTRUCTORS */
     
     /** Constructor for options; modes defaults to walk and transit */

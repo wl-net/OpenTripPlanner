@@ -364,6 +364,13 @@ public class StateEditor {
             child.stateData.nonTransitMode = TraverseMode.WALK;
         }
     }
+    
+    public void setNonTransitMode(TraverseMode nonTransitMode) {
+        if (!nonTransitMode.equals(child.stateData.nonTransitMode)) {
+            cloneStateDataAsNeeded();
+            child.stateData.nonTransitMode = nonTransitMode;
+        }
+    }
 
     public void setPreviousStop(Vertex previousStop) {
         cloneStateDataAsNeeded();

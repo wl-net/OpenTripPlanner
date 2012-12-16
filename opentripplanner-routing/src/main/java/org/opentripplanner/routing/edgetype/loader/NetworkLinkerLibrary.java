@@ -31,6 +31,7 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.services.TransitIndexService;
+import org.opentripplanner.routing.vertextype.BikeParkingVertex;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -93,6 +94,17 @@ public class NetworkLinkerLibrary {
      * @param v
      */
     public LinkRequest connectVertexToStreets(BikeRentalStationVertex v) {
+        LinkRequest request = new LinkRequest(this);
+        request.connectVertexToStreets(v);
+        return request;
+    }
+    
+    /**
+     * The entry point for networklinker to link each bike parking location.
+     * 
+     * @param v
+     */
+    public LinkRequest connectVertexToStreets(BikeParkingVertex v) {
         LinkRequest request = new LinkRequest(this);
         request.connectVertexToStreets(v);
         return request;
