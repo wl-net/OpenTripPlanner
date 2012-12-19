@@ -229,7 +229,18 @@ public class State implements Cloneable {
      * @return True if the state at vertex can be the end of path.
      */
     public boolean isFinal() {
-        return !isBikeRenting();
+        // TODO: should this be implemented as a path parser?
+        // if we have a rented bike, we need to return it before finishing the search.
+        if (isBikeRenting())
+            return false;
+        
+        // If we need to park a bike before ending the search, make sure it doesn't end while the
+        // user is still in possession of their bike.
+        if (getOptions().isNeedToParkBike() && TraverseMode.BICYCLE.equals(getNonTransitMode()))
+            return false;
+        
+        // all other states can be final
+        return true;
     }
 
     public Vertex getPreviousStop() {
