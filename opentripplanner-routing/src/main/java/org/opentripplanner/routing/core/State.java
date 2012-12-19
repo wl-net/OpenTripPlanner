@@ -260,8 +260,11 @@ public class State implements Cloneable {
         if (other.weight == 0) {
             return false;
         }
-        // Multi-state (bike rental) - no domination for different states
-        if (isBikeRenting() != other.isBikeRenting())
+        
+        // Bike rental, bike parking, &c. If we have a different non-transit mode (for instance, 
+        // we've picked up a rented bike, or have parked an owned bike in a bike parking lot),
+        // don't dominate away the states at the same vertices.
+        if (!getNonTransitMode().equals(other.getNonTransitMode()))
             return false;
 
         if (backEdge != other.getBackEdge() && ((backEdge instanceof PlainStreetEdge)
