@@ -257,9 +257,10 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
             spt = _shortestPathTreeFactory.create(opts);
 
         if (spt == null) {
-            // Use MultiShortestPathTree if transit OR bike rental.
+            // Use MultiShortestPathTree if transit OR bike rental OR bike parking
             if (opts.getModes().isTransit() || 
-                opts.getModes().getWalk() && opts.getModes().getBicycle()) {
+                opts.getModes().getWalk() && opts.getModes().getBicycle() ||
+                opts.isNeedToParkBike()) {
                 spt = new MultiShortestPathTree(opts);
             } else {
                 spt = new BasicShortestPathTree(opts);
