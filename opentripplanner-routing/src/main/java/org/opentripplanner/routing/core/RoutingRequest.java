@@ -296,6 +296,9 @@ public class RoutingRequest implements Cloneable, Serializable {
     /** Time in seconds to park a bike */
     public int bikeParkingTime = 60;
     
+    /** Do we need to park a bike before ending the search? */
+    public boolean needToParkBike = true;
+    
     /* CONSTRUCTORS */
     
     /** Constructor for options; modes defaults to walk and transit */
