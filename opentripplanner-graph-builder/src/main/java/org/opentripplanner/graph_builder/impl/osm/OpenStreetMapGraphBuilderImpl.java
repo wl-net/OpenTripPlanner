@@ -707,7 +707,15 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         private Map<OSMWithTags, OSMLevel> wayLevels = new HashMap<OSMWithTags, OSMLevel>();
 
         private HashSet<OSMNode> _bikeRentalNodes = new HashSet<OSMNode>();
+        
+        // at first glance, these next two may appear to be the same but they are different.
+        // bikeParkingNodes contains nodes that are tagged as being bike parking places.
+        // nodesInBikeParkingWays contains node IDs for nodes that are contained in ways that are
+        // tagged as being bike parking.
+        // Most bike parking in OSM is represented as nodes, for smaller parking lots with only
+        // a few spaces. However, very large lots are represented as areas.
         private HashSet<OSMNode> bikeParkingNodes = new HashSet<OSMNode>();
+        private HashSet<Long> nodesInBikeParkingWays = new HashSet<Long>();
         private HashMap<Long, OSMWay> bikeParkingWays = new HashMap<Long, OSMWay>();
         
         private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
@@ -1860,8 +1868,13 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 return;
             }
             
-            //if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId())))
-            //    return;
+            // Nodes that are not part of ways (_nodesWithNeighbors), areas (_areaNodes) or
+            // bike parking areas (nodesInBikeParkingWays) should be discarded to save memory.
+            // These lists of nodes to keep are made using the function markNodesForKeeping.
+            if (!(_nodesWithNeighbors.contains(node.getId()) ||
+                    _areaNodes.contains(node.getId()) ||
+                    nodesInBikeParkingWays.contains(node.getId())))
+                return;
 
             if (_nodes.containsKey(node.getId()))
                 return;
@@ -1992,6 +2005,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
             markNodesForKeeping(_ways.values(), _nodesWithNeighbors);
             markNodesForKeeping(_areaWaysById.values(), _areaNodes);
+            markNodesForKeeping(bikeParkingWays.values(), nodesInBikeParkingWays);
         }
 
         /**
@@ -2025,6 +2039,12 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
         }
 
+        /**
+         * This function goes through the provided ways and saves references to all of their nodes
+         * so that they will not be pruned in {@link addNode}.
+         * @param osmWays
+         * @param nodeSet
+         */
         private void markNodesForKeeping(Collection<OSMWay> osmWays, Set<Long> nodeSet) {
             for (Iterator<OSMWay> it = osmWays.iterator(); it.hasNext();) {
                 OSMWay way = it.next();
