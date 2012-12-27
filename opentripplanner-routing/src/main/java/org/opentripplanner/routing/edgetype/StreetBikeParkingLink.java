@@ -16,7 +16,6 @@ package org.opentripplanner.routing.edgetype;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.vertextype.BikeParkingVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 
