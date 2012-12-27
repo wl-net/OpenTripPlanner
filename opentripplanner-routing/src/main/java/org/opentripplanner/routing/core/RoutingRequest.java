@@ -738,7 +738,12 @@ public class RoutingRequest implements Cloneable, Serializable {
                 && useBikeRentalAvailabilityInformation == other.useBikeRentalAvailabilityInformation
                 && extensions.equals(other.extensions)
                 && clampInitialWait == other.clampInitialWait
-                && reverseOptimizeOnTheFly == other.reverseOptimizeOnTheFly;
+                && reverseOptimizeOnTheFly == other.reverseOptimizeOnTheFly
+                && carAccelerationSpeed == other.carAccelerationSpeed
+                && carDecelerationSpeed == other.carDecelerationSpeed
+                && bikeParkingTime == other.bikeParkingTime
+                && needToParkBike == other.needToParkBike
+                && driveOnRight == other.driveOnRight;
     }
 
     /** Equality and hashCode should not consider the routing context, to allow SPT caching. */
@@ -759,7 +764,12 @@ public class RoutingRequest implements Cloneable, Serializable {
                 + new Double(triangleTimeFactor).hashCode() * 790052899
                 + new Double(stairsReluctance).hashCode() * 315595321
                 + new Long(clampInitialWait).hashCode() * 209477
-                + new Boolean(reverseOptimizeOnTheFly).hashCode() * 95112799;
+                + new Boolean(reverseOptimizeOnTheFly).hashCode() * 95112799
+                + new Double(carAccelerationSpeed).hashCode() * 3181
+                + new Double(carDecelerationSpeed).hashCode() * 3547
+                + new Boolean(driveOnRight).hashCode() * 32993
+                + bikeParkingTime * 180811
+                + new Boolean(needToParkBike).hashCode() * 28657;
         if (batch) {
             hashCode *= -1;
             // batch mode, only one of two endpoints matters
