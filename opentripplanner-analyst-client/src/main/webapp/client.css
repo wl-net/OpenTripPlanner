@@ -16,7 +16,7 @@ div#map {
 }
 
 div#toolbox {
-	height: 100%; width: 320px;
+	height: 100%; width: 0px;
 	float: left;
 	background: #ccc;
 	margin: 0px;
