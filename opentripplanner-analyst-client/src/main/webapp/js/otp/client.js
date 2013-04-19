@@ -12,8 +12,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 */
 
-var INIT_LOCATION = new L.LatLng(38.9538, -76.8851); // new carrolton
-var AUTO_CENTER_MAP = true;
+var INIT_LOCATION = new L.LatLng(48.8547, 2.3472); // ile de la cité
+var AUTO_CENTER_MAP = false;
 var ROUTER_ID = "";
 var MSEC_PER_HOUR = 60 * 60 * 1000;
 var MSEC_PER_DAY = MSEC_PER_HOUR * 24;
@@ -112,12 +112,12 @@ var purpleLineCoords =
 
 var purpleLineStopsFeature = { 
 	"type": "Feature",
+	"properties": {
+	    "name": "Purple Line stops"
+        },
 	"geometry": {
 	    "type": "MultiPoint",
 	    "coordinates": purpleLineCoords,
-	    "properties": {
-	        "name": "Purple Line stops"
-	    }	
 	}
 };
 
@@ -131,28 +131,11 @@ var geojsonMarkerOptions = {
 };
 
 var purpleLineStopsLayer = new L.GeoJSON(purpleLineStopsFeature, {
-	pointToLayer: function (latlng) { 
+	pointToLayer: function (feature, latlng) { 
 		return new L.CircleMarker(latlng, geojsonMarkerOptions);
-	}});
-map.addLayer(purpleLineStopsLayer);
-
-/*
-var purpleLineAlignmentFeature = { 
-	"type": "Feature",
-	"geometry": {
-	    "type": "LineString",
-	    "coordinates": purpleLineCoords,
-	    "properties": {
-	        "name": "Purple Line alignment",
-	        "style": {
-	            "color": "#004070",
-	            "weight": 4,
-	            "opacity": 0.8
-	        }
-	    }	
 	}
-};
-*/
+});
+map.addLayer(purpleLineStopsLayer);
 
 var alignmentStyle ={
 	"color": "#700000",
@@ -163,7 +146,7 @@ var alignmentStyle ={
 var purpleLineAlignmentFeature = { 
 	"type": "Feature", 
 	"properties": { 
-		"name": "Métro automatique du GPE ligne rouge",
+		"name": "ligne 15",
 		"style" : alignmentStyle
 	},
 	"geometry": { 
