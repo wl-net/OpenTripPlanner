@@ -193,8 +193,16 @@ var initLocation2 = new L.LatLng(initLocation.lat + 0.05, initLocation.lng + 0.0
 
 //Marker icons
 
-var greenMarkerIcon = new L.Icon({ iconUrl: 'js/lib/leaflet/images/marker-green.png' });
-var redMarkerIcon = new L.Icon({ iconUrl: 'js/lib/leaflet/images/marker-red.png' });
+var greenMarkerIcon = new L.Icon({ 
+	iconUrl: 'js/lib/leaflet/images/marker-green.png', 
+	iconSize:     [25, 41], // size of the icon
+    iconAnchor:   [12, 39]  // point of the icon which will correspond to marker's location
+});
+var redMarkerIcon = new L.Icon({ 
+	iconUrl: 'js/lib/leaflet/images/marker-red.png',
+	iconSize:     [25, 41], // size of the icon
+    iconAnchor:   [12, 39]  // point of the icon which will correspond to marker's location
+});
 var origMarker = new L.Marker(initLocation,  {draggable: true, icon: greenMarkerIcon });
 var destMarker = new L.Marker(initLocation2, {draggable: true, icon: redMarkerIcon });
 origMarker.on('dragend', mapSetupTool);
