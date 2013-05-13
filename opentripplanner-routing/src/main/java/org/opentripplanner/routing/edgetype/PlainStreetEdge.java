@@ -238,6 +238,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
     }
 
     private State doTraverse(State s0, RoutingRequest options, TraverseMode traverseMode) {
+        TraverseMode backMode = s0.getBackMode();
         Edge backEdge = s0.getBackEdge();
         if (backEdge != null) {
             // No illegal U-turns.
@@ -386,6 +387,14 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         s1.incrementTimeInSeconds(timeLong);
         
         s1.incrementWeight(weight);
+
+        if (traverseMode.equals(TraverseMode.BICYCLE)) {
+            if (backMode == null || !backMode.equals(TraverseMode.BICYCLE)) {
+                s1.incrementTimeInSeconds(options.bikeSwitchTime);
+                s1.incrementWeight(options.bikeSwitchCost);
+            }
+        }
+
         if (!traverseMode.isDriving()) {
             s1.incrementWalkDistance(length);
         }
