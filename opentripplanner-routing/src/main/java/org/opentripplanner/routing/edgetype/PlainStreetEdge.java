@@ -238,6 +238,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
     }
 
     private State doTraverse(State s0, RoutingRequest options, TraverseMode traverseMode) {
+        boolean backWalkingBike = s0.isBackWalkingBike();
         TraverseMode backMode = s0.getBackMode();
         Edge backEdge = s0.getBackEdge();
         if (backEdge != null) {
@@ -330,6 +331,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         
         StateEditor s1 = s0.edit(this);
         s1.setBackMode(traverseMode);
+        s1.setBackWalkingBike(options.isWalkingBike());
 
         if (wheelchairNotes != null && options.wheelchairAccessible) {
             s1.addAlerts(wheelchairNotes);
@@ -389,7 +391,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         s1.incrementWeight(weight);
 
         if (traverseMode.equals(TraverseMode.BICYCLE)) {
-            if (backMode == null || !backMode.equals(TraverseMode.BICYCLE)) {
+            if (backMode == null || !(backMode.equals(TraverseMode.BICYCLE) || backWalkingBike)) {
                 s1.incrementTimeInSeconds(options.bikeSwitchTime);
                 s1.incrementWeight(options.bikeSwitchCost);
             }
