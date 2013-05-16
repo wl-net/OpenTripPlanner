@@ -395,8 +395,8 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         
         s1.incrementWeight(weight);
 
-        if (traverseMode.equals(TraverseMode.BICYCLE)) {
-            if (backMode == null || !(backMode.equals(TraverseMode.BICYCLE) || backWalkingBike)) {
+        if (walkingBike || TraverseMode.BICYCLE.equals(traverseMode)) {
+            if (!(backWalkingBike || TraverseMode.BICYCLE.equals(backMode))) {
                 s1.incrementTimeInSeconds(options.bikeSwitchTime);
                 s1.incrementWeight(options.bikeSwitchCost);
             }
