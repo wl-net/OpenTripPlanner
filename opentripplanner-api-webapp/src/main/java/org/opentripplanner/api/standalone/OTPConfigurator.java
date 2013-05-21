@@ -2,6 +2,7 @@ package org.opentripplanner.api.standalone;
 
 import org.opentripplanner.analyst.core.GeometryIndex;
 import org.opentripplanner.analyst.request.SPTCache;
+import org.opentripplanner.analyst.request.SampleFactory;
 import org.opentripplanner.analyst.request.TileCache;
 import org.opentripplanner.api.ws.PlanGenerator;
 import org.opentripplanner.api.ws.services.MetadataService;
@@ -18,12 +19,18 @@ import org.opentripplanner.routing.services.SPTService;
 
 public class OTPConfigurator {
     
+    private static final String DEFAULT_GRAPH_LOCATION = "/var/otp/graphs";
+    
     public static OTPComponentProviderFactory fromCommandLineArguments(String[] args) {
         
         // The GraphService
         GraphServiceImpl graphService = new GraphServiceImpl();
-        graphService.setPath("/var/otp/graphs/");
-        graphService.setDefaultRouterId("pdx");
+        if (args.length > 0)
+            graphService.setPath(args[0]);
+        else
+            graphService.setPath(DEFAULT_GRAPH_LOCATION);
+        if (args.length > 1)
+            graphService.setDefaultRouterId(args[1]);
 
         // The PathService which wraps the SPTService
         RetryingPathServiceImpl pathService = new RetryingPathServiceImpl();
@@ -46,6 +53,7 @@ public class OTPConfigurator {
         cpf.bind(SPTCache.class, new SPTCache());
         cpf.bind(TileCache.class, new TileCache());
         cpf.bind(GeometryIndex.class, new GeometryIndex());
+        cpf.bind(SampleFactory.class, new SampleFactory());
         
         // Perform field injection on bound instances and call post-construct methods
         cpf.doneBinding();        
