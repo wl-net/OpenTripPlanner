@@ -19,14 +19,7 @@ import com.sun.jersey.core.spi.component.ioc.IoCComponentProvider;
 import com.sun.jersey.core.spi.component.ioc.IoCComponentProviderFactory;
 import com.sun.jersey.core.spi.component.ioc.IoCFullyManagedComponentProvider;
 
-/**
- * Ultra-minimal implementation of a subset of JSR-330 dependency injection.
- * 
- * Jersey IoCComponentProviders must implement one of IoCManagedComponentProvider, 
- * IoCFullyManagedComponentProvider, IoCInstantiatedComponentProvider, 
- * or IoCProxiedComponentProvider. This is checked in 
- * com.sun.jersey.core.spi.component.ioc.IoCProviderFactory.wrap(Class, IoCComponentProvider)
- */
+/** Ultra-minimal implementation of a subset of JSR-330 dependency injection. */
 public class OTPComponentProviderFactory implements IoCComponentProviderFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTPComponentProviderFactory.class);
