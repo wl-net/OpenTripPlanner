@@ -53,7 +53,7 @@ public class OTPComponentProviderFactory implements IoCComponentProviderFactory 
             LOG.debug("Requested component provider for unbound " + c);
             return null; // let Jersey internal provider take care of it
         }
-        LOG.info("Returning component provider for " + c);
+        LOG.debug("Returning component provider for " + c);
         return new JerseyComponentProvider(bindings.get(c));
     }
 
@@ -72,18 +72,17 @@ public class OTPComponentProviderFactory implements IoCComponentProviderFactory 
 
     /** Perform field injection on all bound instances, in the order they were bound. */
     private void injectFields() {
+        LOG.info("Performing field injection on all bound instances."); 
         for (Object instance : bindingOrder) {
-            LOG.debug("Performing field injection on instance of class {}", 
-                     instance.getClass().getName());
+            LOG.debug("Performing field injection on class {}", instance.getClass());
             for (Field field : instance.getClass().getDeclaredFields()) {
                 LOG.debug("Considering field {} for injection", field.getName());
                 if (field.isAnnotationPresent(Inject.class)) {
                     Object obj = bindings.get(field.getType());
-                    LOG.info("Injecting field {} on instance of {}", field.getName(), 
-                             instance.getClass());
+                    LOG.debug("Injecting field {} on instance of {}", 
+                              field.getName(), instance.getClass());
                     if (obj != null) {
                         try {
-                            LOG.info("Injected object is {}", obj);
                             field.setAccessible(true);
                             field.set(instance, obj);
                         } catch (Exception ex) {
@@ -91,7 +90,7 @@ public class OTPComponentProviderFactory implements IoCComponentProviderFactory 
                             ex.printStackTrace();
                         }
                     } else {
-                        LOG.error("Found no binding for injection.");
+                        LOG.error("Found no binding for {}", field.getType());
                     }                        
                 }
             }
