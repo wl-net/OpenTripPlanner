@@ -76,6 +76,12 @@
           <groupId>org.geotools</groupId>
           <artifactId>gt-geojson</artifactId>
         </dependency>
+        <!-- JSR-330 DEPENDENCY INJECTION ANNOTATIONS, FOR CUSTOM DI/IOC -->
+        <dependency>
+          <groupId>javax.inject</groupId>
+          <artifactId>javax.inject</artifactId>
+          <version>1</version>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>
