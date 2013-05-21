@@ -15,6 +15,7 @@ package org.opentripplanner.api.ws;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -53,7 +54,7 @@ public class Planner extends RoutingResource {
     @InjectParam public PlanGenerator planGenerator;
     // We inject info about the incoming request so we can include the incoming query 
     // parameters in the outgoing response. This is a TriMet requirement.
-    @InjectParam UriInfo uriInfo;
+    @Context UriInfo uriInfo;
     
     Function f;
     
