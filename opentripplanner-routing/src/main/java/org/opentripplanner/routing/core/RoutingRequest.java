@@ -413,6 +413,8 @@ public class RoutingRequest implements Cloneable, Serializable {
             bikeWalkingOptions.modes.setBicycle(false);
             bikeWalkingOptions.modes.setWalk(true);
             bikeWalkingOptions.walkingBike = true;
+            bikeWalkingOptions.bikeSwitchTime = bikeSwitchTime;
+            bikeWalkingOptions.bikeSwitchCost = bikeSwitchCost;
         } else if (modes.getDriving()) {
             bikeWalkingOptions = new RoutingRequest();
             bikeWalkingOptions.setArriveBy(this.isArriveBy());
