@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
@@ -53,7 +54,6 @@ import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.routing.vertextype.TransitVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class Raptor implements PathService {
     private static final Logger log = LoggerFactory.getLogger(Raptor.class);
@@ -64,8 +64,7 @@ public class Raptor implements PathService {
 
     public static final double WALK_EPSILON = 1.10;
 
-    @Autowired
-    private GraphService graphService;
+    @Inject private GraphService graphService;
 
     private List<ServiceDay> cachedServiceDays;
 
@@ -99,7 +98,7 @@ public class Raptor implements PathService {
     }
 
     //fallback for nontransit trips
-    @Autowired public SPTService sptService;
+    @Inject public SPTService sptService;
 
     private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 

@@ -20,6 +20,8 @@ import static org.opentripplanner.routing.automata.Nonterminal.star;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 import lombok.Setter;
 
 import org.opentripplanner.routing.algorithm.strategies.DefaultRemainingWeightHeuristic;
@@ -45,20 +47,16 @@ import org.opentripplanner.routing.vertextype.OnboardVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class SimplifiedPathServiceImpl implements PathService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimplifiedPathServiceImpl.class);
 
-    @Autowired @Setter
-    private GraphService graphService;
+    @Inject @Setter private GraphService graphService;
     
-    @Autowired @Setter
-    private SPTService sptService;
+    @Inject @Setter private SPTService sptService;
 
-    @Setter 
-    private double timeout = 0; // seconds
+    @Setter private double timeout = 0; // seconds
     
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {

@@ -16,11 +16,15 @@ package org.opentripplanner.updater;
 import java.io.IOException;
 import java.io.InputStream;
 
+import javax.inject.Inject;
+
+import lombok.Getter;
+import lombok.Setter;
+
 import org.opentripplanner.routing.services.PatchService;
 import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
@@ -32,9 +36,9 @@ public class GtfsRealtimeUpdater implements Runnable {
 
     private String defaultAgencyId;
 
-    private PatchService patchService;
+    @Inject @Getter @Setter private PatchService patchService;
 
-    private long earlyStart;
+    @Getter @Setter private long earlyStart;
 
     private UpdateHandler updateHandler = null;
 
@@ -70,22 +74,6 @@ public class GtfsRealtimeUpdater implements Runnable {
         }
     }
 
-    @Autowired
-    public void setPatchService(PatchService patchService) {
-        this.patchService = patchService;
-    }
-
-    public PatchService getPatchService() {
-        return patchService;
-    }
-
-    public long getEarlyStart() {
-        return earlyStart;
-    }
-
-    public void setEarlyStart(long earlyStart) {
-        this.earlyStart = earlyStart;
-    }
     public String toString() {
         return "GtfsRealtimeUpdater(" + url + ")";
     }

@@ -35,9 +35,6 @@ import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.model.GraphBundle;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.error.VertexNotFoundException;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Graph.LoadLevel;
-import org.opentripplanner.routing.impl.SerializedGraphFactoryBean;
 import org.opentripplanner.routing.services.PathService;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
@@ -162,8 +159,8 @@ public class RunBenchmarkPlanMain {
         bundlePath.addPropertyValue("path", _graphPath);
         additionalBeans.put("graphBundle", bundlePath.getBeanDefinition());
 
-        BeanDefinitionBuilder graph = BeanDefinitionBuilder
-                .genericBeanDefinition(SerializedGraphFactoryBean.class);
+        BeanDefinitionBuilder graph = null; //BeanDefinitionBuilder
+                //.genericBeanDefinition(SerializedGraphFactoryBean.class);
         graph.addPropertyReference("graphBundle", "graphBundle");
         additionalBeans.put("graph", graph.getBeanDefinition());
 

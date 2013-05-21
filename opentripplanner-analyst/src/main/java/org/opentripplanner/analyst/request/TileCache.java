@@ -14,6 +14,7 @@
 package org.opentripplanner.analyst.request;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import lombok.Setter;
 
@@ -21,7 +22,6 @@ import org.opentripplanner.analyst.core.TemplateTile;
 import org.opentripplanner.analyst.core.Tile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -33,8 +33,7 @@ public class TileCache extends CacheLoader<TileRequest, Tile>
     
     private static final Logger LOG = LoggerFactory.getLogger(TileCache.class);
 
-    @Autowired
-    private SampleFactory sampleFactory;
+    @Inject private SampleFactory sampleFactory;
     
 //    @Autowired
 //    private HashGridSampler hashSampler;
@@ -43,7 +42,7 @@ public class TileCache extends CacheLoader<TileRequest, Tile>
 //    private SampleCache sampleCache;
 
     private LoadingCache<TileRequest, Tile> tileCache;
-    @Setter private int size = 200;
+    @Setter private int size = 900;
     @Setter private int concurrency = 16;
             
     @PostConstruct

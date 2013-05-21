@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import lombok.Setter;
 
@@ -34,7 +35,6 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Envelope;
@@ -51,8 +51,7 @@ public class GeometryIndex implements GeometryIndexService {
     private static final double SEARCH_RADIUS_M = 100; // meters
     private static final double SEARCH_RADIUS_DEG = SphericalDistanceLibrary.metersToDegrees(SEARCH_RADIUS_M);
     
-    @Autowired @Setter 
-    GraphService graphService;
+    @Inject GraphService graphService;
     
     private STRtree pedestrianIndex;
     

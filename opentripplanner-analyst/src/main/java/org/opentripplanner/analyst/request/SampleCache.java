@@ -16,10 +16,10 @@ package org.opentripplanner.analyst.request;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.inject.Inject;
+
 import org.opentripplanner.analyst.core.Sample;
 import org.opentripplanner.analyst.core.SampleSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 /**
  * This cache sits in front of the SampleFactory. It will bin samples by rounded lat/lon 
@@ -33,8 +33,7 @@ public class SampleCache implements SampleSource {
     private final Map<SampleRequest, Sample> cache =
             new ConcurrentHashMap<SampleRequest, Sample>();
     
-    @Autowired
-    private SampleFactory sampleFactory;
+    @Inject private SampleFactory sampleFactory;
     
     // should distinguish between null sample and key not found
     

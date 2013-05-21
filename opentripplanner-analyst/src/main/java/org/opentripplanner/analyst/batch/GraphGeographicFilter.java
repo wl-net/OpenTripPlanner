@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import lombok.Data;
 
@@ -27,7 +28,6 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -40,8 +40,8 @@ public class GraphGeographicFilter implements IndividualFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(GraphGeographicFilter.class);
 
-    @Autowired private RoutingRequest prototypeRoutingRequest;
-    @Autowired private GraphService graphService;
+    @Inject private RoutingRequest prototypeRoutingRequest;
+    @Inject private GraphService graphService;
 
     private double bufferMeters = 2000;
     private boolean useOnlyStops = true;

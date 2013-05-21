@@ -26,7 +26,6 @@ import org.opentripplanner.util.monitoring.MonitoringStore;
 import org.opentripplanner.util.monitoring.MonitoringStoreFactory;
 import org.springframework.security.access.annotation.Secured;
 
-import com.sun.jersey.api.spring.Autowire;
 import com.sun.jersey.spi.resource.Singleton;
 
 /**
@@ -37,7 +36,6 @@ import com.sun.jersey.spi.resource.Singleton;
  */
 @Path("/monitoring")
 @XmlRootElement
-@Autowire
 @Singleton
 public class Monitoring {
     static MonitoringStore store = MonitoringStoreFactory.getStore();

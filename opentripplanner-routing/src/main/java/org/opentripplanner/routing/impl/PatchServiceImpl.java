@@ -18,8 +18,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
+
+import javax.inject.Inject;
+
+import lombok.Setter;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.routing.graph.Graph;
@@ -28,22 +32,14 @@ import org.opentripplanner.routing.patch.Patch;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PatchService;
 import org.opentripplanner.util.MapUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
-@Component
 public class PatchServiceImpl implements PatchService {
 
-    private GraphService graphService;
+    @Inject @Setter private GraphService graphService;
 
     private HashMap<String, Patch> patches = new HashMap<String, Patch>();
     private HashMap<AgencyAndId,List<Patch>> patchesByRoute = new HashMap<AgencyAndId, List<Patch>>();
     private HashMap<AgencyAndId, List<Patch>> patchesByStop = new HashMap<AgencyAndId, List<Patch>>();
-
-    @Autowired
-    public void setGraphService(GraphService graphService) {
-        this.graphService = graphService;
-    }
 
     @Override
     public Collection<Patch> getStopPatches(AgencyAndId stop) {

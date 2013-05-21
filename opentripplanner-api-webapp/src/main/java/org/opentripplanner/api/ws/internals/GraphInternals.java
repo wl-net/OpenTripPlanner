@@ -18,12 +18,15 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import lombok.Setter;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.IdentityBean;
@@ -46,10 +49,8 @@ import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TransitVertex;
-import org.springframework.beans.factory.annotation.Required;
 import org.springframework.security.access.annotation.Secured;
 
-import com.sun.jersey.api.spring.Autowire;
 import com.sun.jersey.spi.resource.Singleton;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -65,19 +66,14 @@ import com.vividsolutions.jts.index.strtree.STRtree;
  */
 @Path("/internals")
 @XmlRootElement
-@Autowire
 @Singleton
 public class GraphInternals {
-    private GraphService graphService;
+    
+    @Inject @Setter private GraphService graphService;
 
     private HashMap<String, STRtree> vertexIndices = new HashMap<String, STRtree>();
 
     private HashMap<String, STRtree> edgeIndices = new HashMap<String, STRtree>();
-
-    @Required
-    public void setGraphService(GraphService graphService) {
-        this.graphService = graphService;
-    }
 
     public synchronized void initIndexes(String routerId) {
         STRtree vertexIndex = vertexIndices.get(routerId);

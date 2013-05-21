@@ -13,6 +13,7 @@
 
 package org.opentripplanner.api.ws;
 
+import javax.inject.Inject;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -23,17 +24,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.codehaus.jettison.json.JSONException;
 import org.opentripplanner.api.ws.services.MetadataService;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import com.sun.jersey.api.spring.Autowire;
+import com.sun.jersey.api.core.InjectParam;
 
 @Path("/metadata")
 @XmlRootElement
-@Autowire
 public class Metadata {
 
-    @Autowired 
-    private MetadataService metadataService;
+    @InjectParam private MetadataService metadataService;
     
     /**
      * Returns metadata about the graph -- presently, this is just the extent of the graph.

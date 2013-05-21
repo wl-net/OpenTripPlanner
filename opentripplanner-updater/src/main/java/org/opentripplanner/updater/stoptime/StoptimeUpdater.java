@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import lombok.Setter;
 
@@ -36,7 +37,6 @@ import org.opentripplanner.routing.trippattern.UpdateBlock;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Update OTP stop time tables from some (realtime) source
@@ -46,9 +46,9 @@ public class StoptimeUpdater implements Runnable, TimetableSnapshotSource {
 
     private static final Logger LOG = LoggerFactory.getLogger(StoptimeUpdater.class);
 
-    @Autowired private GraphService graphService;
-    @Setter    private UpdateStreamer updateStreamer;
-    @Setter    private static int logFrequency = 2000;
+    @Inject private GraphService graphService;
+    @Setter private UpdateStreamer updateStreamer;
+    @Setter private static int logFrequency = 2000;
 
     /** 
      * If a timetable snapshot is requested less than this number of milliseconds after the previous 

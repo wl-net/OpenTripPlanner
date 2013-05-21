@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.inject.Inject;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -45,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.collect.Maps;
-import com.sun.jersey.api.spring.Autowire;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -85,7 +85,6 @@ import com.vividsolutions.jts.linearref.LengthIndexedLine;
  */
 @Path("/iso")
 @XmlRootElement
-@Autowire
 public class IsoChrone extends RoutingResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(IsoChrone.class);
@@ -102,14 +101,11 @@ public class IsoChrone extends RoutingResource {
 
     private List tooFastTraversedEdgeGeoms = null;
 
-    @Autowired
-    GraphService graphService;
+    @Inject GraphService graphService;
 
-    @Autowired
-    private SPTService sptService;
+    @Inject private SPTService sptService;
 
-    @Autowired
-    private GeometryIndex index;
+    @Inject private GeometryIndex index;
 
     /** Walkspeed between user indicated position and road 3000 m/h = 0.83333 m/sec */
     public double offRoadWalkspeed = 0.8333;

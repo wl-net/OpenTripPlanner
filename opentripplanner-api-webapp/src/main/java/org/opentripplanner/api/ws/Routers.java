@@ -43,12 +43,10 @@ import org.opentripplanner.routing.impl.GraphServiceImpl;
 import org.opentripplanner.routing.services.GraphService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.annotation.Secured;
 
-import com.sun.jersey.api.NotFoundException;
 import com.sun.jersey.api.Responses;
-import com.sun.jersey.api.spring.Autowire;
+import com.sun.jersey.api.core.InjectParam;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -92,12 +90,11 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 @Path("/routers")
 @XmlRootElement
-@Autowire
 public class Routers {
 
     private static final Logger LOG = LoggerFactory.getLogger(Routers.class);
 
-    @Autowired GraphService graphService;
+    @InjectParam GraphService graphService;
     
     /** 
      * Returns a list of routers and their bounds. 

@@ -17,6 +17,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.inject.Inject;
+
+import lombok.Getter;
+import lombok.Setter;
+
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.graph.Edge;
@@ -30,7 +35,6 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.GraphPath;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * This path service allows paths to be generated with a specific first transit stop. The starting
@@ -42,13 +46,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 public class TransitStartPathService implements PathService {
 
-    @Autowired
-    public GraphService graphService;
+    @Inject public GraphService graphService;
 
-    @Autowired
-    public SPTService tspSptService;
+    @Inject public SPTService tspSptService;
 
-    private PathService chainedPathService;
+    @Inject @Getter @Setter private PathService chainedPathService;
 
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {
@@ -105,15 +107,6 @@ public class TransitStartPathService implements PathService {
             finishedPaths.add(toTransit);
         }
         return finishedPaths;
-    }
-
-    public PathService getChainedPathService() {
-        return chainedPathService;
-    }
-
-    @Autowired
-    public void setChainedPathService(PathService chainedPathService) {
-        this.chainedPathService = chainedPathService;
     }
 
 }

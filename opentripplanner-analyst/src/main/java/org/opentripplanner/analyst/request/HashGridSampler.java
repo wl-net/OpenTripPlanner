@@ -16,20 +16,20 @@ package org.opentripplanner.analyst.request;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import org.opentripplanner.analyst.core.Sample;
 import org.opentripplanner.analyst.core.SampleSource;
+import org.opentripplanner.common.IterableLibrary;
+import org.opentripplanner.common.geometry.HashGrid;
+import org.opentripplanner.common.geometry.HashGrid.RasterizedSegment;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.common.IterableLibrary;
-import org.opentripplanner.common.geometry.HashGrid;
-import org.opentripplanner.common.geometry.HashGrid.RasterizedSegment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -37,8 +37,7 @@ public class HashGridSampler implements SampleSource {
 
     private static final Logger LOG = LoggerFactory.getLogger(HashGridSampler.class);
     private static final double SEARCH_RADIUS_M = 100;
-    @Autowired
-    private GraphService graphService;
+    @Inject private GraphService graphService;
     private HashGrid index;
 
     @PostConstruct

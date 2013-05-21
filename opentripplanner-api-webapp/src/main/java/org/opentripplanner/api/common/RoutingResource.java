@@ -24,6 +24,7 @@ import javax.ws.rs.QueryParam;
 import javax.xml.datatype.DatatypeConfigurationException;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
+import org.opentripplanner.api.ws.services.MetadataService;
 import org.opentripplanner.routing.core.OptimizeType;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseModeSet;
@@ -211,7 +212,6 @@ public abstract class RoutingResource {
 
     @InjectParam
     protected RoutingRequest prototypeRoutingRequest;
-
 
     /** 
      * Build the 0th Request object from the query parameter lists. 

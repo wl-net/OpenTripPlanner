@@ -16,6 +16,7 @@ package org.opentripplanner.api.ws;
 import java.util.Collection;
 
 import javax.annotation.security.RolesAllowed;
+import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -25,6 +26,8 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import lombok.Setter;
+
 import org.codehaus.jettison.json.JSONException;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.api.model.patch.PatchCreationResponse;
@@ -33,23 +36,14 @@ import org.opentripplanner.api.model.patch.PatchSet;
 import org.opentripplanner.routing.patch.AlertPatch;
 import org.opentripplanner.routing.patch.Patch;
 import org.opentripplanner.routing.services.PatchService;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import com.sun.jersey.api.spring.Autowire;
 
 // NOTE - /ws/patch is the full path -- see web.xml
 
 @Path("/patch")
 @XmlRootElement
-@Autowire
 public class Patcher {
 
-    private PatchService patchservice;
-
-    @Autowired
-    public void setPatchService(PatchService patchService) {
-        this.patchservice = patchService;
-    }
+    @Inject @Setter private PatchService patchService;
 
     /**
      * Return a list of all patches that apply to a given stop
@@ -66,7 +60,7 @@ public class Patcher {
             @QueryParam("id") String id) throws JSONException {
 
         PatchResponse response = new PatchResponse();
-        Collection<Patch> patches = patchservice.getStopPatches(new AgencyAndId(agency, id));
+        Collection<Patch> patches = patchService.getStopPatches(new AgencyAndId(agency, id));
         for (Patch patch : patches) {
             response.addPatch(patch);
         }
@@ -88,7 +82,7 @@ public class Patcher {
             @QueryParam("id") String id) throws JSONException {
 
         PatchResponse response = new PatchResponse();
-        Collection<Patch> patches = patchservice.getRoutePatches(new AgencyAndId(agency, id));
+        Collection<Patch> patches = patchService.getRoutePatches(new AgencyAndId(agency, id));
         for (Patch patch : patches) {
             response.addPatch(patch);
         }
@@ -118,7 +112,7 @@ public class Patcher {
             }
         }
         for (Patch patch : patches.patches) {
-            patchservice.apply(patch);
+            patchService.apply(patch);
         }
         response.status = "OK";
         return response;

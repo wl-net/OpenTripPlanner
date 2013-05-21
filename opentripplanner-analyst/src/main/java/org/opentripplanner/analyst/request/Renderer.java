@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.TimeZone;
 
 import javax.imageio.ImageIO;
+import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Response;
@@ -30,19 +31,14 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
-@Component
 public class Renderer {
 
     private static final Logger LOG = LoggerFactory.getLogger(Renderer.class);
 
-    @Autowired
-    private TileCache tileCache;
+    @Inject private TileCache tileCache;
 
-    @Autowired
-    private SPTCache sptCache;
+    @Inject private SPTCache sptCache;
 
     public Response getResponse (TileRequest tileRequest, 
             RoutingRequest sptRequestA, RoutingRequest sptRequestB, 

@@ -15,6 +15,8 @@ package org.opentripplanner.analyst.request;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.opentripplanner.analyst.core.GeometryIndex;
 import org.opentripplanner.analyst.core.Sample;
 import org.opentripplanner.analyst.core.SampleSource;
@@ -23,21 +25,17 @@ import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.LineString;
 
-@Component
 public class SampleFactory implements SampleSource {
 
     private static DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
-    @Autowired
-    private GeometryIndex index;
+    @Inject private GeometryIndex index;
 
     private double searchRadiusM;
     private double searchRadiusLat;    

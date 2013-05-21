@@ -35,7 +35,6 @@ import org.opentripplanner.util.DateUtils;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.security.access.annotation.Secured;
 
-import com.sun.jersey.api.spring.Autowire;
 import com.sun.jersey.spi.resource.Singleton;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -48,7 +47,6 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 @Path("/components")
 @XmlRootElement
-@Autowire
 @Singleton
 public class Components {
     private GraphService graphService;

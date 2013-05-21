@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -24,27 +25,22 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import lombok.Setter;
+
 import org.opentripplanner.api.ws.internals.GraphInternals;
 import org.opentripplanner.routing.bike_rental.BikeRentalStation;
 import org.opentripplanner.routing.bike_rental.BikeRentalStationService;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.services.GraphService;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import com.sun.jersey.api.spring.Autowire;
 import com.vividsolutions.jts.geom.Envelope;
 
 @Path("/bike_rental")
 @XmlRootElement
-@Autowire
 public class BikeRental {
-    private GraphService graphService;
-
-    @Autowired
-    public void setGraphService(GraphService graphService) {
-        this.graphService = graphService;
-    }
     
+    @Inject @Setter private GraphService graphService;
+
     @GET
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
     public BikeRentalStationList getBikeRentalStations(

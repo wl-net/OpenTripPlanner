@@ -23,6 +23,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import javax.inject.Inject;
+
+import lombok.Setter;
+
 import org.opentripplanner.routing.bike_rental.BikeRentalStation;
 import org.opentripplanner.routing.bike_rental.BikeRentalStationService;
 import org.opentripplanner.routing.edgetype.RentABikeOffEdge;
@@ -35,14 +39,13 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class BikeRentalUpdater implements Runnable {
     private static final Logger _log = LoggerFactory.getLogger(BikeRentalUpdater.class);
 
     Map<BikeRentalStation, BikeRentalStationVertex> verticesByStation = new HashMap<BikeRentalStation, BikeRentalStationVertex>();
 
-    private BikeRentalDataSource source;
+    @Inject @Setter private BikeRentalDataSource source;
 
     private Graph graph;
 
@@ -52,7 +55,7 @@ public class BikeRentalUpdater implements Runnable {
 
     private String routerId;
 
-    private GraphService graphService;
+    @Inject @Setter private GraphService graphService;
 
     private String network = "default";
     
@@ -64,16 +67,6 @@ public class BikeRentalUpdater implements Runnable {
 
     public void setNetwork(String network) {
         this.network = network;
-    }
-
-    @Autowired
-    public void setBikeRentalDataSource(BikeRentalDataSource source) {
-        this.source = source;
-    }
-
-    @Autowired
-    public void setGraphService(GraphService graphService) {
-        this.graphService = graphService;
     }
 
     public boolean setup() {

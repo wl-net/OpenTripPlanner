@@ -19,6 +19,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+import javax.inject.Inject;
+
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.pathparser.BasicPathParser;
@@ -31,7 +33,6 @@ import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class RetryingPathServiceImpl implements PathService {
 
@@ -42,10 +43,8 @@ public class RetryingPathServiceImpl implements PathService {
 
     private static final double MAX_WALK_MULTIPLE = 16;
 
-    @Autowired
-    private GraphService graphService;
-    @Autowired
-    private SPTService sptService;
+    @Inject private GraphService graphService;
+    @Inject private SPTService sptService;
 
     private double firstPathTimeout = 0; // seconds
     private double multiPathTimeout = 0; // seconds

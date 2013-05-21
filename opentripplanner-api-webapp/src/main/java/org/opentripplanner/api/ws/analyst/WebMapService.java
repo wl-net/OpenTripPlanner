@@ -41,16 +41,13 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.core.InjectParam;
-import com.sun.jersey.api.spring.Autowire;
 
 @Path("wms")
-@Autowire
 public class WebMapService extends RoutingResource {
     
     private static final Logger LOG = LoggerFactory.getLogger(WebMapService.class);
 
-    @InjectParam
-    private Renderer renderer;
+    @InjectParam private Renderer renderer;
     
     // use of string array in annotation dodges bug in Enunciate, which will be fixed in v1.26
     @GET @Produces( {"image/*", "text/*"} )

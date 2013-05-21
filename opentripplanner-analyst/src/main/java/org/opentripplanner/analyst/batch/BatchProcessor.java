@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
 
 import lombok.Setter;
 
@@ -36,20 +37,15 @@ import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
-import org.springframework.context.support.GenericApplicationContext;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.FileSystemResource;
 
 public class BatchProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(BatchProcessor.class);
     private static final String EXAMPLE_CONTEXT = "batch-context.xml";
     
-    @Autowired private GraphService graphService;
-    @Autowired private SPTService sptService;
-    @Autowired private SampleFactory sampleFactory;
+    @Inject private GraphService graphService;
+    @Inject private SPTService sptService;
+    @Inject private SampleFactory sampleFactory;
 
     @Resource private Population origins;
     @Resource private Population destinations;
@@ -86,27 +82,29 @@ public class BatchProcessor {
     public void setSearchCutoffMinutes(int minutes) {
         this.searchCutoffSeconds = minutes * 60;
     }
+
+    // TODO Replace, depends on Spring.
     
-    public static void main(String[] args) throws IOException {
-        org.springframework.core.io.Resource appContextResource;
-        if( args.length == 0) {
-            LOG.warn("no configuration XML file specified; using example on classpath");
-            appContextResource = new ClassPathResource(EXAMPLE_CONTEXT);
-        } else {
-            String configFile = args[0];
-            appContextResource = new FileSystemResource(configFile);
-        }
-        GenericApplicationContext ctx = new GenericApplicationContext();
-        XmlBeanDefinitionReader xmlReader = new XmlBeanDefinitionReader(ctx);
-        xmlReader.loadBeanDefinitions(appContextResource);
-        ctx.refresh();
-        ctx.registerShutdownHook();
-        BatchProcessor processor = ctx.getBean(BatchProcessor.class);
-        if (processor == null)
-            LOG.error("No BatchProcessor bean was defined.");
-        else
-            processor.run();
-    }
+//    public static void main(String[] args) throws IOException {
+//        org.springframework.core.io.Resource appContextResource;
+//        if( args.length == 0) {
+//            LOG.warn("no configuration XML file specified; using example on classpath");
+//            appContextResource = new ClassPathResource(EXAMPLE_CONTEXT);
+//        } else {
+//            String configFile = args[0];
+//            appContextResource = new FileSystemResource(configFile);
+//        }
+//        GenericApplicationContext ctx = new GenericApplicationContext();
+//        XmlBeanDefinitionReader xmlReader = new XmlBeanDefinitionReader(ctx);
+//        xmlReader.loadBeanDefinitions(appContextResource);
+//        ctx.refresh();
+//        ctx.registerShutdownHook();
+//        BatchProcessor processor = ctx.getBean(BatchProcessor.class);
+//        if (processor == null)
+//            LOG.error("No BatchProcessor bean was defined.");
+//        else
+//            processor.run();
+//    }
 
     private void run() {
         origins.setup();

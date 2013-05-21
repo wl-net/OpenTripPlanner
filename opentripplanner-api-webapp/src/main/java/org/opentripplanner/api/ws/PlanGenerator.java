@@ -20,6 +20,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 
+import javax.inject.Inject;
+
+import lombok.Setter;
+
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
@@ -82,8 +86,8 @@ public class PlanGenerator {
 
     private static final double MAX_ZAG_DISTANCE = 30;
 
-    @Autowired public PathService pathService;
-    @Autowired GraphService graphService;
+    @Inject public PathService pathService; // these fields are set/got directly by some tests
+    @Inject public GraphService graphService;
     
     /** Generates a TripPlan from a Request */
     public TripPlan generate(RoutingRequest options) {

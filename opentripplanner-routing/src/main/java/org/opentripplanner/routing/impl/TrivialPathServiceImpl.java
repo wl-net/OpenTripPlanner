@@ -16,21 +16,20 @@ package org.opentripplanner.routing.impl;
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class TrivialPathServiceImpl implements PathService {
 
-    @Autowired
-    GraphService graphService;
+    @Inject GraphService graphService;
 
-    @Autowired
-    SPTService sptService;
+    @Inject SPTService sptService;
 
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {

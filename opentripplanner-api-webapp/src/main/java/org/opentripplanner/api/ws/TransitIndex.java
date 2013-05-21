@@ -21,12 +21,15 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import lombok.Setter;
 
 import org.codehaus.jettison.json.JSONException;
 import org.onebusaway.gtfs.model.AgencyAndId;
@@ -64,9 +67,7 @@ import org.opentripplanner.routing.transit_index.adapters.TripType;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import com.sun.jersey.api.spring.Autowire;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 
@@ -74,21 +75,15 @@ import com.vividsolutions.jts.geom.Envelope;
 
 @Path("/transit")
 @XmlRootElement
-@Autowire
 public class TransitIndex {
 
     private static final Logger _log = LoggerFactory.getLogger(TransitIndex.class);
 
     private static final double STOP_SEARCH_RADIUS = 200;
 
-    private GraphService graphService;
+    @Inject @Setter private GraphService graphService;
 
     private static final long MAX_STOP_TIME_QUERY_INTERVAL = 86400 * 2;
-
-    @Autowired
-    public void setGraphService(GraphService graphService) {
-        this.graphService = graphService;
-    }
 
     /**
      * Return a list of all agency ids in the graph

@@ -20,6 +20,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
+import lombok.Getter;
+import lombok.Setter;
+
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.edgetype.LegSwitchingEdge;
@@ -35,20 +40,17 @@ import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class TravelingSalesmanPathService implements PathService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TravelingSalesmanPathService.class);
 
-    @Autowired
-    public GraphService graphService;
+    @Inject public GraphService graphService;
 
     // @Resource("name") or @Qualifier
-    @Autowired
-    public SPTService tspSptService;
+    @Inject public SPTService tspSptService;
 
-    private PathService chainedPathService;
+    @Inject @Getter @Setter private PathService chainedPathService;
 
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {
@@ -161,15 +163,6 @@ public class TravelingSalesmanPathService implements PathService {
             lastVertex = path.getEndVertex();
         }
         return newPath;
-    }
-
-    public PathService getChainedPathService() {
-        return chainedPathService;
-    }
-
-    @Autowired
-    public void setChainedPathService(PathService chainedPathService) {
-        this.chainedPathService = chainedPathService;
     }
 
 }

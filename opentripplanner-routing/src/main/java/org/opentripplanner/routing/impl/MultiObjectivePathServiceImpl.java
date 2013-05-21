@@ -18,6 +18,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
@@ -39,7 +41,6 @@ import org.opentripplanner.util.monitoring.MonitoringStore;
 import org.opentripplanner.util.monitoring.MonitoringStoreFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Implements a multi-objective goal-directed search algorithm like the one in Sec. 4.2 of: 
  * Perny and Spanjaard. Near Admissible Algorithms for Multiobjective Search.
@@ -68,7 +69,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 //@Component
 public class MultiObjectivePathServiceImpl implements PathService {
 
-    @Autowired public GraphService graphService;
+    @Inject public GraphService graphService;
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiObjectivePathServiceImpl.class);
 

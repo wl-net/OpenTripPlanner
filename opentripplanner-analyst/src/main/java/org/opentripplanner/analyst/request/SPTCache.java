@@ -14,6 +14,7 @@
 package org.opentripplanner.analyst.request;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 
 import lombok.Setter;
 
@@ -23,7 +24,6 @@ import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -33,13 +33,13 @@ public class SPTCache extends CacheLoader<RoutingRequest, ShortestPathTree> {
 
     private static final Logger LOG = LoggerFactory.getLogger(SPTCache.class);
 
-    @Autowired private SPTService sptService; 
+    @Inject private SPTService sptService; 
     
-    @Autowired private GraphService graphService; 
+    @Inject private GraphService graphService; 
 
     private LoadingCache<RoutingRequest, ShortestPathTree> sptCache;
 
-    @Setter private int size = 200;
+    @Setter private int size = 10;
     @Setter private int concurrency = 16;
             
     @PostConstruct

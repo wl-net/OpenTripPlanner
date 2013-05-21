@@ -12,11 +12,9 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 package org.opentripplanner.api.ws;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -28,8 +26,9 @@ import org.opentripplanner.api.model.error.PlannerError;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.sun.jersey.api.spring.Autowire;
+
+import com.google.common.base.Function;
+import com.sun.jersey.api.core.InjectParam;
 
 /**
  * This is the primary entry point for the trip planning web service.
@@ -48,14 +47,15 @@ import com.sun.jersey.api.spring.Autowire;
  */
 @Path("/plan") // NOTE - /ws/plan is the full path. The prefix is added by the servlet's web.xml.
 @XmlRootElement
-@Autowire
 public class Planner extends RoutingResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(Planner.class);
-    @Autowired public PlanGenerator planGenerator;
+    @InjectParam public PlanGenerator planGenerator;
     // We inject info about the incoming request so we can include the incoming query 
     // parameters in the outgoing response. This is a TriMet requirement.
-    @Context UriInfo uriInfo;
+    @InjectParam UriInfo uriInfo;
+    
+    Function f;
     
     /** Java is immensely painful. TODO: Guava should cover this. */
     interface OneArgFunc<T,U> {
