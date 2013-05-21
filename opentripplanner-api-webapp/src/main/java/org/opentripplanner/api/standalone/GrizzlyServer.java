@@ -39,20 +39,6 @@ public class GrizzlyServer {
 
     public static void main(String[] args) throws IOException {
 
-//        /* LOAD THE SPRING CONTEXT */
-//        System.out.println("Loading Spring context...");
-//        GenericApplicationContext actx = new GenericApplicationContext();
-//        XmlBeanDefinitionReader xmlReader = new XmlBeanDefinitionReader(actx);
-//        String[] contexts = {
-//            "data-sources.xml",
-//            // "org/opentripplanner/api/security-application-context.xml"
-//        };
-//        for (String contextFile : contexts) {
-//            xmlReader.loadBeanDefinitions(new ClassPathResource(contextFile));
-//        }
-//        actx.refresh();
-//        actx.registerShutdownHook();
-        
         /* CONFIGURE GRIZZLY SERVER */
         LOG.info("Starting OTP Grizzly server...");
         // Rather than use Jersey's GrizzlyServerFactory we will construct it manually, so we can
@@ -69,8 +55,7 @@ public class GrizzlyServer {
         rc.getProperties().put(ResourceConfig.PROPERTY_CONTAINER_REQUEST_FILTERS, 
                  new String[] { JerseyAuthFilter.class.getName() });
         // Provide Jersey a factory class that gets injected objects from the Spring context
-//        IoCComponentProviderFactory ioc_factory = new SpringComponentProviderFactory(rc, actx);
-        IoCComponentProviderFactory ioc_factory = createInjector(args);
+        IoCComponentProviderFactory ioc_factory = OTPConfigurator.fromCommandLineArguments(args);
 
         /* ADD A COUPLE OF HANDLERS (~SERVLETS) */
         // 1. A Grizzly wrapper around the Jersey WebApplication. 
@@ -97,38 +82,4 @@ public class GrizzlyServer {
         
     }
     
-    private static IoCComponentProviderFactory createInjector(String[] args) {
-        
-        // The GraphService
-        GraphServiceImpl graphService = new GraphServiceImpl();
-        graphService.setPath("/var/otp/graphs/");
-        graphService.setDefaultRouterId("pdx");
-
-        // The PathService which wraps the SPTService
-        RetryingPathServiceImpl pathService = new RetryingPathServiceImpl();
-        pathService.setFirstPathTimeout(10.0);
-        pathService.setMultiPathTimeout(1.0);
-        
-        // An adapter to make Jersey see OTP as a dependency injection framework.
-        // Associate our specific instances with their interface classes.
-        OTPComponentProviderFactory cpf = new OTPComponentProviderFactory(); 
-        cpf.bind(RoutingRequest.class, new RoutingRequest());
-        cpf.bind(GraphService.class, graphService);
-        cpf.bind(SPTService.class, new GenericAStar());
-        cpf.bind(PathService.class, pathService);
-        cpf.bind(PlanGenerator.class, new PlanGenerator());
-        cpf.bind(MetadataService.class, new MetadataService());
-        cpf.bind(JsonpCallbackFilter.class, new JsonpCallbackFilter());
-        cpf.bind(RemainingWeightHeuristicFactory.class, new DefaultRemainingWeightHeuristicFactoryImpl()); 
-
-        // Optional Analyst Modules
-        cpf.bind(SPTCache.class, new SPTCache());
-        cpf.bind(TileCache.class, new TileCache());
-        cpf.bind(GeometryIndex.class, new GeometryIndex());
-        
-        // Perform field injection on bound instances and call post-construct methods
-        cpf.doneBinding();        
-        return cpf;         
-        
-    }
 }
