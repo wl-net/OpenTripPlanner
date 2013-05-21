@@ -11,7 +11,6 @@ import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
 import org.opentripplanner.analyst.core.GeometryIndex;
 import org.opentripplanner.analyst.request.SPTCache;
 import org.opentripplanner.analyst.request.TileCache;
-import org.opentripplanner.api.standalone.OTPComponentProvider.Factory;
 import org.opentripplanner.api.ws.PlanGenerator;
 import org.opentripplanner.api.ws.services.MetadataService;
 import org.opentripplanner.jsonp.JsonpCallbackFilter;
@@ -26,15 +25,11 @@ import org.opentripplanner.routing.services.RemainingWeightHeuristicFactory;
 import org.opentripplanner.routing.services.SPTService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
-import org.springframework.context.support.GenericApplicationContext;
-import org.springframework.core.io.ClassPathResource;
 
 import com.sun.jersey.api.container.ContainerFactory;
 import com.sun.jersey.api.core.PackagesResourceConfig;
 import com.sun.jersey.api.core.ResourceConfig;
 import com.sun.jersey.core.spi.component.ioc.IoCComponentProviderFactory;
-import com.sun.jersey.spi.spring.container.SpringComponentProviderFactory;
 
 public class GrizzlyServer {
 
