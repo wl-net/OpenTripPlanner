@@ -111,7 +111,7 @@ public class GrizzlyServer {
         
         // An adapter to make Jersey see OTP as a dependency injection framework.
         // Associate our specific instances with their interface classes.
-        OTPComponentProvider.Factory cpf = new OTPComponentProvider.Factory(); 
+        OTPComponentProviderFactory cpf = new OTPComponentProviderFactory(); 
         cpf.bind(RoutingRequest.class, new RoutingRequest());
         cpf.bind(GraphService.class, graphService);
         cpf.bind(SPTService.class, new GenericAStar());
