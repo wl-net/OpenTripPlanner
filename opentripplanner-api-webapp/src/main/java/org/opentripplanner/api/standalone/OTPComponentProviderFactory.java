@@ -19,7 +19,16 @@ import com.sun.jersey.core.spi.component.ioc.IoCComponentProvider;
 import com.sun.jersey.core.spi.component.ioc.IoCComponentProviderFactory;
 import com.sun.jersey.core.spi.component.ioc.IoCFullyManagedComponentProvider;
 
-/** Ultra-minimal implementation of a subset of JSR-330 dependency injection. */
+/** 
+ * Ultra-minimal implementation of a subset of JSR-330 dependency injection. 
+ * It handles only singleton-scoped objects (not per-request or per-session lifecycles), and
+ * these must be instantiated/constructed by the caller upon binding.
+ * It handles only field injection on those objets, not constructor or method parameter 
+ * injection. It does call @PostConstruct annotated methods when injection is complete.
+ * It does not automatically work out the correct injection/initialization order. 
+ * Injection and post-construct calls will be performed in the order that the bindings are 
+ * added. It creates IoCComponentProviders for injection into Jersey REST resources.
+ */
 public class OTPComponentProviderFactory implements IoCComponentProviderFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTPComponentProviderFactory.class);
