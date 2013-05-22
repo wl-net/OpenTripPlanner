@@ -41,43 +41,43 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
 
-/**
- * This represents a particular stop pattern on a particular route. For example, the N train has at least four different variants: express (over the
- * Manhattan bridge), and local (via lower Manhattan and the tunnel) x to Astoria and to Coney Island. During construction, it sometimes has a fifth
- * variant: along the D line to Coney Island after 59th St (or from Coney Island to 59th).
+/** 
+ * This represents a particular stop pattern on a particular route. For example, the N train has at
+ * least four different variants: express (over the Manhattan bridge), and local (via lower
+ * Manhattan and the tunnel) x to Astoria and to Coney Island. During construction, it sometimes has
+ * a fifth variant: along the D line to Coney Island after 59th St (or from Coney Island to 59th).
  * 
- * This is needed because route names are intended for customer information, but scheduling personnel need to know about where a particular trip
- * actually goes.
+ * RouteVariants are needed because route names are intended for customer information, but scheduling
+ * personnel need to know about where a particular trip actually goes. RouteVariant names are guaranteed
+ * to be unique (among variants for a route) but not stable. They are generated to be as useful as
+ * can be reasonably done by machine. For instance, if a variant is the only variant of the N that
+ * ends at Coney Island, the name will be "N to Coney Island". But if multiple variants end at Coney
+ * Island (but have different stops elsewhere), that name would not be chosen. OTP also tries start
+ * and intermediate stations ("from Coney Island", or "via Whitehall", or even combinations ("from
+ * Coney Island via Whitehall"). But if there is no way to create a unique name from
+ * start/end/intermediate stops, then the best we can do is to create a "like [trip id]" name, which
+ * at least tells you where in the GTFS you can find a related trip.
  * 
- * Variant names are guaranteed to be unique (among variants for a
- * route) but not stable.  They are generated to be as useful as can
- * be reasonably done by machine.  For instance, if a variant is the
- * only variant of the N that ends at Coney Island, the name will be
- * "N to Coney Island".  But if multiple variants end at Coney Island
- * (but have different stops elsewhere), that name would not be
- * chosen.  OTP also tries start and intermediate stations ("from
- * Coney Island", or "via Whitehall", or even combinations ("from
- * Coney Island via Whitehall").  But if there is no way to create a
- * unique name from start/end/intermediate stops, then the best we can
- * do is to create a "like [trip id]" name, which at least tells you
- * where in the GTFS you can find a related trip.
- *
- * @author novalis
- * 
+ * The route and the ordered sequence of stops uniquely identify a RouteVariant (TODO verify statement)
+ * RouteVariants are created by
+ * org.opentripplanner.graph_builder.impl.transit_index.TransitIndexBuilder.createRouteVariants(Graph)
+ * @author novalis 
  */
 @XmlRootElement(name = "RouteVariant")
 public class RouteVariant implements Serializable {
-    private static final Logger _log = LoggerFactory.getLogger(RouteVariant.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RouteVariant.class);
 
     private static final long serialVersionUID = -3110443015998033630L;
 
     /*
-     * This indicates that trips with multipledirection_ids are part of this variant. It should probably never be used, because generally trips making
-     * the same stops in the same order will have the same direction
+     * This indicates that trips with multiple direction_ids are part of this variant. It should 
+     * probably never be used, because generally trips making the same stops in the same order 
+     * will have the same direction
      */
     private static final String MULTIDIRECTION = "[multidirection]";
 
@@ -87,14 +87,16 @@ public class RouteVariant implements Serializable {
 
     private ArrayList<TripsModelInfo> trips;
 
+    /** Ordered??? list of stops distinguishing this RouteSegment from others on this Route */
     private ArrayList<Stop> stops;
 
-    /** An unordered list of all segments for this route */
+    /** An unordered list of all {@link RouteSegment}s for all trips on this RouteVariant (???) */
     @JsonIgnore
     private ArrayList<RouteSegment> segments;
 
     /**
-     * An ordered list of segments that represents one characteristic trip (or trip pattern) on this variant
+     * An ordered list of {@link RouteSegment}s that represents one characteristic trip (or trip 
+     * pattern) on this variant.
      */
     @JsonIgnore
     private ArrayList<RouteSegment> exemplarSegments;
@@ -139,20 +141,20 @@ public class RouteVariant implements Serializable {
         return !exemplarSegments.isEmpty();
     }
 
+    /** Trim arrays to length and place exemplar RouteSegments in order. */
     public void cleanup() {
         trips.trimToSize();
         stops.trimToSize();
         exemplarSegments.trimToSize();
 
-        // topological sort on segments to make sure that they are in order
-
-        // since segments only know about their next edges, we must build a mapping from prior-edge
+        // Topological sort on RouteSegments to make sure that they are in order.
+        // Since segments only know about their next edges, we must build a mapping from prior-edge
         // to segment; while we're at it, we find the first segment.
-        HashMap<Edge, RouteSegment> successors = new HashMap<Edge, RouteSegment>();
+        HashMap<Edge, RouteSegment> successors = Maps.newHashMap();
         RouteSegment segment = null;
         for (RouteSegment s : exemplarSegments) {
             if (s.hopIn == null) {
-                segment = s;
+                segment = s; // grab the first segment in the route
             } else {
                 successors.put(s.hopIn, s);
             }
@@ -164,7 +166,7 @@ public class RouteVariant implements Serializable {
             segment = successors.get(segment.hopOut);
         }
         if (i != exemplarSegments.size()) {
-            _log.error("Failed to organize hops in route variant " + name);
+            LOG.error("Failed to order hops in route variant " + name);
         }
     }
 

@@ -17,9 +17,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.AgencyAndId;
@@ -28,74 +28,65 @@ import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
+import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.util.MapUtils;
 
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class TransitIndexServiceImpl implements TransitIndexService, Serializable {
+    
     private static final long serialVersionUID = -8147894489513820239L;
-
-    private HashMap<String, List<RouteVariant>> variantsByAgency;
-
-    private HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute;
-
-    private HashMap<AgencyAndId, RouteVariant> variantsByTrip;
-
-    private HashMap<AgencyAndId, PreAlightEdge> preAlightEdges;
-
-    private HashMap<AgencyAndId, PreBoardEdge> preBoardEdges;
-
-    private HashMap<AgencyAndId, HashSet<String>> directionsForRoute;
-
-    private HashMap<AgencyAndId, HashSet<Stop>> stopsForRoute;
-
+    private Map<String, List<RouteVariant>> variantsByAgency;
+    private Map<AgencyAndId, List<RouteVariant>> variantsByRoute;
+    private Map<AgencyAndId, RouteVariant> variantsByTrip;
+    private Map<AgencyAndId, PreAlightEdge> preAlightEdgesByStop;
+    private Map<AgencyAndId, PreBoardEdge> preBoardEdgesByStop;
+    private Map<AgencyAndId, HashSet<String>> directionsForRoute;
+    private Map<AgencyAndId, HashSet<Stop>> stopsForRoute;
     private List<TraverseMode> modes;
-
-    private HashMap<String, List<ServiceCalendar>> calendarsByAgency = new HashMap<String, List<ServiceCalendar>>();
-
-    private HashMap<String, List<ServiceCalendarDate>> calendarDatesByAgency = new HashMap<String, List<ServiceCalendarDate>>();
-
-    private HashMap<String, Agency> agencies = new HashMap<String, Agency>();
-
+    private Map<String, List<ServiceCalendar>> calendarsByAgency = Maps.newHashMap();
+    private Map<String, List<ServiceCalendarDate>> calendarDatesByAgency = Maps.newHashMap();
+    private Map<String, Agency> agencies = Maps.newHashMap();
     private Coordinate center;
-
     private int overnightBreak;
 
-    public TransitIndexServiceImpl(HashMap<String, List<RouteVariant>> variantsByAgency,
-            HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute,
-            HashMap<AgencyAndId, RouteVariant> variantsByTrip,
-            HashMap<AgencyAndId, PreBoardEdge> preBoardEdges,
-            HashMap<AgencyAndId, PreAlightEdge> preAlightEdges,
-            HashMap<AgencyAndId, HashSet<String>> directionsByRoute,
-            HashMap<AgencyAndId, HashSet<Stop>> stopsByRoute, List<TraverseMode> modes) {
+    public TransitIndexServiceImpl(
+            Map<String, List<RouteVariant>> variantsByAgency,
+            Map<AgencyAndId, List<RouteVariant>> variantsByRoute,
+            Map<AgencyAndId, RouteVariant> variantsByTrip,
+            Map<AgencyAndId, PreBoardEdge> preBoardEdges,
+            Map<AgencyAndId, PreAlightEdge> preAlightEdges,
+            Map<AgencyAndId, HashSet<String>> directionsByRoute,
+            Map<AgencyAndId, HashSet<Stop>> stopsByRoute, List<TraverseMode> modes) {
         this.variantsByAgency = variantsByAgency;
         this.variantsByRoute = variantsByRoute;
         this.variantsByTrip = variantsByTrip;
-        this.preBoardEdges = preBoardEdges;
-        this.preAlightEdges = preAlightEdges;
+        this.preBoardEdgesByStop = preBoardEdges;
+        this.preAlightEdgesByStop = preAlightEdges;
         this.directionsForRoute = directionsByRoute;
         this.stopsForRoute = stopsByRoute;
         this.modes = modes;
     }
 
-    public void merge(HashMap<String, List<RouteVariant>> variantsByAgency,
-            HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute,
-            HashMap<AgencyAndId, RouteVariant> variantsByTrip,
-            HashMap<AgencyAndId, PreBoardEdge> preBoardEdges,
-            HashMap<AgencyAndId, PreAlightEdge> preAlightEdges,
-            HashMap<AgencyAndId, HashSet<String>> directionsByRoute,
-            HashMap<AgencyAndId, HashSet<Stop>> stopsByRoute, List<TraverseMode> modes) {
+    public void merge(
+            Map<String, List<RouteVariant>> variantsByAgency,
+            Map<AgencyAndId, List<RouteVariant>> variantsByRoute,
+            Map<AgencyAndId, RouteVariant> variantsByTrip,
+            Map<AgencyAndId, PreBoardEdge> preBoardEdges,
+            Map<AgencyAndId, PreAlightEdge> preAlightEdges,
+            Map<AgencyAndId, HashSet<String>> directionsByRoute,
+            Map<AgencyAndId, HashSet<Stop>> stopsByRoute, List<TraverseMode> modes) {
 
         MapUtils.mergeInUnique(this.variantsByAgency, variantsByAgency);
         MapUtils.mergeInUnique(this.variantsByRoute, variantsByRoute);
         this.variantsByTrip.putAll(variantsByTrip);
-        this.preBoardEdges.putAll(preBoardEdges);
-        this.preAlightEdges.putAll(preAlightEdges);
+        this.preBoardEdgesByStop.putAll(preBoardEdges);
+        this.preAlightEdgesByStop.putAll(preAlightEdges);
         MapUtils.mergeInUnique(this.directionsForRoute, directionsByRoute);
         MapUtils.mergeInUnique(this.stopsForRoute, stopsByRoute);
         for (TraverseMode mode : modes) {
@@ -130,12 +121,12 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
 
     @Override
     public PreAlightEdge getPreAlightEdge(AgencyAndId stop) {
-        return preAlightEdges.get(stop);
+        return preAlightEdgesByStop.get(stop);
     }
 
     @Override
     public PreBoardEdge getPreBoardEdge(AgencyAndId stop) {
-        return preBoardEdges.get(stop);
+        return preBoardEdgesByStop.get(stop);
     }
 
     @Override
@@ -195,7 +186,7 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
     @Override
     public List<AgencyAndId> getRoutesForStop(AgencyAndId stop) {
         HashSet<AgencyAndId> out = new HashSet<AgencyAndId>();
-        Edge edge = preBoardEdges.get(stop);
+        Edge edge = preBoardEdgesByStop.get(stop);
         if (edge == null)
             return new ArrayList<AgencyAndId>();
         for (Edge e: edge.getToVertex().getOutgoing()) {

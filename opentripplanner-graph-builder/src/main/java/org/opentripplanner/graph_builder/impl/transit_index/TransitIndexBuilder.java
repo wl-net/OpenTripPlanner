@@ -21,6 +21,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import lombok.Setter;
 
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.AgencyAndId;
@@ -56,51 +59,70 @@ import org.opentripplanner.util.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.internal.Maps;
+import com.beust.jcommander.internal.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
- * Process GTFS to build transit index for use in patching
- * 
- * @author novalis
- * 
+ * TODO more accurate/extensive description.
+ * Analyzes the Graph, extracting additional information about transit service that is used for 
+ * the OTP Transit API, Graph patching, etc. This information is stored in a TransitIndex object
+ * in the Graph's services map.
  */
 public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
-    private static final Logger _log = LoggerFactory.getLogger(TransitIndexBuilder.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TransitIndexBuilder.class);
 
-    private GtfsRelationalDao dao;
+    @Setter private GtfsRelationalDao dao;
 
-    private HashMap<AgencyAndId, RouteVariant> variantsByTrip = new HashMap<AgencyAndId, RouteVariant>();
-
-    private HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute = new HashMap<AgencyAndId, List<RouteVariant>>();
-
-    private HashMap<String, List<RouteVariant>> variantsByAgency = new HashMap<String, List<RouteVariant>>();
-
-    private HashMap<AgencyAndId, PreAlightEdge> preAlightEdges = new HashMap<AgencyAndId, PreAlightEdge>();
-
-    private HashMap<AgencyAndId, PreBoardEdge> preBoardEdges = new HashMap<AgencyAndId, PreBoardEdge>();
-
-    private HashMap<AgencyAndId, HashSet<String>> directionsByRoute = new HashMap<AgencyAndId, HashSet<String>>();
-
-    private HashMap<AgencyAndId, HashSet<Stop>> stopsByRoute = new HashMap<AgencyAndId, HashSet<Stop>>();
+    // TODO Guava multimaps?
+    // TODO ideally rather than duplicating these fields in TransitIndexService, we would just use 
+    // a TransitIndexService directly as a working data structure.
+    private Map<AgencyAndId, RouteVariant> variantsByTrip = Maps.newHashMap();
+    private Map<AgencyAndId, List<RouteVariant>> variantsByRoute = Maps.newHashMap();
+    private Map<String, List<RouteVariant>> variantsByAgency = Maps.newHashMap();
+    private Map<AgencyAndId, PreAlightEdge> preAlightEdgesByStop = Maps.newHashMap();
+    private Map<AgencyAndId, PreBoardEdge> preBoardEdgesByStop = Maps.newHashMap();
+    private Map<AgencyAndId, HashSet<String>> directionsByRoute = Maps.newHashMap();
+    private Map<AgencyAndId, HashSet<Stop>> stopsByRoute = Maps.newHashMap();
 
     List<TraverseMode> modes = new ArrayList<TraverseMode>();
-
-    private HashSet<Edge> handledEdges = new HashSet<Edge>();
-
+    private Set<Edge> handledEdges = Sets.newHashSet();
     private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
-
-    @Override
-    public void setDao(GtfsRelationalDao dao) {
-        this.dao = dao;
-    }
-
+    
     @Override
     public void buildGraph(Graph graph) {
-        _log.debug("Building transit index");
-
+        
+        LOG.debug("Building transit index");
         createRouteVariants(graph);
+        nameRouteVariants();
+        countAndOrderRouteVariants();
+        
+        // Save the RouteVariant information in a TransitIndexService in the Graph.
+        // Create a new one or merge into an existing one.
+        TransitIndexServiceImpl service = (TransitIndexServiceImpl) graph
+                .getService(TransitIndexService.class);
+        if (service == null) {
+            // We could just construct an empty one and merge every time (simpler ctor)
+            service = new TransitIndexServiceImpl(variantsByAgency, variantsByRoute,
+                    variantsByTrip, preBoardEdgesByStop, preAlightEdgesByStop, directionsByRoute, 
+                    stopsByRoute, modes);
+        } else {
+            // How many times is this being called, and isn't the data also accumulating in the 
+            // instance field Maps across GTFS feeds?
+            service.merge(variantsByAgency, variantsByRoute, variantsByTrip, preBoardEdgesByStop,
+                    preAlightEdgesByStop, directionsByRoute, stopsByRoute, modes);
+        }
 
-        nameVariants(variantsByRoute);
+        insertCalendarData(service);
+        addAgencies(service);
+        Coordinate coord = findTransitCenter();
+        service.setCenter(coord);
+        service.setOvernightBreak(findOvernightBreak());
+        graph.putService(TransitIndexService.class, service);
+    }
+
+    /** Output some summary information, and organize the completed RouteVariants. */
+    private int countAndOrderRouteVariants() {
         int totalVariants = 0;
         int totalTrips = 0;
         for (List<RouteVariant> variants : variantsByRoute.values()) {
@@ -110,37 +132,14 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                 totalTrips += variant.getTrips().size();
             }
         }
-        _log.debug("Built transit index: " + variantsByAgency.size() + " agencies, "
-                + variantsByRoute.size() + " routes, " + totalTrips + " trips, " + totalVariants
-                + " variants ");
-
-        TransitIndexServiceImpl service = (TransitIndexServiceImpl) graph
-                .getService(TransitIndexService.class);
-        if (service == null) {
-            service = new TransitIndexServiceImpl(variantsByAgency, variantsByRoute,
-                    variantsByTrip, preBoardEdges, preAlightEdges, directionsByRoute, stopsByRoute,
-                    modes);
-        } else {
-            service.merge(variantsByAgency, variantsByRoute, variantsByTrip, preBoardEdges,
-                    preAlightEdges, directionsByRoute, stopsByRoute, modes);
-        }
-
-        insertCalendarData(service);
-
-        addAgencies(service);
-
-        Coordinate coord = findTransitCenter();
-        service.setCenter(coord);
-
-        service.setOvernightBreak(findOvernightBreak());
-
-        graph.putService(TransitIndexService.class, service);
+        LOG.debug(String.format("Built transit index: %d agencies, %d routes, %d trips, %d variants", 
+                variantsByAgency.size(), variantsByRoute.size(), totalTrips, totalVariants));
+        return totalVariants;
     }
 
     /**
-     * Find the longest consecutive sequence of minutes with no transit stops; this is assumed to be the overnight service break.
-     * 
-     * @return
+     * Find the longest consecutive sequence of minutes with no transit stops; this is assumed to 
+     * be the overnight service break.
      */
     private int findOvernightBreak() {
         final int minutesInDay = 24 * 60;
@@ -207,7 +206,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
      * Find the "transit center" of the graph using a weighted k-means technique
      */
     private Coordinate findTransitCenter() {
-        _log.debug("Finding transit center via k-means");
+        LOG.debug("Finding transit center via k-means");
         final int N = 30;// number of clusters
         final int ITERATIONS = 50;
         Map<Stop, Integer> stopWeight = new HashMap<Stop, Integer>();
@@ -306,7 +305,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
             }
 
         }
-        _log.debug("found transit center");
+        LOG.debug("found transit center");
 
         // the highest-weighted cluster
         return Collections.max(Arrays.asList(centers)).coord;
@@ -318,12 +317,17 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
         }
     }
 
+    /** 
+     * Looks at all transit data in the given Graph, and bundles trips together into 'variants'.
+     * See {@link RouteVariant} for details. 
+     * The state is stored outside this method in instance fields (why?)
+     */
     private void createRouteVariants(Graph graph) {
         TransitBoardAlight tba;
         
         for (TransitVertex gv : IterableLibrary.filter(graph.getVertices(), TransitVertex.class)) {
-            boolean start = false;
-            boolean noStart = false;
+            boolean start = false;   //
+            boolean noStart = false; //
             TableTripPattern pattern = null;
             Trip trip = null;
             for (Edge e : gv.getIncoming()) {
@@ -339,7 +343,6 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                 }
                 if (e instanceof TransitBoardAlight) {
                     tba = (TransitBoardAlight) e;
-
                     if (tba.isBoarding()) {
                         pattern = tba.getPattern();
                         trip = pattern.getExemplar();
@@ -348,16 +351,17 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                 }
                 if (e instanceof PreBoardEdge) {
                     TransitStop stop = (TransitStop) e.getFromVertex();
-                    preBoardEdges.put(stop.getStopId(), (PreBoardEdge) e);
+                    preBoardEdgesByStop.put(stop.getStopId(), (PreBoardEdge) e);
                     start = false;
                 }
                 if (e instanceof PreAlightEdge) {
                     TransitStop stop = (TransitStop) ((PreAlightEdge) e).getToVertex();
-                    preAlightEdges.put(stop.getStopId(), (PreAlightEdge) e);
+                    preAlightEdgesByStop.put(stop.getStopId(), (PreAlightEdge) e);
                     start = false;
                 }
-            }
+            } // END loop over all incoming edges for this transit vertex
             if (start && !noStart) {
+                // this if block is the whole rest of the for loop, the whole rest of the method.
                 RouteVariant variant = variantsByTrip.get(trip.getId());
                 if (variant == null) {
                     variant = addTripToVariant(trip);
@@ -426,10 +430,11 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                     }
                     variant.addSegment(segment);
                 }
-            }
-        }
+            } // END if
+        } // END loop over all transit vertices
     }
 
+    /** Copy the calendar and calendar_dates data from GTFS to the TransitIndexService. */
     private void insertCalendarData(TransitIndexService service) {
         Collection<ServiceCalendar> allCalendars = dao.getAllCalendars();
         service.addCalendars(allCalendars);
@@ -444,7 +449,9 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
         }
     }
 
-    private void nameVariants(HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute) {
+    /** Come up with a name for each RouteVariant, considering all the other RouteVariants for the
+     * same Route. These names are unique within each Route. */
+    private void nameRouteVariants() {
         for (List<RouteVariant> variants : variantsByRoute.values()) {
             Route route = variants.get(0).getRoute();
             String routeName = GtfsLibrary.getRouteName(route);
@@ -458,9 +465,9 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
             }
 
             /* next, do routes have a unique start, end, or via? */
-            HashMap<String, List<RouteVariant>> starts = new HashMap<String, List<RouteVariant>>();
-            HashMap<String, List<RouteVariant>> ends = new HashMap<String, List<RouteVariant>>();
-            HashMap<String, List<RouteVariant>> vias = new HashMap<String, List<RouteVariant>>();
+            Map<String, List<RouteVariant>> starts = Maps.newHashMap();
+            Map<String, List<RouteVariant>> ends = Maps.newHashMap();
+            Map<String, List<RouteVariant>> vias = Maps.newHashMap();
             for (RouteVariant variant : variants) {
                 List<Stop> stops = variant.getStops();
                 MapUtils.addToMapList(starts, getName(stops.get(0)), variant);
@@ -497,9 +504,10 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
             }
 
             /**
-             * now we have the case where no route has a unique start, stop, or via. This can happen if you have a single route which serves trips on
-             * an H-shaped alignment, where trips can start at A or B and end at either C or D, visiting the same sets of stops along the shared
-             * segments.
+             * Now we have the case where no route has a unique start, stop, or via. This can 
+             * happen if you have a single route which serves trips on an H-shaped alignment, where 
+             * trips can start at A or B and end at either C or D, visiting the same sets of stops 
+             * along the shared segments.
              * 
              * <pre>
              *                    A      B
@@ -510,24 +518,24 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
              *                    C      D
              * </pre>
              * 
-             * First, we try unique start + end, then start + via + end, and if that doesn't work, we check for expresses, and finally we use a random
-             * trip's id.
+             * First, we try unique start + end, then start + via + end, and if that doesn't work, 
+             * we check for expresses, and finally we use a random trip's id.
              * 
-             * It can happen if there is an express and a local version of a given line where the local starts and ends at the same place as the
-             * express but makes a strict superset of stops; the local version will get a "via", but the express will be doomed.
+             * It can happen if there is an express and a local version of a given line where the 
+             * local starts and ends at the same place as the express but makes a strict superset 
+             * of stops; the local version will get a "via", but the express will be doomed.
              * 
-             * We can first check for the local/express situation by saying that if there are a subset of routes with the same start/end, and there is
-             * exactly one that can't be named with start/end/via, call it "express".
+             * We can first check for the local/express situation by saying that if there are a 
+             * subset of routes with the same start/end, and there is exactly one that can't be 
+             * named with start/end/via, call it "express".
              * 
-             * Consider the following three trips (A, B, C) along a route with four stops. A is the local, and gets "via stop 3"; B is a limited, and
-             * C is (logically) an express:
+             * Consider the following three trips (A, B, C) along a route with four stops. A is the 
+             * local, and gets "via stop 3"; B is a limited, and C is (logically) an express:
              * 
              * A,B,C -- A,B -- A -- A, B, C
              * 
-             * Here, neither B nor C is nameable. If either were removed, the other would be called "express".
-             * 
-             * 
-             * 
+             * Here, neither B nor C is nameable. If either were removed, the other would be called 
+             * "express".
              */
             for (RouteVariant variant : variants) {
                 if (variant.getName() != null)
