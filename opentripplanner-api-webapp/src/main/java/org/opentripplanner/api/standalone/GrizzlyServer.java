@@ -35,7 +35,7 @@ public class GrizzlyServer {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrizzlyServer.class);
 
-    private static final int PORT = 9090;
+    private static final int PORT = 8080;
 
     public static void main(String[] args) throws IOException {
 
@@ -67,7 +67,8 @@ public class GrizzlyServer {
         //    This is a filesystem path, not classpath.
         //    Files are relative to the project dir, so
         //    from ./ we can reach e.g. target/classes/data-sources.xml
-        httpServer.getServerConfiguration().addHttpHandler(new StaticHttpHandler("./"), "/cp/");
+        final String clientPath = "../opentripplanner-webapp/target/opentripplanner-webapp/";
+        httpServer.getServerConfiguration().addHttpHandler(new StaticHttpHandler(clientPath), "/");
         
         /* RELINQUISH CONTROL TO THE SERVER THREAD */
         try {
