@@ -25,6 +25,7 @@ import org.opentripplanner.routing.services.RemainingWeightHeuristicFactory;
 import org.opentripplanner.routing.services.SPTService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import com.sun.jersey.api.container.ContainerFactory;
 import com.sun.jersey.api.core.PackagesResourceConfig;
@@ -39,6 +40,12 @@ public class GrizzlyServer {
 
     public static void main(String[] args) throws IOException {
 
+        /* CONFIGURE LOGGING */
+        // Remove existing handlers attached to the j.u.l root logger
+        SLF4JBridgeHandler.removeHandlersForRootLogger();  // (since SLF4J 1.6.5)
+        // Bridge j.u.l (used by Jersey) to the SLF4J root logger
+        SLF4JBridgeHandler.install();
+        
         /* CONFIGURE GRIZZLY SERVER */
         LOG.info("Starting OTP Grizzly server...");
         // Rather than use Jersey's GrizzlyServerFactory we will construct it manually, so we can
