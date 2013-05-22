@@ -326,114 +326,114 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
         TransitBoardAlight tba;
         
         for (TransitVertex gv : IterableLibrary.filter(graph.getVertices(), TransitVertex.class)) {
-            boolean start = false;   //
-            boolean noStart = false; //
+            boolean start = false;   // this vertex is possibly at the beginning of a trip
+            boolean noStart = false; // this vertex is definitely not at the beginning of a trip
             TableTripPattern pattern = null;
             Trip trip = null;
             for (Edge e : gv.getIncoming()) {
+                // Loop over all incoming edges recording all pre-board and pre-alight edges.
+                // Also determine whether this vertex is the first one in a trip.
                 if (handledEdges.contains(e)) {
                     continue;
                 }
                 handledEdges.add(e);
-                if (!(e instanceof Edge)) {
-                    continue;
-                }
                 if (e instanceof PatternHop || e instanceof PatternDwell) {
                     noStart = true;
-                }
-                if (e instanceof TransitBoardAlight) {
+                } else if (e instanceof TransitBoardAlight) {
                     tba = (TransitBoardAlight) e;
                     if (tba.isBoarding()) {
                         pattern = tba.getPattern();
                         trip = pattern.getExemplar();
                         start = true;
                     }
-                }
-                if (e instanceof PreBoardEdge) {
+                } else if (e instanceof PreBoardEdge) {
                     TransitStop stop = (TransitStop) e.getFromVertex();
                     preBoardEdgesByStop.put(stop.getStopId(), (PreBoardEdge) e);
                     start = false;
-                }
-                if (e instanceof PreAlightEdge) {
+                } else if (e instanceof PreAlightEdge) {
                     TransitStop stop = (TransitStop) ((PreAlightEdge) e).getToVertex();
                     preAlightEdgesByStop.put(stop.getStopId(), (PreAlightEdge) e);
                     start = false;
                 }
-            } // END loop over all incoming edges for this transit vertex
+            } // END for Edge
             if (start && !noStart) {
-                // this if block is the whole rest of the for loop, the whole rest of the method.
+                // This vertex is an on-board vertex at the beginning of its trip pattern.
                 RouteVariant variant = variantsByTrip.get(trip.getId());
-                if (variant == null) {
-                    variant = addTripToVariant(trip);
-                    if (pattern != null) {
-                        for (Trip trip2 : pattern.getTrips()) {
-                            addModeFromTrip(trip2);
-                            variantsByTrip.put(trip2.getId(), variant);
-                        }
-                      variant.addTrip(trip, pattern.getTrips().size());
-                    } else {
-                      variant.addTrip(trip, 1);
+                if (variant != null) {
+                    continue; // A variant is already stored for this trip
+                }
+                variant = addTripToVariant(trip);
+                if (pattern != null) {
+                    for (Trip trip2 : pattern.getTrips()) {
+                        addModeFromTrip(trip2);
+                        variantsByTrip.put(trip2.getId(), variant);
                     }
+                  variant.addTrip(trip, pattern.getTrips().size());
                 } else {
-                    continue;
+                  variant.addTrip(trip, 1);
                 }
-
-                boolean setExemplar = !variant.isExemplarSet();
-
-                Edge prevHop = null;
-                while (gv != null) {
-                    RouteSegment segment = new RouteSegment(gv.getStopId());
-                    segment.hopIn = prevHop;
-                    for (Edge e : gv.getIncoming()) {
-                        if (e instanceof TransitBoardAlight && 
-                                        ((TransitBoardAlight) e).isBoarding()) {
-                            segment.board = e;
-                        }
-                    }
-                    Collection<Edge> outgoing = gv.getOutgoing();
-                    gv = null;
-                    for (Edge e : outgoing) {
-                        if (e instanceof PatternHop) {
-                            segment.hopOut = e;
-                            gv = (TransitVertex) e.getToVertex();
-                        }
-                        if (e instanceof PatternDwell) {
-                            segment.dwell = e;
-                            for (Edge e2 : e.getToVertex().getIncoming()) {
-                                if (e2 instanceof TransitBoardAlight && 
-                                         ((TransitBoardAlight) e2).isBoarding()) {
-                                    segment.board = e2;
-                                }
-                            }
-                            for (Edge e2 : e.getToVertex().getOutgoing()) {
-                                if (e2 instanceof PatternHop) {
-                                    segment.hopOut = e2;
-                                    gv = (TransitVertex) e2.getToVertex();
-                                }
-                                if (e2 instanceof TransitBoardAlight &&
-                                        !((TransitBoardAlight) e2).isBoarding()) {
-                                    segment.alight = e2;
-                                }
-                            }
-                        }
-                        if (e instanceof PatternInterlineDwell) {
-                            variant.addInterline((PatternInterlineDwell) e);
-                        }
-                        if (e instanceof TransitBoardAlight &&
-                                !((TransitBoardAlight) e).isBoarding()) {
-                            segment.alight = e;
-                        }
-                    }
-                    prevHop = segment.hopOut;
-                    if (setExemplar) {
-                        variant.addExemplarSegment(segment);
-                    }
-                    variant.addSegment(segment);
-                }
+                makeSegments(gv, variant);
             } // END if
-        } // END loop over all transit vertices
+        } // END for TransitVertex
     }
 
+    private void makeSegments(TransitVertex gv, RouteVariant variant) {
+        boolean setExemplar = !variant.isExemplarSet();
+
+        Edge prevHop = null;
+        while (gv != null) {
+            RouteSegment segment = new RouteSegment(gv.getStopId());
+            segment.hopIn = prevHop;
+            for (Edge e : gv.getIncoming()) {
+                if (e instanceof TransitBoardAlight && 
+                                ((TransitBoardAlight) e).isBoarding()) {
+                    segment.board = e;
+                }
+            }
+            Collection<Edge> outgoing = gv.getOutgoing();
+            gv = null;
+            for (Edge e : outgoing) {
+                if (e instanceof PatternHop) {
+                    segment.hopOut = e;
+                    gv = (TransitVertex) e.getToVertex();
+                }
+                if (e instanceof PatternDwell) {
+                    segment.dwell = e;
+                    for (Edge e2 : e.getToVertex().getIncoming()) {
+                        if (e2 instanceof TransitBoardAlight && 
+                                 ((TransitBoardAlight) e2).isBoarding()) {
+                            segment.board = e2;
+                        }
+                    }
+                    for (Edge e2 : e.getToVertex().getOutgoing()) {
+                        if (e2 instanceof PatternHop) {
+                            segment.hopOut = e2;
+                            gv = (TransitVertex) e2.getToVertex();
+                        }
+                        if (e2 instanceof TransitBoardAlight &&
+                                !((TransitBoardAlight) e2).isBoarding()) {
+                            segment.alight = e2;
+                        }
+                    }
+                }
+                if (e instanceof PatternInterlineDwell) {
+                    variant.addInterline((PatternInterlineDwell) e);
+                }
+                if (e instanceof TransitBoardAlight &&
+                        !((TransitBoardAlight) e).isBoarding()) {
+                    segment.alight = e;
+                }
+            }
+            prevHop = segment.hopOut;
+            if (setExemplar) {
+                variant.addExemplarSegment(segment);
+            }
+            variant.addSegment(segment);        
+        }
+    }
+    
+    
+    
     /** Copy the calendar and calendar_dates data from GTFS to the TransitIndexService. */
     private void insertCalendarData(TransitIndexService service) {
         Collection<ServiceCalendar> allCalendars = dao.getAllCalendars();
@@ -604,6 +604,13 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
         return stop.getName() + " (" + stop.getId() + ")";
     }
 
+    /** 
+     * Given a trip, figure out which variant it belongs to, and add it to that variant if it is
+     * not already included. 
+     * TODO this could benefit heavily from Guava, and possibly from using hashcode/equals on 
+     * stop/route sequences.
+     * @return the RouteVariant associated with this trip.
+     */
     private RouteVariant addTripToVariant(Trip trip) {
         // have we seen this trip before?
         RouteVariant variant = variantsByTrip.get(trip.getId());
@@ -624,9 +631,10 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
         List<StopTime> stopTimes = dao.getStopTimesForTrip(trip);
         ArrayList<Stop> stops = new ArrayList<Stop>();
         for (StopTime stopTime : stopTimes) {
-            //nonduplicate stoptimes
+            // nonduplicate stoptimes
+            // why are we not adding the last one?
             if (stops.size() == 0 || !stopTime.getStop().equals(stops.get(stops.size() - 1)))
-            stops.add(stopTime.getStop());
+                stops.add(stopTime.getStop());
         }
 
         // build the list of stops for this route
