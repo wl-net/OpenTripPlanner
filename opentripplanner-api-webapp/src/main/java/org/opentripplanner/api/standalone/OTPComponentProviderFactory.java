@@ -1,5 +1,6 @@
 package org.opentripplanner.api.standalone;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -35,7 +36,19 @@ public class OTPComponentProviderFactory implements IoCComponentProviderFactory 
     private Map<Class<?>, Object> bindings = new HashMap<Class<?>, Object>();
     private List<Object> bindingOrder = new ArrayList<Object>(); 
     private boolean locked = false;
-    
+
+    /** Call the given class's 0-arg constructor and bind the resulting instance. */
+    public void bind(Class<?> klass) {
+        try {
+            Constructor<?> ctor = klass.getDeclaredConstructor();
+            ctor.setAccessible(true);
+            bind(klass, ctor.newInstance());
+        } catch (Exception e) {
+            LOG.error("Unable to invoke 0-arg constructor on {}", klass);
+            e.printStackTrace();
+        }
+    }
+
     public void bind(Class<?> key, Object value) {
         if (locked) {
             LOG.error("Attempt to add a binding to a completed set of bindings.");
