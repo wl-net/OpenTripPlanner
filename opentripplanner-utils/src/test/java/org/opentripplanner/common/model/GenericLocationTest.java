@@ -20,6 +20,8 @@ public class GenericLocationTest {
         assertNull(loc.getLat());
         assertNull(loc.getLng());
         assertNull(loc.getCoordinate());
+        assertFalse(loc.hasName());
+        assertFalse(loc.hasPlace());
     }
 
     @Test
@@ -34,6 +36,8 @@ public class GenericLocationTest {
         
         assertFalse(loc.hasCoordinate());
         assertFalse(loc.hasHeading());
+        assertTrue(loc.hasName());
+        assertTrue(loc.hasPlace());
         assertNull(loc.getLat());
         assertNull(loc.getLng());
         assertNull(loc.getCoordinate());
@@ -48,6 +52,8 @@ public class GenericLocationTest {
         NamedPlace np = loc.getNamedPlace();
         assertEquals("name", np.name);
         assertEquals("1.0,2.5", np.place);
+        assertTrue(loc.hasName());
+        assertTrue(loc.hasPlace());
         
         assertTrue(loc.hasCoordinate());
         assertFalse(loc.hasHeading());
@@ -65,12 +71,25 @@ public class GenericLocationTest {
         NamedPlace np = loc.getNamedPlace();
         assertEquals("name", np.name);
         assertEquals("12345", np.place);
+        assertTrue(loc.hasName());
+        assertTrue(loc.hasPlace());
         
         assertFalse(loc.hasCoordinate());
         assertFalse(loc.hasHeading());
         assertNull(loc.getLat());
         assertNull(loc.getLng());
         assertNull(loc.getCoordinate());
+    }
+
+    @Test
+    public void testFromStringWithEdgeAndHeading() {
+        String s = "40.75542978896869,-73.97618338000376 heading=29.028895183287617 edgeId=2767";
+        GenericLocation loc = GenericLocation.fromOldStyleString(s);
+        assertEquals(29.028895183287617, loc.getHeading(), 0.00001);
+        assertEquals(2767, loc.getEdgeId().intValue());
+        
+        assertEquals(40.75542978896869, loc.getLat(), 0.00001);
+        assertEquals(-73.97618338000376, loc.getLng(), 0.00001);
     }
     
     @Test
@@ -82,6 +101,8 @@ public class GenericLocationTest {
         NamedPlace np = loc.getNamedPlace();
         assertEquals("name", np.name);
         assertEquals("1.0,2.5", np.place);
+        assertTrue(loc.hasName());
+        assertTrue(loc.hasPlace());
         
         assertTrue(loc.hasCoordinate());
         assertFalse(loc.hasHeading());
@@ -119,6 +140,9 @@ public class GenericLocationTest {
         assertEquals("1.0,2.0", loc.toString());
         assertTrue(loc.hasCoordinate());
         assertFalse(loc.hasHeading());
+        
+        assertFalse(loc.hasName());
+        assertFalse(loc.hasPlace());   
     }
     
     @Test
@@ -130,6 +154,9 @@ public class GenericLocationTest {
         assertEquals("1.0,2.0", loc.toString());
         assertTrue(loc.hasCoordinate());
         assertTrue(loc.hasHeading());
+        
+        assertFalse(loc.hasName());
+        assertFalse(loc.hasPlace());
     }
     
     @Test

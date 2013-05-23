@@ -77,6 +77,8 @@ public class OTPServiceImpl implements OTPService.Iface {
     private GraphService graphService;
 
     private PathService pathService;
+    
+    private RoutingRequest prototypeRoutingRequest = new RoutingRequest();
 
     /**
      * Convenience getter for street index.
@@ -104,7 +106,7 @@ public class OTPServiceImpl implements OTPService.Iface {
     
     @Override
     public GraphVerticesResponse GetVertices(GraphVerticesRequest req) throws TException {
-        LOG.info("GetVertices called");
+        LOG.debug("GetVertices called");
         long startTime = System.currentTimeMillis();
 
         GraphVerticesResponse res = new GraphVerticesResponse();
@@ -153,7 +155,7 @@ public class OTPServiceImpl implements OTPService.Iface {
     
     @Override
     public GraphEdgesResponse GetEdges(GraphEdgesRequest req) throws TException {
-        LOG.info("GetEdges called");
+        LOG.debug("GetEdges called");
         long startTime = System.currentTimeMillis();
 
         GraphEdgesResponse res = new GraphEdgesResponse();
@@ -169,11 +171,11 @@ public class OTPServiceImpl implements OTPService.Iface {
         // perspective of the street indes, RoutingRequest is really just
         // a container for the TraversalModes, which is a weird design
         // but it's what we've got to work with.
-        RoutingRequestBuilder rrb = new RoutingRequestBuilder();
+        RoutingRequestBuilder builder = new RoutingRequestBuilder(prototypeRoutingRequest);
         if (q.isSetAllowed_modes()) {
-            rrb.setTravelModes(q.getAllowed_modes());
+            builder.setTravelModes(q.getAllowed_modes());
         }
-        RoutingRequest rr = rrb.build();
+        RoutingRequest rr = builder.build();
 
         // Get the nearest vertex
         StreetVertexIndexService streetVertexIndex = getStreetIndex();
@@ -191,7 +193,7 @@ public class OTPServiceImpl implements OTPService.Iface {
     @Override
     public FindNearestVertexResponse FindNearestVertex(FindNearestVertexRequest req)
             throws TException {
-        LOG.info("FindNearestVertex called");
+        LOG.debug("FindNearestVertex called");
         long startTime = System.currentTimeMillis();
         VertexQuery q = req.getQuery();
         VertexResult result = findNearbyVertex(q);
@@ -205,7 +207,7 @@ public class OTPServiceImpl implements OTPService.Iface {
     @Override
     public BulkFindNearestVertexResponse BulkFindNearestVertex(BulkFindNearestVertexRequest req)
             throws TException {
-        LOG.info("BulkFindNearestVertex called");
+        LOG.debug("BulkFindNearestVertex called");
         long startTime = System.currentTimeMillis();
         
         BulkFindNearestVertexResponse res = new BulkFindNearestVertexResponse();
@@ -251,7 +253,7 @@ public class OTPServiceImpl implements OTPService.Iface {
     
     @Override
     public FindNearestEdgesResponse FindNearestEdges(FindNearestEdgesRequest req) throws TException {
-        LOG.info("FindNearestEdges called");
+        LOG.debug("FindNearestEdges called");
         long startTime = System.currentTimeMillis();
 
         NearestEdgesQuery q = req.getQuery();
@@ -266,7 +268,7 @@ public class OTPServiceImpl implements OTPService.Iface {
     @Override
     public BulkFindNearestEdgesResponse BulkFindNearestEdges(BulkFindNearestEdgesRequest req)
             throws TException {
-        LOG.info("BulkFindNearestEdges called");
+        LOG.debug("BulkFindNearestEdges called");
         long startTime = System.currentTimeMillis();
 
         BulkFindNearestEdgesResponse res = new BulkFindNearestEdgesResponse();
@@ -287,14 +289,22 @@ public class OTPServiceImpl implements OTPService.Iface {
      */
     private TripPaths computePaths(TripParameters trip, PathOptions pathOptions) {
         // Build the RoutingRequest. For now, get only one itinerary.
-        RoutingRequest options = (new RoutingRequestBuilder(trip))
-                .setGraph(graphService.getGraph()).setNumItineraries(pathOptions.getNum_paths())
+        RoutingRequest options = (new RoutingRequestBuilder(prototypeRoutingRequest))
+                .addTripParameters(trip)
+                .setGraph(graphService.getGraph())
+                .setNumItineraries(pathOptions.getNum_paths())
                 .build();
 
         // For now, always use the default router.
         options.setRouterId("");
 
+        // TODO(flamholz): respect the return_detailed_path option.
         List<GraphPath> paths = pathService.getPaths(options);
+        if (paths == null || paths.size() == 0) {
+            LOG.warn("Found 0 paths for trip {}", trip);
+            LOG.warn("Origin {}", options.getFrom());
+            LOG.warn("Destination {}", options.getTo());
+        }        
         TripPathsExtension tripPaths = new TripPathsExtension(trip, paths);
 
         // Need to call RoutingRequest.cleanup() to cleanup the temp edges.
@@ -304,7 +314,7 @@ public class OTPServiceImpl implements OTPService.Iface {
 
     @Override
     public FindPathsResponse FindPaths(FindPathsRequest req) throws TException {
-        LOG.info("FindPaths called");
+        LOG.debug("FindPaths called");
         long startTime = System.currentTimeMillis();
 
         TripParameters trip = req.getTrip();
@@ -322,7 +332,7 @@ public class OTPServiceImpl implements OTPService.Iface {
 
     @Override
     public BulkPathsResponse BulkFindPaths(BulkPathsRequest req) throws TException {
-        LOG.info("BulkFindPaths called");
+        LOG.debug("BulkFindPaths called");
         long startTime = System.currentTimeMillis();
 
         PathOptions pathOptions = req.getOptions();

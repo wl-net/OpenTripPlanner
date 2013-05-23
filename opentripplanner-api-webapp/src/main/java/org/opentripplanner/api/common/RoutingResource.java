@@ -109,13 +109,19 @@ public abstract class RoutingResource {
     /** The maximum number of possible itineraries to return. */
     @DefaultValue("-1") @QueryParam("numItineraries") protected List<Integer> numItineraries;
 
-    /** The list of preferred routes.  The format is agency_route, so TriMet_100. */
+    /**
+     * The list of preferred routes. The format is agency_[routename][_routeid], so TriMet_100 (100 is route short name) or Trimet__42 (two
+     * underscores, 42 is the route internal ID).
+     */
     @DefaultValue("") @QueryParam("preferredRoutes") protected List<String> preferredRoutes;
     
     /** The comma-separated list of preferred agencies. */
     @DefaultValue("") @QueryParam("preferredAgencies") protected List<String> preferredAgencies;
     
-    /** The list of unpreferred routes.  The format is agency_route, so TriMet_100. */
+    /**
+     * The list of unpreferred routes. The format is agency_[routename][_routeid], so TriMet_100 (100 is route short name) or Trimet__42 (two
+     * underscores, 42 is the route internal ID).
+     */
     @DefaultValue("") @QueryParam("unpreferredRoutes") protected List<String> unpreferredRoutes;
     
     /** The comma-separated list of unpreferred agencies. */
@@ -127,7 +133,10 @@ public abstract class RoutingResource {
      *  Atlantic Avenue should be included. */
     @DefaultValue("false") @QueryParam("showIntermediateStops") protected List<Boolean> showIntermediateStops;
 
-    /** The comma-separated list of banned routes.  The format is agency_route, so TriMet_100. */
+    /**
+     * The comma-separated list of banned routes. The format is agency_[routename][_routeid], so TriMet_100 (100 is route short name) or Trimet__42
+     * (two underscores, 42 is the route internal ID).
+     */
     @DefaultValue("") @QueryParam("bannedRoutes") protected List<String> bannedRoutes;
     
     /** The comma-separated list of banned agencies. */
@@ -297,8 +306,8 @@ public abstract class RoutingResource {
             request.setBannedTrips(bannedTripMap);
         }
         
-        // replace deprecated optimization preference
-        // opt has already been assigned above
+        // "Least transfers" optimization is accomplished via an increased transfer penalty.
+        // See comment on RoutingRequest.transferPentalty.
         if (opt == OptimizeType.TRANSFERS) {
             opt = OptimizeType.QUICK;
             request.setTransferPenalty(get(transferPenalty, n, 0) + 1800);
@@ -392,6 +401,17 @@ public abstract class RoutingResource {
     }
 
 /**
+ * Gets the nth item in a list, or the item with the highest index if there are less than n 
+ * elements, or the default value if the list is empty or null.
+ * Throughout buildRequest() you will see the following idiom:
+ * request.setParamX(get(paramX, n, request.getParamX));
+ * 
+ * This checks a query parameter field from Jersey (which is a list, one element for each occurrence
+ * of the parameter in the query string) for the nth occurrence, or the one with the highest index.
+ * If a parameter was supplied, it replaces the value in the RoutingRequest under construction 
+ * (which was cloned from the prototypeRoutingRequest). If not, it uses the value already in that
+ * RoutingRequest as a default (i.e. it uses the value cloned from the PrototypeRoutingRequest). 
+ * 
  * @param l list of query parameter values
  * @param n requested item index 
  * @return nth item if it exists, closest existing item otherwise, or defaultValue if the list l 

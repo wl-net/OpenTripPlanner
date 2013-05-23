@@ -12,12 +12,12 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 package org.opentripplanner.api.ws;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.UriInfo;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.codehaus.jettison.json.JSONException;
@@ -28,6 +28,7 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import com.sun.jersey.api.spring.Autowire;
 
 /**
@@ -45,16 +46,18 @@ import com.sun.jersey.api.spring.Autowire;
  * 
  * @throws JSONException
  */
-@Path("/plan") // NOTE - /ws/plan is the full path -- see web.xml
+@Path("/plan") // NOTE - /ws/plan is the full path. The prefix is added by the servlet's web.xml.
 @XmlRootElement
 @Autowire
 public class Planner extends RoutingResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(Planner.class);
     @Autowired public PlanGenerator planGenerator;
-    @Context protected HttpServletRequest httpServletRequest;
-
-    /** Java is immensely painful */
+    // We inject info about the incoming request so we can include the incoming query 
+    // parameters in the outgoing response. This is a TriMet requirement.
+    @Context UriInfo uriInfo;
+    
+    /** Java is immensely painful. TODO: Guava should cover this. */
     interface OneArgFunc<T,U> {
         public T call(U arg);
     }
@@ -69,7 +72,7 @@ public class Planner extends RoutingResource {
          */
         
         // create response object, containing a copy of all request parameters
-        Response response = new Response(httpServletRequest);
+        Response response = new Response(uriInfo);
         RoutingRequest request = null;
         try {
             // fill in request from query parameters via shared superclass method

@@ -106,8 +106,23 @@ public class TransitIndex {
     }
 
     /**
-     * Return data about a route, such as its variants and directions, that OneBusAway's API doesn't handle
-     */
+
+     Return data about a route, such as its names, color, variants,
+     stops, and directions.
+
+     A variant represents a particular stop pattern (ordered list of
+     stops) on a particular route. For example, the N train has at
+     least four different variants: express (over the Manhattan
+     bridge), and local (via lower Manhattan and the tunnel) x to
+     Astoria and to Coney Island.
+
+     Variant names are machine-generated, and are guaranteed to be
+     unique (among variants for a route) but not stable across graph
+     builds.
+
+     A route's stops include stops made by any variant of the route.
+
+    */
     @GET
     @Path("/routeData")
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
@@ -509,7 +524,7 @@ public class TransitIndex {
                 if (state.getBackTrip().getId().equals(trip)) {
                     start = segment;
                     StopTime st = new StopTime();
-                    st.time = state.getTime();
+                    st.time = state.getTimeSeconds();
                     for (org.onebusaway.gtfs.model.Stop stop : variant.getStops())
                         if (stop.getId().equals(segment.stop)) {
                             st.stop = new StopType(stop, extended);
@@ -525,10 +540,10 @@ public class TransitIndex {
 
         for (RouteSegment segment : variant.segmentsAfter(start)) {
             // TODO: verify options/state init correctness
-            State s0 = new State(segment.hopIn.getFromVertex(), state.getTime(), options);
+            State s0 = new State(segment.hopIn.getFromVertex(), state.getTimeSeconds(), options);
             state = segment.hopIn.traverse(s0);
             StopTime st = new StopTime();
-            st.time = state.getTime();
+            st.time = state.getTimeSeconds();
             for (org.onebusaway.gtfs.model.Stop stop : variant.getStops())
                 if (stop.getId().equals(segment.stop))
                     if (stop.getId().equals(segment.stop)) {
@@ -553,7 +568,7 @@ public class TransitIndex {
             result = e.traverse(s0);
             if (result == null)
                 break;
-            time = result.getTime();
+            time = result.getTimeSeconds();
             if (time > endTime)
                 break;
             StopTime stopTime = new StopTime();
@@ -578,7 +593,7 @@ public class TransitIndex {
             result = e.traverse(s0);
             if (result == null)
                 break;
-            time = result.getTime();
+            time = result.getTimeSeconds();
             if (time < startTime)
                 break;
             StopTime stopTime = new StopTime();
@@ -643,15 +658,15 @@ public class TransitIndex {
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
     public Object stopsInRectangle(@QueryParam("agency") String agency,
             @QueryParam("leftUpLat") Double leftUpLat, @QueryParam("leftUpLon") Double leftUpLon,
-            @QueryParam("rightUpLat") Double rightUpLat,
-            @QueryParam("rightUpLon") Double rightUpLon, @QueryParam("extended") Boolean extended,
+            @QueryParam("rightDownLat") Double rightDownLat,
+            @QueryParam("rightDownLon") Double rightDownLon, @QueryParam("extended") Boolean extended,
             @QueryParam("routerId") String routerId) throws JSONException {
 
         Graph graph = getGraph(routerId);
         StopList response = new StopList();
 
         StreetVertexIndexService streetVertexIndexService = graph.streetIndex;
-        if (leftUpLat == null || leftUpLon == null || rightUpLat == null || rightUpLon == null) {
+        if (leftUpLat == null || leftUpLon == null || rightDownLat == null || rightDownLon == null) {
             double METERS_PER_DEGREE_LAT = 111111;
             double distance = 2000;
             for (Vertex gv : graph.getVertices()) {
@@ -667,8 +682,8 @@ public class TransitIndex {
                 }
             }
         } else {
-            Coordinate cOne = new Coordinate(leftUpLat, leftUpLon);
-            Coordinate cTwo = new Coordinate(rightUpLat, rightUpLon);
+            Coordinate cOne = new Coordinate(leftUpLon, leftUpLat);
+            Coordinate cTwo = new Coordinate(rightDownLon, rightDownLat);
             List<TransitStop> stops = streetVertexIndexService.getNearbyTransitStops(cOne, cTwo);
             TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
             if (transitIndexService == null) {

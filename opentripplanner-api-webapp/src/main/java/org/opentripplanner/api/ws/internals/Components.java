@@ -14,7 +14,6 @@
 package org.opentripplanner.api.ws.internals;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
 import javax.ws.rs.DefaultValue;
@@ -28,10 +27,9 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.opentripplanner.api.model.internals.GraphComponent;
 import org.opentripplanner.api.model.internals.GraphComponentPolygons;
 import org.opentripplanner.internals.AnalysisUtils;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.core.RouteSpec;
-import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseModeSet;
+import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.util.DateUtils;
 import org.springframework.beans.factory.annotation.Required;
@@ -86,16 +84,8 @@ public class Components {
             @QueryParam("routerId") String routerId) {
 
         RoutingRequest options = new RoutingRequest(modes);
-        options.bannedRoutes = new HashSet<RouteSpec>();
         if (bannedRoutes.length() > 0) {
-            for (String element : bannedRoutes.split(",")) {
-                String[] routeSpec = element.split("_", 2);
-                if (routeSpec.length != 2) {
-                    throw new IllegalArgumentException(
-                            "AgencyId or routeId not set in bannedRoutes list");
-                }
-                options.bannedRoutes.add(new RouteSpec(routeSpec[0], routeSpec[1]));
-            }
+            options.setBannedRoutes(bannedRoutes);
         }
 
         Graph graph = graphService.getGraph(routerId);

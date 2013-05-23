@@ -60,7 +60,11 @@ public class EarliestArrivalSPTService implements SPTService {
         options.setMaxWalkDistance(Double.MAX_VALUE);
         if (options.getClampInitialWait() < 0)
             options.setClampInitialWait(60 * 30);
-
+        
+        // impose search cutoff
+        final long maxt = (60 * 60 * 2) + options.getClampInitialWait();
+        options.worstTime = options.dateTime + (options.arriveBy ? -maxt : maxt);
+            
         // SPT cache does not look at routing request in SPT to perform lookup, 
         // so it's OK to construct with the local cloned one
         ShortestPathTree spt = new EarliestArrivalShortestPathTree(options); 
@@ -93,9 +97,9 @@ public class EarliestArrivalSPTService implements SPTService {
     // Move this into State
     private boolean isWorstTimeExceeded(State v, RoutingRequest opt) {
         if (opt.isArriveBy())
-            return v.getTime() < opt.worstTime;
+            return v.getTimeSeconds() < opt.worstTime;
         else
-            return v.getTime() > opt.worstTime;
+            return v.getTimeSeconds() > opt.worstTime;
     }
 
 }
