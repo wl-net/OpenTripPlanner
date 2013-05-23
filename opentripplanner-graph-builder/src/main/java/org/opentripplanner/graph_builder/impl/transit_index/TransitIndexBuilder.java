@@ -25,6 +25,7 @@ import java.util.Set;
 
 import lombok.Setter;
 
+import org.opentripplanner.routing.edgetype.FrequencyBoard;
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
@@ -42,8 +43,8 @@ import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.PatternInterlineDwell;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
-import org.opentripplanner.routing.edgetype.PatternDwell;
-import org.opentripplanner.routing.edgetype.PatternHop;
+import org.opentripplanner.routing.edgetype.DwellEdge;
+import org.opentripplanner.routing.edgetype.HopEdge;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
 import org.opentripplanner.routing.edgetype.TableTripPattern;
@@ -62,6 +63,9 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.internal.Maps;
 import com.beust.jcommander.internal.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import org.opentripplanner.routing.edgetype.FrequencyHop;
+import org.opentripplanner.routing.edgetype.FrequencyDwell;
 
 /**
  * TODO more accurate/extensive description.
@@ -92,7 +96,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
     @Override
     public void buildGraph(Graph graph) {
         
-        LOG.debug("Building transit index");
+        LOG.info("Building transit index");
         createRouteVariants(graph);
         nameRouteVariants();
         countAndOrderRouteVariants();
@@ -132,7 +136,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                 totalTrips += variant.getTrips().size();
             }
         }
-        LOG.debug(String.format("Built transit index: %d agencies, %d routes, %d trips, %d variants", 
+        LOG.info(String.format("Built transit index: %d agencies, %d routes, %d trips, %d variants", 
                 variantsByAgency.size(), variantsByRoute.size(), totalTrips, totalVariants));
         return totalVariants;
     }
@@ -320,7 +324,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
     /** 
      * Looks at all transit data in the given Graph, and bundles trips together into 'variants'.
      * See {@link RouteVariant} for details. 
-     * The state is stored outside this method in instance fields (why?)
+     * The state is stored outside this method in instance fields.
      */
     private void createRouteVariants(Graph graph) {
         TransitBoardAlight tba;
@@ -337,8 +341,8 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                     continue;
                 }
                 handledEdges.add(e);
-                if (e instanceof PatternHop || e instanceof PatternDwell) {
-                    noStart = true;
+                if (e instanceof HopEdge || e instanceof DwellEdge) {
+                        noStart = true;
                 } else if (e instanceof TransitBoardAlight) {
                     tba = (TransitBoardAlight) e;
                     if (tba.isBoarding()) {
@@ -346,6 +350,10 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                         trip = pattern.getExemplar();
                         start = true;
                     }
+                } else if (e instanceof FrequencyBoard) {
+                    pattern = null;
+                    trip = ((FrequencyBoard) e).getPattern().getTrip();
+                    start = true;
                 } else if (e instanceof PreBoardEdge) {
                     TransitStop stop = (TransitStop) e.getFromVertex();
                     preBoardEdgesByStop.put(stop.getStopId(), (PreBoardEdge) e);
@@ -393,11 +401,11 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
             Collection<Edge> outgoing = gv.getOutgoing();
             gv = null;
             for (Edge e : outgoing) {
-                if (e instanceof PatternHop) {
+                if (e instanceof HopEdge) {
                     segment.hopOut = e;
                     gv = (TransitVertex) e.getToVertex();
                 }
-                if (e instanceof PatternDwell) {
+                if (e instanceof DwellEdge) {
                     segment.dwell = e;
                     for (Edge e2 : e.getToVertex().getIncoming()) {
                         if (e2 instanceof TransitBoardAlight && 
@@ -406,7 +414,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                         }
                     }
                     for (Edge e2 : e.getToVertex().getOutgoing()) {
-                        if (e2 instanceof PatternHop) {
+                        if (e2 instanceof HopEdge) {
                             segment.hopOut = e2;
                             gv = (TransitVertex) e2.getToVertex();
                         }

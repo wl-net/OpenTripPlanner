@@ -13,6 +13,8 @@
 
 package org.opentripplanner.routing.edgetype;
 
+import lombok.Getter;
+
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.core.RoutingContext;
 import org.opentripplanner.routing.core.RoutingRequest;
