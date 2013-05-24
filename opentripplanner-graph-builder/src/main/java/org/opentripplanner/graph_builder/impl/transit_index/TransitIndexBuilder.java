@@ -371,6 +371,7 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                     continue; // A variant is already stored for this trip
                 }
                 variant = addTripToVariant(trip);
+                addModeFromTrip(trip);
                 if (pattern != null) {
                     for (Trip trip2 : pattern.getTrips()) {
                         addModeFromTrip(trip2);
@@ -378,7 +379,9 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
                     }
                   variant.addTrip(trip, pattern.getTrips().size());
                 } else {
-                  variant.addTrip(trip, 1);
+                  // handle freq patterns, which have only one trip
+                  // maybe all patterns (freq or table) should have getTrips() in common interface 
+                  variant.addTrip(trip, 1); 
                 }
                 makeSegments(gv, variant);
             } // END if
@@ -452,8 +455,8 @@ public class TransitIndexBuilder implements GraphBuilderWithGtfsDao {
 
     private void addModeFromTrip(Trip trip) {
         TraverseMode mode = GtfsLibrary.getTraverseMode(trip.getRoute());
-        if (!modes.contains(mode)) {
-            modes.add(mode);
+        if (!modes.contains(mode)) { // looks like it should be a set
+            modes.add(mode); 
         }
     }
 

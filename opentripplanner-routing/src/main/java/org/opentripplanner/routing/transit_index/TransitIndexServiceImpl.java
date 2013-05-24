@@ -28,6 +28,7 @@ import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.edgetype.FrequencyBoard;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
@@ -195,6 +196,10 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
                 for (Trip t : board.getPattern().getTrips()) {
                     out.add(t.getRoute().getId());
                 }
+            }
+            if (e instanceof FrequencyBoard) {
+                // this could benefit from all patterns being required to belong to a single route
+                out.add(((FrequencyBoard)e).getPattern().getTrip().getRoute().getId());
             }
         }
         return new ArrayList<AgencyAndId>(out);
