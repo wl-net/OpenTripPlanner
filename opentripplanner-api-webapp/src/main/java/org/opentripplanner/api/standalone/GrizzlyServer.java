@@ -3,6 +3,8 @@ package org.opentripplanner.api.standalone;
 import java.io.IOException;
 import java.net.BindException;
 
+import lombok.Setter;
+
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
@@ -36,10 +38,11 @@ public class GrizzlyServer {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrizzlyServer.class);
 
-    private static final int PORT = 8080;
+    @Setter private int port = 8080;
+    @Setter private String graphDirectory = "/var/otp/graphs/";
+    @Setter private String defaultRouterId = "";
 
-    public static void main(String[] args) throws IOException {
-
+    public void start(String[] args) {
         /* CONFIGURE LOGGING */
         // Remove existing handlers attached to the j.u.l root logger
         SLF4JBridgeHandler.removeHandlersForRootLogger();  // (since SLF4J 1.6.5)
@@ -48,12 +51,14 @@ public class GrizzlyServer {
         
         /* CONFIGURE GRIZZLY SERVER */
         LOG.info("Starting OTP Grizzly server...");
-        // Rather than use Jersey's GrizzlyServerFactory we will construct it manually, so we can
+        if (args.length > 2)
+            port = Integer.parseInt(args[2]);
+        // Rather than use Jersey's GrizzlyServerFactory we will construct one manually, so we can
         // set the number of threads, etc.
         HttpServer httpServer = new HttpServer();
-        NetworkListener networkListener = new NetworkListener("sample-listener", "localhost", PORT);
+        NetworkListener networkListener = new NetworkListener("sample-listener", "localhost", port);
         ThreadPoolConfig threadPoolConfig = ThreadPoolConfig.defaultConfig()
-                .setCorePoolSize(2).setMaxPoolSize(4);
+                .setCorePoolSize(1).setMaxPoolSize(Runtime.getRuntime().availableProcessors());
         networkListener.getTransport().setWorkerThreadPoolConfig(threadPoolConfig);
         httpServer.addListener(networkListener);
         ResourceConfig rc = new PackagesResourceConfig("org.opentripplanner");
@@ -83,11 +88,17 @@ public class GrizzlyServer {
             LOG.info("Grizzly server running.");
             Thread.currentThread().join();
         } catch (BindException be) {
-            LOG.error("Cannot bind to port {}. Is it already in use?", PORT);
+            LOG.error("Cannot bind to port {}. Is it already in use?", port);
+        } catch (IOException ioe) {
+            LOG.error("IO exception while starting server.");
         } catch (InterruptedException ie) {
             httpServer.stop();
         }
         
+    }
+    
+    public static void main(String[] args) {
+        (new GrizzlyServer()).start(args);
     }
     
 }
