@@ -238,6 +238,9 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
     }
 
     private State doTraverse(State s0, RoutingRequest options, TraverseMode traverseMode) {
+        boolean walkingBike = options.isWalkingBike();
+        boolean backWalkingBike = s0.isBackWalkingBike();
+        TraverseMode backMode = s0.getBackMode();
         Edge backEdge = s0.getBackEdge();
         if (backEdge != null) {
             // No illegal U-turns.
@@ -249,6 +252,10 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
                 return null;
             }
         }
+
+        // Ensure we are actually walking, when walking a bike
+        backWalkingBike &= TraverseMode.WALK.equals(backMode);
+        walkingBike &= TraverseMode.WALK.equals(traverseMode);
 
         if (!canTraverse(options, traverseMode)) {
             if (traverseMode == TraverseMode.BICYCLE) {
@@ -300,7 +307,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
                 weight = length / speed;
             }
         } else {
-            if (options.isWalkingBike()) {
+            if (walkingBike) {
                 // take slopes into account when walking bikes
                 time = elevationProfileSegment.getSlopeSpeedEffectiveLength() / speed;
             }
@@ -330,6 +337,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         
         StateEditor s1 = s0.edit(this);
         s1.setBackMode(traverseMode);
+        s1.setBackWalkingBike(walkingBike);
 
         if (wheelchairNotes != null && options.wheelchairAccessible) {
             s1.addAlerts(wheelchairNotes);
@@ -388,6 +396,14 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         s1.incrementTimeInSeconds(timeLong);
         
         s1.incrementWeight(weight);
+
+        if (walkingBike || TraverseMode.BICYCLE.equals(traverseMode)) {
+            if (!(backWalkingBike || TraverseMode.BICYCLE.equals(backMode))) {
+                s1.incrementTimeInSeconds(options.bikeSwitchTime);
+                s1.incrementWeight(options.bikeSwitchCost);
+            }
+        }
+
         if (!traverseMode.isDriving()) {
             s1.incrementWalkDistance(length);
         }
