@@ -127,8 +127,10 @@ public class PlanGenerator {
                 }
                 Leg firstLeg = i.legs.get(0);
                 firstLeg.from.orig = options.getFrom().getName();
+                firstLeg.startTime = i.startTime;
                 Leg lastLeg = i.legs.get(i.legs.size() - 1);
                 lastLeg.to.orig = options.getTo().getName();
+                lastLeg.endTime = i.endTime;
             }
         }
 
