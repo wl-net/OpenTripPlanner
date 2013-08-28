@@ -773,7 +773,7 @@ otp.modules.fieldtrip.FieldTripModule =
         return true;
     },
     
-    addNote: function(request, note) {
+    addNote: function(request, note, type) {
         var this_ = this;
 
         $.ajax(this.datastoreUrl+'/fieldtrip/addNote', {
@@ -783,6 +783,7 @@ otp.modules.fieldtrip.FieldTripModule =
                 sessionId : this.sessionManager.sessionId,
                 requestId : request.id,
                 'note.note' : note,
+                'note.type' : type,
                 'note.userName' : this.sessionManager.username,
             },
             
@@ -819,6 +820,28 @@ otp.modules.fieldtrip.FieldTripModule =
         });
     },
         
+    setRequestDate: function(request, date) {
+        var this_ = this;
+
+        $.ajax(this.datastoreUrl+'/fieldtrip/setRequestDate', {
+            type: 'POST',
+            
+            data: {
+                sessionId : this.sessionManager.sessionId,
+                requestId : request.id,
+                date: moment(date).format("MM/DD/YYYY")
+            },
+            
+            success: function(data) {
+                this_.loadRequests();
+            },
+            
+            error: function(data) {
+                console.log("error updating request date");
+                console.log(data);
+            }
+        });
+    },    
     
 });
 

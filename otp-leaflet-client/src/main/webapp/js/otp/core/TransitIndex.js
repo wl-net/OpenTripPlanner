@@ -18,21 +18,52 @@ otp.core.TransitIndex = otp.Class({
 
     webapp          : null,
 
+    agencies        : null,
     routes          : null,
-    routesLoaded    : false,
     
     initialize : function(webapp) {
         this.webapp = webapp;
     },
-    
-    loadRoutes : function(callbackTarget, callback) {
+
+    loadAgencies : function(callbackTarget, callback) {
         var this_ = this;
-        if(this.routesLoaded) {
+        if(this.agencies) {
             if(callback) callback.call(callbackTarget);
             return;
         }
         
-        var url = otp.config.hostname + '/otp-rest-servlet/ws/transit/routes';
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/agencyIds';
+        $.ajax(url, {
+            dataType:   'jsonp',
+            
+            data: {
+                extended: 'true',
+            },
+                
+            success: function(data) {
+                this_.agencies = {};
+
+                for(var i=0; i<data.agencies.length; i++) {
+                    var agencyData = data.agencies[i];
+                    this_.agencies[agencyData.id] = {
+                        index : i,
+                        agencyData : agencyData,
+                    };
+                }
+
+                if(callback) callback.call(callbackTarget);
+            }            
+        });
+    },
+
+    loadRoutes : function(callbackTarget, callback) {
+        var this_ = this;
+        if(this.routes) {
+            if(callback) callback.call(callbackTarget);
+            return;
+        }
+        
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/routes';
         $.ajax(url, {
             dataType:   'jsonp',
             
@@ -49,7 +80,7 @@ otp.core.TransitIndex = otp.Class({
                 sortedRoutes.sort(function(a,b) {
                     a = a.routeShortName || a.routeLongName;
                     b = b.routeShortName || b.routeLongName;
-                    if(otp.util.Text.isNumber(a) && otp.util.Text.isNumber(a)) {
+                    if(otp.util.Text.isNumber(a) && otp.util.Text.isNumber(b)) {
                         if(parseFloat(a) < parseFloat(b)) return -1;
                         if(parseFloat(a) > parseFloat(b)) return 1;
                         return 0;
@@ -70,7 +101,6 @@ otp.core.TransitIndex = otp.Class({
                     };
                 }
                 this_.routes = routes;
-                this_.routesLoaded = true;
                 if(callback) callback.call(callbackTarget);
             }            
         });        
@@ -85,7 +115,7 @@ otp.core.TransitIndex = otp.Class({
             return;
         }
 
-        var url = otp.config.hostname + '/otp-rest-servlet/ws/transit/routeData';
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/routeData';
         $.ajax(url, {
             data: {
                 agency : route.routeData.id.agencyId,
@@ -111,7 +141,7 @@ otp.core.TransitIndex = otp.Class({
     
     readVariantForTrip : function(tripAgency, tripId, callbackTarget, callback) {
     
-        var url = otp.config.hostname + '/otp-rest-servlet/ws/transit/variantForTrip';
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/variantForTrip';
         $.ajax(url, {
             data: {
                 tripAgency : tripAgency,
@@ -162,7 +192,7 @@ otp.core.TransitIndex = otp.Class({
             params.routerId = otp.config.routerId;
         }
         
-        var url = otp.config.hostname + '/otp-rest-servlet/ws/transit/stopTimesForStop';
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/stopTimesForStop';
         $.ajax(url, {
             data:       params,
             dataType:   'jsonp',
@@ -193,7 +223,7 @@ otp.core.TransitIndex = otp.Class({
             params.routerId = otp.config.routerId;
         }
         
-        var url = otp.config.hostname + '/otp-rest-servlet/ws/transit/stopTimesForStop';
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/stopTimesForStop';
         $.ajax(url, {
             data:       params,
             dataType:   'jsonp',
@@ -219,7 +249,7 @@ otp.core.TransitIndex = otp.Class({
             params.routerId = otp.config.routerId;
         }
         
-        var url = otp.config.hostname + '/otp-rest-servlet/ws/transit/stopsInRectangle';
+        var url = otp.config.hostname + '/' + otp.config.restService + '/ws/transit/stopsInRectangle';
         $.ajax(url, {
             data:       params,
             dataType:   'jsonp',
