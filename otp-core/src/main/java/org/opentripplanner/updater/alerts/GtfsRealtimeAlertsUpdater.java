@@ -26,7 +26,7 @@ import org.opentripplanner.updater.PollingGraphUpdater;
 import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.transit.realtime.GtfsRealtime;
+import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 
 /**
  * GTFS-RT alerts updater
@@ -97,7 +97,7 @@ public class GtfsRealtimeAlertsUpdater extends PollingGraphUpdater {
                 throw new RuntimeException("Failed to get data from url " + url);
             }
 
-            final GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.PARSER.parseFrom(data);
+            final FeedMessage feed = FeedMessage.PARSER.parseFrom(data);
 
             long feedTimestamp = feed.getHeader().getTimestamp();
             if (feedTimestamp <= lastTimestamp) {

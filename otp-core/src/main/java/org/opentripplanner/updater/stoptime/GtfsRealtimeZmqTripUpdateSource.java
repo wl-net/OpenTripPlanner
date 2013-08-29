@@ -26,7 +26,6 @@ import org.opentripplanner.updater.PreferencesConfigurable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 
 /**
@@ -55,7 +54,7 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
         try {
             InputStream is = new FileInputStream(file);
             if (is != null) {
-                feed = GtfsRealtime.FeedMessage.PARSER.parseFrom(is);
+                feed = FeedMessage.PARSER.parseFrom(is);
                 updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
             }
         } catch (IOException e) {

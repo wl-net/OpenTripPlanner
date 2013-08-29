@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.websocket.DefaultWebSocketListener;
@@ -170,7 +169,7 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
         public void onMessage(byte[] message) {
             try {
                 // Decode message into TripUpdateList
-                FeedMessage feed = GtfsRealtime.FeedMessage.PARSER.parseFrom(message);
+                FeedMessage feed = FeedMessage.PARSER.parseFrom(message);
                 List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
 
                 // Handle trip updates via graph writer runnable

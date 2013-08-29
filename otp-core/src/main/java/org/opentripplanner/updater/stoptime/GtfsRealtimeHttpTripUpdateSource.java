@@ -25,7 +25,6 @@ import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 
 public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, PreferencesConfigurable {
@@ -55,7 +54,7 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
         try {
             InputStream is = HttpUtils.getData(url);
             if (is != null) {
-                feed = GtfsRealtime.FeedMessage.PARSER.parseFrom(is);
+                feed = FeedMessage.PARSER.parseFrom(is);
                 updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
             }
         } catch (IOException e) {
