@@ -20,6 +20,7 @@ import java.util.prefs.Preferences;
 
 import org.opentripplanner.updater.PreferencesConfigurable;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
@@ -38,8 +39,11 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
 
     private String url;
 
+    private TransitIndexService transitIndexService;
+
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
+        transitIndexService = graph.getService(TransitIndexService.class);
         String url = preferences.get("url", null);
         if (url == null)
             throw new IllegalArgumentException("Missing mandatory 'url' parameter");
@@ -55,7 +59,8 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
             InputStream is = HttpUtils.getData(url);
             if (is != null) {
                 feed = FeedMessage.PARSER.parseFrom(is);
-                updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
+                updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId,
+                        transitIndexService);
             }
         } catch (IOException e) {
             LOG.warn("Failed to parse gtfs-rt feed from " + url + ":", e);

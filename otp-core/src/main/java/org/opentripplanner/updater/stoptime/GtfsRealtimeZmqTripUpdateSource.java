@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.prefs.Preferences;
 
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.PreferencesConfigurable;
 import org.slf4j.Logger;
@@ -37,6 +38,8 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
 
     private static final File file = new File("/var/otp/data/nl/gtfs-rt.protobuf");
 
+    private TransitIndexService transitIndexService;
+
     /**
      * Default agency id that is used for the trip id's in the TripUpdateLists
      */
@@ -44,6 +47,7 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
 
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
+        transitIndexService = graph.getService(TransitIndexService.class);
         this.agencyId = preferences.get("defaultAgencyId", null);
     }
 
@@ -55,7 +59,8 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
             InputStream is = new FileInputStream(file);
             if (is != null) {
                 feed = FeedMessage.PARSER.parseFrom(is);
-                updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
+                updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId,
+                        transitIndexService);
             }
         } catch (IOException e) {
             LOG.warn("Failed to parse gtfs-rt feed at " + file + ":", e);

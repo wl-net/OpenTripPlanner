@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.prefs.Preferences;
 
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.GraphUpdater;
 import org.opentripplanner.updater.GraphUpdaterManager;
@@ -79,6 +80,8 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
      */
     private int reconnectPeriodSec;
 
+    private TransitIndexService transitIndexService;
+
     @Override
     public void setGraphUpdaterManager(GraphUpdaterManager updaterManager) {
         this.updaterManager = updaterManager;
@@ -86,6 +89,7 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
 
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
+        transitIndexService = graph.getService(TransitIndexService.class);
         // Read configuration
         url = preferences.get("url", null);
         agencyId = preferences.get("defaultAgencyId", "");
@@ -170,7 +174,8 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
             try {
                 // Decode message into TripUpdateList
                 FeedMessage feed = FeedMessage.PARSER.parseFrom(message);
-                List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
+                List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed,
+                        agencyId, transitIndexService);
 
                 // Handle trip updates via graph writer runnable
                 TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates);

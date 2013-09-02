@@ -30,6 +30,7 @@ import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.routing.edgetype.TableTripPattern;
+import org.opentripplanner.routing.services.TransitIndexService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -336,7 +337,8 @@ public class TripUpdateList extends AbstractUpdate {
     /**
      * Converts a GTFS-RT feed into TripUpdateLists.
      */
-    public static List<TripUpdateList> decodeFromGtfsRealtime(FeedMessage feed, String agencyId) {
+    public static List<TripUpdateList> decodeFromGtfsRealtime(FeedMessage feed, String agencyId,
+            TransitIndexService transitIndexService) {
         if (feed == null)
             return null;
 
@@ -375,10 +377,16 @@ public class TripUpdateList extends AbstractUpdate {
                 sr = TripDescriptor.ScheduleRelationship.SCHEDULED;
             }
 
+            TableTripPattern pattern = null;
+            if (transitIndexService != null) {
+                pattern = transitIndexService.getTripPatternForTrip(tripId);
+            }
+
             TripUpdateList tripUpdateList = null;
             switch (sr) {
             case SCHEDULED:
-                tripUpdateList = getUpdateForScheduledTrip(tripId, rtTripUpdate, timestamp, serviceDate);
+                tripUpdateList = getUpdateForScheduledTrip(tripId, rtTripUpdate, timestamp,
+                        serviceDate, pattern);
                 break;
             case CANCELED:
                 tripUpdateList = getUpdateForCanceledTrip(tripId, rtTripUpdate, timestamp, serviceDate);
@@ -467,13 +475,16 @@ public class TripUpdateList extends AbstractUpdate {
     }
 
     protected static TripUpdateList getUpdateForScheduledTrip(AgencyAndId tripId,
-            TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate) {
+            TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate,
+            TableTripPattern pattern) {
 
         if(!validateTripDescriptor(tripUpdate.getTrip())) {
             return null;
         }
         
         List<Update> updates = new LinkedList<Update>();
+        Integer minStopSeq = Integer.MAX_VALUE;
+        Integer maxStopSeq = Integer.MIN_VALUE;
 
         for (TripUpdate.StopTimeUpdate stopTimeUpdate
                 : tripUpdate.getStopTimeUpdateList()) {
@@ -482,11 +493,19 @@ public class TripUpdateList extends AbstractUpdate {
             if(u == null) {
                 return null;
             }
+
+            if (u.stopSeq < minStopSeq) minStopSeq = u.stopSeq;
+            if (u.stopSeq > maxStopSeq) maxStopSeq = u.stopSeq;
+
             updates.add(u);
         }
 
         if(updates.isEmpty()) {
             return null;
+        }
+
+        if (maxStopSeq - minStopSeq >= updates.size() && pattern != null) {
+            updates = interpolateUpdates(updates, pattern, tripId);
         }
 
         return TripUpdateList.forUpdatedTrip(tripId, timestamp, serviceDate, updates);
@@ -582,6 +601,55 @@ public class TripUpdateList extends AbstractUpdate {
         }
         
         return tripDescriptor.hasTripId();
+    }
+
+    /**
+     * Attempt to interpolate missing updates from the ones that are present.
+     *
+     * @param updates The incomplete list of updates
+     * @return The list of updates interspersed with interpolations for updates that were missing
+     */
+    static List<Update> interpolateUpdates(List<Update> updates, TableTripPattern pattern,
+            AgencyAndId tripId) {
+        Update update = null;
+        List<Update> newUpdates = new ArrayList<Update>();
+        ScheduledTripTimes tripTimes =
+                pattern.getTripTimes(pattern.getTripIndex(tripId)).getScheduledTripTimes();
+
+        for (int i = 0, j = 0, k = 0; i <= tripTimes.getNumHops() && j < updates.size(); i++) {
+            int sequence = tripTimes.getStopSequence(i);
+            if (update == null && sequence != updates.get(0).stopSeq) continue;
+
+            if (sequence == updates.get(j).stopSeq) {
+                k = i;
+                update = updates.get(j++);
+                newUpdates.add(update);
+            } else {
+                Update newUpdate;
+                if (update.getDelay() == null) {
+                    int arrive = update.getArrive();
+                    int depart = update.getDepart();
+
+                    depart += tripTimes.getDepartureTime(i) - tripTimes.getDepartureTime(k);
+                    if (k > 0) {
+                        arrive += tripTimes.getArrivalTime(i - 1) - tripTimes.getArrivalTime(k - 1);
+                    } else {
+                        arrive = depart;
+                    }
+
+                    newUpdate = new Update(tripId, pattern.getStop(i).getId(), sequence,
+                            arrive, depart, update.getStatus(), update.getTimestamp(),
+                            update.getServiceDate());
+                } else {
+                    newUpdate = new Update(tripId, pattern.getStop(i).getId(), sequence,
+                            update.getDelay(), update.getStatus(), update.getTimestamp(),
+                            update.getServiceDate());
+                }
+                newUpdates.add(newUpdate);
+            }
+        }
+
+        return newUpdates;
     }
 
     @Override
