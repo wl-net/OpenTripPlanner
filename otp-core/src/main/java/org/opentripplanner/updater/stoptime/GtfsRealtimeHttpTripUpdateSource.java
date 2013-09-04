@@ -26,6 +26,7 @@ import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.transit.realtime.GtfsRealtime.FeedHeader;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 
 public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, PreferencesConfigurable {
@@ -38,6 +39,10 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
     private String agencyId;
 
     private String url;
+    
+    private Graph graph;
+    
+    private long lastTimestamp = Long.MIN_VALUE;
 
     private TransitIndexService transitIndexService;
 
@@ -47,6 +52,7 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
         String url = preferences.get("url", null);
         if (url == null)
             throw new IllegalArgumentException("Missing mandatory 'url' parameter");
+        this.graph = graph;
         this.url = url;
         this.agencyId = preferences.get("defaultAgencyId", null);
     }
@@ -56,13 +62,22 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
         FeedMessage feed = null;
         List<TripUpdateList> updates = null;
         try {
-            InputStream is = HttpUtils.getData(url);
+            InputStream is = HttpUtils.getData(url, lastTimestamp);
             if (is != null) {
                 feed = FeedMessage.PARSER.parseFrom(is);
                 updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId,
-                        transitIndexService);
+                        transitIndexService, graph.getTimeZone());
+
+                FeedHeader header = feed.getHeader();
+                long feedTimestamp = header.getTimestamp();
+        
+                if(lastTimestamp < feedTimestamp) {
+                    updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId,
+                            transitIndexService, graph.getTimeZone());
+                    lastTimestamp = feedTimestamp;
+                }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOG.warn("Failed to parse gtfs-rt feed from " + url + ":", e);
         }
         return updates;

@@ -40,7 +40,7 @@ import com.ning.http.client.websocket.WebSocketUpgradeHandler;
  * callback is registered which handles incoming GTFS-RT messages as they stream in by placing a
  * GTFS-RT decoder Runnable task in the single-threaded executor for handling.
  * 
- * Usage example ('example' name is an example) in the file 'Graph.properties':
+ * Usage example ('websocket' name is an example) in the file 'Graph.properties':
  * 
  * <pre>
  * websocket.type = websocket-stop-time-updater
@@ -79,6 +79,8 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
      * The number of seconds to wait before reconnecting after a failed connection.
      */
     private int reconnectPeriodSec;
+    
+    private Graph graph;
 
     private TransitIndexService transitIndexService;
 
@@ -91,6 +93,7 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
     public void configure(Graph graph, Preferences preferences) throws Exception {
         transitIndexService = graph.getService(TransitIndexService.class);
         // Read configuration
+        this.graph = graph;
         url = preferences.get("url", null);
         agencyId = preferences.get("defaultAgencyId", "");
         reconnectPeriodSec = preferences.getInt("reconnectPeriodSec", DEFAULT_RECONNECT_PERIOD_SEC);
@@ -175,7 +178,7 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
                 // Decode message into TripUpdateList
                 FeedMessage feed = FeedMessage.PARSER.parseFrom(message);
                 List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed,
-                        agencyId, transitIndexService);
+                        agencyId, transitIndexService, graph.getTimeZone());
 
                 // Handle trip updates via graph writer runnable
                 TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates);

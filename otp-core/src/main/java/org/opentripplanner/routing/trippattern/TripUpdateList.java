@@ -50,11 +50,6 @@ public class TripUpdateList extends AbstractUpdate {
     private static final Logger LOG = LoggerFactory.getLogger(TripUpdateList.class);
 
     public static final int MATCH_FAILED = -1;
-
-    private static final SimpleDateFormat ymdParser = new SimpleDateFormat("yyyyMMdd");
-    {
-        ymdParser.setTimeZone(TimeZone.getTimeZone("GMT"));
-    }
     
     /** The trip to add, for ADDED updates. */
     @Getter
@@ -338,7 +333,7 @@ public class TripUpdateList extends AbstractUpdate {
      * Converts a GTFS-RT feed into TripUpdateLists.
      */
     public static List<TripUpdateList> decodeFromGtfsRealtime(FeedMessage feed, String agencyId,
-            TransitIndexService transitIndexService) {
+            TransitIndexService transitIndexService, TimeZone timeZone) {
         if (feed == null)
             return null;
 
@@ -362,8 +357,7 @@ public class TripUpdateList extends AbstractUpdate {
             ServiceDate serviceDate = new ServiceDate();
             if (descriptor.hasStartDate()) {
                 try {
-                    Date date = ymdParser.parse(descriptor.getStartDate());
-                    serviceDate = new ServiceDate(date);
+                    serviceDate = ServiceDate.parseString(descriptor.getStartDate());
                 } catch (ParseException e) {
                     LOG.warn("Failed to parse startDate in gtfs-rt feed: \n{}", entity);
                     continue;
@@ -386,19 +380,19 @@ public class TripUpdateList extends AbstractUpdate {
             switch (sr) {
             case SCHEDULED:
                 tripUpdateList = getUpdateForScheduledTrip(tripId, rtTripUpdate, timestamp,
-                        serviceDate, pattern);
+                        serviceDate, pattern, timeZone);
                 break;
             case CANCELED:
-                tripUpdateList = getUpdateForCanceledTrip(tripId, rtTripUpdate, timestamp, serviceDate);
+                tripUpdateList = getUpdateForCanceledTrip(tripId, rtTripUpdate, timestamp, serviceDate, timeZone);
                 break;
             case ADDED:
-                tripUpdateList = getUpdateForAddedTrip(tripId, rtTripUpdate, timestamp, serviceDate);
+                tripUpdateList = getUpdateForAddedTrip(tripId, rtTripUpdate, timestamp, serviceDate, timeZone);
                 break;
             case UNSCHEDULED:
-                tripUpdateList = getUpdateForUnscheduledTrip(tripId, rtTripUpdate, timestamp, serviceDate);
+                tripUpdateList = getUpdateForUnscheduledTrip(tripId, rtTripUpdate, timestamp, serviceDate, timeZone);
                 break;
             case REPLACEMENT:
-                tripUpdateList = getUpdateForReplacementTrip(tripId, rtTripUpdate, timestamp, serviceDate);
+                tripUpdateList = getUpdateForReplacementTrip(tripId, rtTripUpdate, timestamp, serviceDate, timeZone);
                 break;
             }
             
@@ -412,21 +406,21 @@ public class TripUpdateList extends AbstractUpdate {
     }
 
     private static TripUpdateList getUpdateForReplacementTrip(AgencyAndId tripId,
-            TripUpdate rtTripUpdate, long timestamp, ServiceDate serviceDate) {
+            TripUpdate rtTripUpdate, long timestamp, ServiceDate serviceDate, TimeZone timeZone) {
         
         LOG.warn("ScheduleRelationship.REPLACEMENT trips are currently not handled.");
         return null;
     }
 
     private static TripUpdateList getUpdateForUnscheduledTrip(AgencyAndId tripId,
-            TripUpdate rtTripUpdate, long timestamp, ServiceDate serviceDate) {
+            TripUpdate rtTripUpdate, long timestamp, ServiceDate serviceDate, TimeZone timeZone) {
         
         LOG.warn("ScheduleRelationship.UNSCHEDULED trips are currently not handled.");
         return null;
     }
 
     protected static TripUpdateList getUpdateForCanceledTrip(AgencyAndId tripId,
-            TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate) {
+            TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate, TimeZone timeZone) {
         
         if(!validateTripDescriptor(tripUpdate.getTrip())) {
             return null;
@@ -436,7 +430,7 @@ public class TripUpdateList extends AbstractUpdate {
     }
 
     protected static TripUpdateList getUpdateForAddedTrip(AgencyAndId tripId,
-            TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate) {
+            TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate, TimeZone timeZone) {
         
         if(!validateTripDescriptor(tripUpdate.getTrip())) {
             return null;
@@ -459,7 +453,7 @@ public class TripUpdateList extends AbstractUpdate {
         for(TripUpdate.StopTimeUpdate stopTimeUpdate
                 : tripUpdate.getStopTimeUpdateList()) {
             
-            Update u = getStopTimeUpdateForTrip(tripId, timestamp, serviceDate, stopTimeUpdate);
+            Update u = getStopTimeUpdateForTrip(tripId, timestamp, serviceDate, stopTimeUpdate, timeZone);
             if(u == null) {
                 return null;
             }
@@ -476,7 +470,7 @@ public class TripUpdateList extends AbstractUpdate {
 
     protected static TripUpdateList getUpdateForScheduledTrip(AgencyAndId tripId,
             TripUpdate tripUpdate, long timestamp, ServiceDate serviceDate,
-            TableTripPattern pattern) {
+            TableTripPattern pattern, TimeZone timeZone) {
 
         if(!validateTripDescriptor(tripUpdate.getTrip())) {
             return null;
@@ -489,7 +483,7 @@ public class TripUpdateList extends AbstractUpdate {
         for (TripUpdate.StopTimeUpdate stopTimeUpdate
                 : tripUpdate.getStopTimeUpdateList()) {
             
-            Update u = getStopTimeUpdateForTrip(tripId, timestamp, serviceDate, stopTimeUpdate);
+            Update u = getStopTimeUpdateForTrip(tripId, timestamp, serviceDate, stopTimeUpdate, timeZone);
             if(u == null) {
                 return null;
             }
@@ -512,7 +506,7 @@ public class TripUpdateList extends AbstractUpdate {
     }
 
     protected static Update getStopTimeUpdateForTrip(AgencyAndId tripId, long timestamp,
-            ServiceDate serviceDate, TripUpdate.StopTimeUpdate stopTimeUpdate) {
+            ServiceDate serviceDate, TripUpdate.StopTimeUpdate stopTimeUpdate, TimeZone timeZone) {
         
         if(!(stopTimeUpdate.hasStopId() || stopTimeUpdate.hasStopSequence())) {
             LOG.warn("A stopId or stopSequence must be provided: \n{}", stopTimeUpdate);
@@ -547,7 +541,7 @@ public class TripUpdateList extends AbstractUpdate {
                 return null;
             }
             
-            long today = serviceDate.getAsDate(TimeZone.getTimeZone("GMT")).getTime() / 1000;
+            long today = serviceDate.getAsDate(timeZone).getTime() / 1000;
             long arrivalTime = -1, departureTime = -1;
             
             if(stopTimeUpdate.hasArrival()) {
