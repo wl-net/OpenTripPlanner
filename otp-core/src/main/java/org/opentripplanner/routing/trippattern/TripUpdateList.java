@@ -621,14 +621,15 @@ public class TripUpdateList extends AbstractUpdate {
             } else {
                 Update newUpdate;
                 if (update.getDelay() == null) {
-                    int arrive = update.getArrive();
-                    int depart = update.getDepart();
+                    int arrive;
+                    int depart;
+                    int delay = update.getDepart() - tripTimes.getDepartureTime(k);
 
-                    depart += tripTimes.getDepartureTime(i) - tripTimes.getDepartureTime(k);
-                    if (k > 0) {
-                        arrive += tripTimes.getArrivalTime(i - 1) - tripTimes.getArrivalTime(k - 1);
+                    arrive = tripTimes.getArrivalTime(i - 1) + delay;
+                    if (i < tripTimes.getNumHops()) {
+                        depart = tripTimes.getDepartureTime(i) + delay;
                     } else {
-                        arrive = depart;
+                        depart = arrive;
                     }
 
                     newUpdate = new Update(tripId, pattern.getStop(i).getId(), sequence,
