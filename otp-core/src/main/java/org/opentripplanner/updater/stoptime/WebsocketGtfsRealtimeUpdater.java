@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.prefs.Preferences;
 
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.GraphUpdater;
 import org.opentripplanner.updater.GraphUpdaterManager;
@@ -27,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.websocket.DefaultWebSocketListener;
@@ -79,6 +79,10 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
      * The number of seconds to wait before reconnecting after a failed connection.
      */
     private int reconnectPeriodSec;
+    
+    private Graph graph;
+
+    private TransitIndexService transitIndexService;
 
     @Override
     public void setGraphUpdaterManager(GraphUpdaterManager updaterManager) {
@@ -87,7 +91,9 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
 
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
+        transitIndexService = graph.getService(TransitIndexService.class);
         // Read configuration
+        this.graph = graph;
         url = preferences.get("url", null);
         agencyId = preferences.get("defaultAgencyId", "");
         reconnectPeriodSec = preferences.getInt("reconnectPeriodSec", DEFAULT_RECONNECT_PERIOD_SEC);
@@ -170,8 +176,9 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
         public void onMessage(byte[] message) {
             try {
                 // Decode message into TripUpdateList
-                FeedMessage feed = GtfsRealtime.FeedMessage.PARSER.parseFrom(message);
-                List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
+                FeedMessage feed = FeedMessage.PARSER.parseFrom(message);
+                List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed,
+                        agencyId, transitIndexService, graph.getTimeZone());
 
                 // Handle trip updates via graph writer runnable
                 TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates);

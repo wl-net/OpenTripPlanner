@@ -21,12 +21,12 @@ import java.util.List;
 import java.util.prefs.Preferences;
 
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.PreferencesConfigurable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 
 /**
@@ -38,14 +38,20 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
 
     private static final File file = new File("/var/otp/data/nl/gtfs-rt.protobuf");
 
+    private TransitIndexService transitIndexService;
+
     /**
      * Default agency id that is used for the trip id's in the TripUpdateLists
      */
     private String agencyId;
+    
+    private Graph graph;
 
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
+        transitIndexService = graph.getService(TransitIndexService.class);
         this.agencyId = preferences.get("defaultAgencyId", null);
+        this.graph = graph;
     }
 
     @Override
@@ -54,10 +60,9 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
         List<TripUpdateList> updates = null;
         try {
             InputStream is = new FileInputStream(file);
-            if (is != null) {
-                feed = GtfsRealtime.FeedMessage.PARSER.parseFrom(is);
-                updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId);
-            }
+            feed = FeedMessage.PARSER.parseFrom(is);
+            updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId, transitIndexService,
+                    graph.getTimeZone());
         } catch (IOException e) {
             LOG.warn("Failed to parse gtfs-rt feed at " + file + ":", e);
         }
@@ -65,7 +70,7 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
     }
 
     public String toString() {
-        return "GTFSZMQUpdateStreamer(" + file + ")";
+        return "GtfsRealtimeZmqTripUpdateSource(" + file + ")";
     }
 
 }
