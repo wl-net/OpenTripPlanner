@@ -34,6 +34,7 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.SimpleTransfer;
 import org.opentripplanner.routing.edgetype.StationEdge;
+import org.opentripplanner.routing.edgetype.StationStopEdge;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
 import org.opentripplanner.routing.edgetype.TimedTransferEdge;
 import org.opentripplanner.routing.edgetype.TransferEdge;
@@ -117,25 +118,62 @@ public class LongDistancePathService implements PathService {
 
     public static class Parser extends PathParser {
 
-        private static final int STREET = 1;
-        private static final int LINK = 2;
-        private static final int STATION = 3;
-        private static final int ONBOARD = 4;
-        private static final int TRANSFER = 5;
+        private static final int STREET       = 1;
+        private static final int LINK         = 2;
+        private static final int STATION      = 3;
+        private static final int ONBOARD      = 4;
+        private static final int TRANSFER     = 5;
+        private static final int STATION_STOP = 6;
 
         private static final DFA DFA;
 
         static {
-            Nonterminal streetLeg  = plus(STREET);
+
+            /* A StreetLeg is one or more street edges. */
+            Nonterminal streetLeg = plus(STREET);
+
+            /* A TransitLeg is a ride on transit, including preboard and prealight edges at its 
+             * ends. It begins and ends at a TransitStop vertex. 
+             * Note that these are STATION* rather than STATION+ because some transfer edges
+             * (timed transfer edges) connect arrival and depart vertices. Requiring a STATION
+             * edge would prevent them from being traversed. */
             Nonterminal transitLeg = seq(star(STATION), plus(ONBOARD), star(STATION));
-            Nonterminal stopToStop = seq(transitLeg, star(optional(TRANSFER), transitLeg));
-            Nonterminal streetAndTransitItinerary = seq(streetLeg, LINK, stopToStop, LINK, streetLeg);
-            Nonterminal transitItinerary = seq(optional(TRANSFER), stopToStop, optional(TRANSFER));
-            // FIXME
-            Nonterminal onboardItinerary = seq( plus(ONBOARD), plus(STATION), star(TRANSFER, transitLeg),
-                    LINK, streetLeg);
-            Nonterminal itinerary = 
-                    choice(streetLeg, streetAndTransitItinerary, onboardItinerary, transitItinerary);
+            
+            /* A beginning gets us from the path's initial vertex to the first transit stop it 
+             * passes through (its first board location). We may want to transfer at the beginning 
+             * of an itinerary that begins at a station or stop, and does not use streets. */
+            Nonterminal beginning = choice(seq(optional(streetLeg), LINK), seq(optional(STATION_STOP), optional(TRANSFER)));
+            
+            /* Begin on board transit, ending up at another stop where the "middle" can take over. */
+            Nonterminal onboardBeginning = seq(plus(ONBOARD), plus(STATION), optional(TRANSFER));
+            
+            /* Ride transit at least one time, chaining transit legs together with single transfer edges. */
+            Nonterminal middle = seq(transitLeg, star(optional(TRANSFER), transitLeg));
+
+            /* And end gets us from the last stop to the final vertex. It is the same as a beginning, 
+             * but with the sub-sequences reversed. This must cover 6 different cases: 
+             * 1. leave the station and optionally walk, 
+             * 2. stay at the stop where we are, 
+             * 3. stay at the stop where we are but go to its parent station, 
+             * 4. transfer and stay at the target stop, 
+             * 5. transfer and move to the target stop's parent station. */
+            Nonterminal end = choice(seq(LINK, optional(streetLeg)), seq(optional(TRANSFER), optional(STATION_STOP)));
+
+            /* An itinerary that includes a ride on public transit. It might begin on- or offboard. 
+             * if it begins onboard, it doesn't necessarily have subsequent transit legs. */
+            Nonterminal transitItinerary = choice( 
+                    seq(beginning, middle, end),
+                    seq(onboardBeginning, optional(middle), end));
+            
+            /* A streets-only itinerary, which might begin or end at a stop or its station, 
+             * but does not actually ride transit. */
+            Nonterminal streetItinerary = seq( 
+                    optional(STATION_STOP), optional(LINK), 
+                    streetLeg,
+                    optional(LINK), optional(STATION_STOP)); 
+            
+            Nonterminal itinerary = choice(streetItinerary, transitItinerary);
+            
             DFA = itinerary.toDFA().minimize();
             System.out.println(DFA.toGraphViz());
             System.out.println(DFA.dumpTable());
@@ -146,20 +184,24 @@ public class LongDistancePathService implements PathService {
             return DFA;
         }
 
+        /**
+         * The terminal is based exclusively on the backEdge, i.e. each terminal represents 
+         * exactly one edge in the path.
+         */
         @Override
         public int terminalFor(State state) {
-            Vertex v = state.getVertex();
             Edge e = state.getBackEdge();
             if (e == null) {
                 throw new RuntimeException ("terminalFor should never be called on States without back edges!");
             }
             /* OnboardEdge currently includes BoardAlight edges. */
-            if (e instanceof OnboardEdge) return ONBOARD;
-            if (e instanceof StationEdge) return STATION;
+            if (e instanceof OnboardEdge)       return ONBOARD;
+            if (e instanceof StationEdge)       return STATION;
+            if (e instanceof StationStopEdge)   return STATION_STOP;
             // There should perhaps be a shared superclass of all transfer edges to simplify this. 
-            if (e instanceof TimedTransferEdge) return TRANSFER;
             if (e instanceof SimpleTransfer)    return TRANSFER;
             if (e instanceof TransferEdge)      return TRANSFER;
+            if (e instanceof TimedTransferEdge) return TRANSFER;
             if (e instanceof StreetTransitLink) return LINK;
             // Is it really correct to clasify all other edges as STREET?
             return STREET;
