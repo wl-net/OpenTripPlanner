@@ -36,7 +36,7 @@ import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, PreferencesConfigurable {
     private static final Logger LOG = LoggerFactory.getLogger(GtfsRealtimeZmqTripUpdateSource.class);
 
-    private static final File file = new File("/var/otp/data/nl/gtfs-rt.protobuf");
+    private File file;
 
     private TransitIndexService transitIndexService;
 
@@ -52,6 +52,7 @@ public class GtfsRealtimeZmqTripUpdateSource implements TripUpdateSource, Prefer
         transitIndexService = graph.getService(TransitIndexService.class);
         this.agencyId = preferences.get("defaultAgencyId", null);
         this.graph = graph;
+        this.file = new File(preferences.get("file", ""));
     }
 
     @Override

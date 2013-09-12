@@ -57,7 +57,6 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.patch.Alert;
-import org.opentripplanner.routing.patch.Patch;
 import org.opentripplanner.routing.services.FareService;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
@@ -451,12 +450,10 @@ public class PlanGenerator {
             }
 
             if (legs.get(i).isTransitLeg() && !legs.get(i + 1).isTransitLeg()) {
-                legs.get(i + 1).from.name = legs.get(i).to.name;
-                legs.get(i + 1).from.stopId = legs.get(i).to.stopId;
+                legs.get(i + 1).from = legs.get(i).to;
             }
             if (!legs.get(i).isTransitLeg() && legs.get(i + 1).isTransitLeg()) {
-                legs.get(i).to.name = legs.get(i + 1).from.name;
-                legs.get(i).to.stopId = legs.get(i + 1).from.stopId;
+                legs.get(i).to = legs.get(i + 1).from;
             }
         }
 
@@ -544,7 +541,6 @@ public class PlanGenerator {
         for (State state : states) {
             TraverseMode mode = state.getBackMode();
             Set<Alert> alerts = state.getBackAlerts();
-            Edge edge = state.getBackEdge();
 
             if (mode != null) {
                 leg.mode = mode.toString();
@@ -553,12 +549,6 @@ public class PlanGenerator {
             if (alerts != null) {
                 for (Alert alert : alerts) {
                     leg.addAlert(alert);
-                }
-            }
-
-            if (edge != null) {
-                for (Patch patch : edge.getPatches()) {
-                    leg.addAlert(patch.getAlert());
                 }
             }
         }
@@ -619,6 +609,7 @@ public class PlanGenerator {
 
         Edge firstEdge = edges[0];
         Edge lastEdge = edges[edges.length - 1];
+        TripTimes tripTimes = states[states.length - 1].getTripTimes();
 
         leg.from = new Place(firstVertex.getX(), firstVertex.getY(), firstVertex.getName(),
                 null, makeCalendar(states[0]));
@@ -637,6 +628,7 @@ public class PlanGenerator {
                 leg.from.platformCode = firstStop.getPlatformCode();
                 leg.from.zoneId = firstStop.getZoneId();
                 leg.from.stopIndex = ((OnboardEdge) firstEdge).getStopIndex();
+                leg.from.stopSequence = tripTimes.getStopSequence(leg.from.stopIndex);
             }
         }
 
@@ -649,6 +641,7 @@ public class PlanGenerator {
                 leg.to.platformCode = lastStop.getPlatformCode();
                 leg.to.zoneId = lastStop.getZoneId();
                 leg.to.stopIndex = ((OnboardEdge) lastEdge).getStopIndex() + 1;
+                leg.to.stopSequence = tripTimes.getStopSequence(leg.to.stopIndex);
             }
         }
 
@@ -684,6 +677,7 @@ public class PlanGenerator {
                     place.platformCode = currentStop.getPlatformCode();
                     place.zoneId = currentStop.getZoneId();
                     place.stopIndex = ((OnboardEdge) edges[i]).getStopIndex();
+                    place.stopSequence = tripTimes.getStopSequence(place.stopIndex);
                 }
 
                 leg.stop.add(place);
