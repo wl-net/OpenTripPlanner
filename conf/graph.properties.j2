@@ -1,0 +1,11 @@
+alert.type = real-time-alerts
+alert.frequencySec = 60
+alert.url = http://gtfs.ovapi.nl/new/alerts.pb
+alert.earlyStartSec = 3600
+alert.defaultAgencyId = ARR
+
+rt.type = stop-time-updater
+rt.frequencySec = 60
+rt.sourceType = gtfs-http
+rt.url = http://gtfs.ovapi.nl/new/tripUpdates.pb
+rt.defaultAgencyId = ARR
