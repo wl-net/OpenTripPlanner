@@ -17,7 +17,7 @@
       graphbuilder_host: '{{ ansible_local.otp.graphbuilder.hostname }}'
 
   - name: Configure OTP graph
-    template: src=conf/graph.properties.j2 dest=/var/otp/graphs/graph.properties
+    template: src=conf/graph.properties.j2 dest=/var/otp/graphs/Graph.properties
               mode=0644
     notify:
     - Restart OTP
