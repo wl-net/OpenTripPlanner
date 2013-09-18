@@ -50,7 +50,7 @@
   vars:
     osm_url: http://download.geofabrik.de/openstreetmap/europe/netherlands.osm.pbf
     osm_file: '/var/otp/data/netherlands.osm.pdf'
-    gtfs_url: http://gtfs.ovapi.nl/gtfs-nl.zip
+    gtfs_url: http://gtfs.ovapi.nl/new/gtfs-nl.zip
     gtfs_file: '/var/otp/data/gtfs-nl.zip'
 
 
