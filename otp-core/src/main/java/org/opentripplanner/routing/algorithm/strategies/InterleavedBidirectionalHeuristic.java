@@ -16,6 +16,8 @@ package org.opentripplanner.routing.algorithm.strategies;
 import java.util.List;
 import java.util.Map;
 
+import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.common.pqueue.OTPPriorityQueue;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -29,7 +31,7 @@ import org.opentripplanner.routing.services.RemainingWeightHeuristicFactory;
 import org.opentripplanner.routing.spt.BasicShortestPathTree;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.routing.vertextype.TransitStop;
+import org.opentripplanner.routing.vertextype.TransitStationStop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +42,24 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
 
     private static final long serialVersionUID = 20130813L;
 
-    private static final int HEURISTIC_STEPS_PER_MAIN_STEP = 2;
+    private static final int HEURISTIC_STEPS_PER_MAIN_STEP = 4;
     
     private static Logger LOG = LoggerFactory.getLogger(InterleavedBidirectionalHeuristic.class);
 
+    private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
+
+    /* 
+     * http://en.wikipedia.org/wiki/Train_routes_in_the_Netherlands
+     * http://en.wikipedia.org/wiki/File:Baanvaksnelheden.png 
+     */
+    private final static double MAX_TRANSIT_SPEED = 45.0; // in meters/second
+    
     /** The vertex that the main search is working towards. */
     Vertex target;
 
-    double maxFound = 0; 
+    double maxFound = 0;
+    
+    double minEgressWalk = 0;
 
     Map <Vertex, Double> weights;
 
@@ -110,8 +122,8 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
         // once street searches are done, raise the walk limit to max
         // because hard walk limiting is incorrect and is observed to cause problems 
         // for trips near the cutoff
-        options.setMaxWalkDistance(Double.MAX_VALUE);
-        LOG.debug("initialized SSSP");        
+        options.setMaxWalkDistance(Double.POSITIVE_INFINITY);
+        LOG.debug("initialized SSSP");
     }
 
     /** Do up to N iterations as long as the queue is not empty */
@@ -126,6 +138,7 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
             }
             double uw = q.peek_min_key();
             Vertex u = q.extract_min();
+            //LOG.info("dequeued weight {} at {}", uw, u);
 //            // Ignore vertices that could be rekeyed (but are not rekeyed in this implementation).
 //            if (uw > weights.get(u)) continue;
             // The weight of the queue head is uniformly increasing. This is the highest ever seen.
@@ -140,6 +153,11 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
                 if (e instanceof StreetTransitLink) continue;
                 Vertex v = options.isArriveBy() ? e.getToVertex() : e.getFromVertex();
                 double ew = e.weightLowerBound(options);
+                // INF heuristic value indicates unreachable (e.g. non-running transit service)
+                // this saves time by not reverse-exploring those routes and avoids maxFound of INF.
+                if (Double.isInfinite(ew)) {
+                    continue;  
+                }
                 double vw = uw + ew;
                 Double old_vw = weights.get(v);
                 if (old_vw == null || vw < old_vw) {
@@ -172,7 +190,11 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
         // but many transit vertices may not yet be explored when the search starts.
         // TODO: verify that StreetVertex includes all vertices of interest.
         if (v instanceof StreetVertex) return weight == null ? Double.POSITIVE_INFINITY : weight;
-        else if (weight == null) return maxFound;
+        else if (weight == null) {
+            double dist = distanceLibrary.fastDistance(v.getY(), v.getX(), target.getY(), target.getX());
+            double time = dist / MAX_TRANSIT_SPEED;
+            return Math.max(maxFound, time);
+        }
         else return weight;
     }
 
@@ -233,9 +255,9 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
             State s = pq.extract_min();
             Double w = s.getWeight();
             Vertex v = s.getVertex();
-            if (v instanceof TransitStop) {
+            if (v instanceof TransitStationStop) {
                 stopStates.add(s);
-                // Prune street search upon reaching TransitStops.
+                // Prune street search upon reaching TransitStationStops.
                 // Do not save weights at transit stops. Since they may be reached by 
                 // SimpleTransfer their weights will be recorded during the main heuristic search.
                 continue;

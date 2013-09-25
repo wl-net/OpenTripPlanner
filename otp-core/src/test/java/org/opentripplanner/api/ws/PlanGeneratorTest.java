@@ -60,6 +60,7 @@ import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.AreaEdgeList;
 import org.opentripplanner.routing.edgetype.FreeEdge;
 import org.opentripplanner.routing.edgetype.LegSwitchingEdge;
+import org.opentripplanner.routing.edgetype.OnBoardDepartPatternHop;
 import org.opentripplanner.routing.edgetype.PartialPlainStreetEdge;
 import org.opentripplanner.routing.edgetype.PatternDwell;
 import org.opentripplanner.routing.edgetype.PatternHop;
@@ -80,6 +81,7 @@ import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.opentripplanner.routing.patch.Alert;
+import org.opentripplanner.routing.patch.AlertPatch;
 import org.opentripplanner.routing.services.FareService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.trippattern.Update;
@@ -88,6 +90,7 @@ import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.ExitVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
+import org.opentripplanner.routing.vertextype.OnboardDepartVertex;
 import org.opentripplanner.routing.vertextype.PatternArriveVertex;
 import org.opentripplanner.routing.vertextype.PatternDepartVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
@@ -99,9 +102,11 @@ import org.opentripplanner.util.model.EncodedPolylineBean;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
+import org.opentripplanner.routing.patch.TimePeriod;
 
 public class PlanGeneratorTest {
-    private static final double[] DISTANCES = {3, 9996806.8, 3539050.5, 11, 2478638.8, 4, 2, 1, 0};
+    private static final double[] F_DISTANCE = {3, 9996806.8, 3539050.5, 11, 2478638.8, 4, 2, 1, 0};
+    private static final double O_DISTANCE = 7286193.2;
     private static final double OCTANT = Math.PI / 4;
     private static final double NORTH = OCTANT * 0;
     private static final double NORTHEAST = OCTANT * 1;
@@ -125,8 +130,9 @@ public class PlanGeneratorTest {
     public void testGenerateItinerary() {
         GraphPath[] graphPaths = buildPaths();
 
-        compare(planGenerator.generateItinerary(graphPaths[0], true), false);
-        compare(planGenerator.generateItinerary(graphPaths[1], true), true);
+        compare(planGenerator.generateItinerary(graphPaths[0], true), Type.FORWARD);
+        compare(planGenerator.generateItinerary(graphPaths[1], true), Type.BACKWARD);
+        compare(planGenerator.generateItinerary(graphPaths[2], true), Type.ONBOARD);
     }
 
     /**
@@ -145,7 +151,8 @@ public class PlanGeneratorTest {
     }
 
     /**
-     * Build a GraphPath that can be used for testing. This method doesn't rely on any routing code.
+     * Build three GraphPath objects that can be used for testing for forward, backward and onboard.
+     * This method doesn't rely on any routing code.
      * Leg 0: Walking towards the train station
      * Leg 1: First train leg, interlined with leg 2
      * Leg 2: Second train leg, interlined with leg 1
@@ -155,7 +162,7 @@ public class PlanGeneratorTest {
      * Leg 6: Cycling on a rented bike
      * Leg 7: Cycling on a rented bike, continued (to demonstrate a {@link LegSwitchingEdge})
      * Leg 8: Leaving the bike rental station on foot
-     * @return The generated GraphPath
+     * @return An array containing the generated GraphPath objects: forward, then backward, onboard.
      */
     private GraphPath[] buildPaths() {
         // This set of requested traverse modes implies that bike rental is a possibility.
@@ -308,28 +315,35 @@ public class PlanGeneratorTest {
 
         trainStopDepartTime.setTrip(firstTrip);
         trainStopDepartTime.setStop(trainStopDepart);
+        trainStopDepartTime.setStopSequence(Integer.MIN_VALUE);
         trainStopDepartTime.setDepartureTime(4);
         trainStopDepartTime.setPickupType(3);
         trainStopDwellTime.setTrip(firstTrip);
         trainStopDwellTime.setStop(trainStopDwell);
+        trainStopDwellTime.setStopSequence(0);
         trainStopDwellTime.setArrivalTime(8);
         trainStopDwellTime.setDepartureTime(12);
         trainStopInterlineFirstTime.setTrip(firstTrip);
         trainStopInterlineFirstTime.setStop(trainStopInterline);
+        trainStopInterlineFirstTime.setStopSequence(Integer.MAX_VALUE);
         trainStopInterlineFirstTime.setArrivalTime(16);
         trainStopInterlineSecondTime.setTrip(secondTrip);
         trainStopInterlineSecondTime.setStop(trainStopInterline);
+        trainStopInterlineSecondTime.setStopSequence(0);
         trainStopInterlineSecondTime.setDepartureTime(20);
         trainStopArriveTime.setTrip(secondTrip);
         trainStopArriveTime.setStop(trainStopArrive);
+        trainStopArriveTime.setStopSequence(1);
         trainStopArriveTime.setArrivalTime(24);
         trainStopArriveTime.setDropOffType(2);
         ferryStopDepartTime.setTrip(thirdTrip);
         ferryStopDepartTime.setStop(ferryStopDepart);
+        ferryStopDepartTime.setStopSequence(-1);
         ferryStopDepartTime.setDepartureTime(32);
         ferryStopDepartTime.setPickupType(2);
         ferryStopArriveTime.setTrip(thirdTrip);
         ferryStopArriveTime.setStop(ferryStopArrive);
+        ferryStopArriveTime.setStopSequence(0);
         ferryStopArriveTime.setArrivalTime(36);
         ferryStopArriveTime.setDropOffType(3);
 
@@ -568,9 +582,16 @@ public class PlanGeneratorTest {
         StreetBikeRentalLink e59 = new StreetBikeRentalLink(
                 v58, v60);
 
+        // Alert for testing GTFS-RT
+        AlertPatch patch = new AlertPatch();
+
+        patch.setTimePeriods(Collections.singletonList(new TimePeriod(0, Long.MAX_VALUE)));
+        patch.setAlert(Alert.createSimpleAlerts(alertsExample));
+
         // Edge initialization that can't be done using the constructor
         e3.setElevationProfile(elevation3, false);
         e17.addTrip(firstTrip, secondTrip, 4, 0, 0);
+        e29.addPatch(patch);
         e39.setElevationProfile(elevation39, false);
         e41.setElevationProfile(elevation41, false);
         e41.setHasBogusName(true);
@@ -637,6 +658,11 @@ public class PlanGeneratorTest {
         // Routing context creation and initialization
         ServiceDay serviceDay = new ServiceDay(graph, 0, calendarServiceImpl, null);
 
+        // Temporary graph objects for onboard depart tests
+        OnboardDepartVertex onboardDepartVertex = new OnboardDepartVertex("Onboard", 23.0, 12.0);
+        OnBoardDepartPatternHop onBoardDepartPatternHop = new OnBoardDepartPatternHop(
+                onboardDepartVertex, v12, firstTripPattern.getTripTimes(0), serviceDay, 0, 0.5);
+
         // Traverse the path forward first
         RoutingRequest forwardOptions = options.clone();
         RoutingContext forwardContext = new RoutingContext(forwardOptions, graph, v0, v60);
@@ -645,7 +671,7 @@ public class PlanGeneratorTest {
         forwardContext.serviceDays.add(serviceDay);
 
         forwardOptions.rctx = forwardContext;
-        forwardOptions.dateTime = 0;
+        forwardOptions.dateTime = 0L;
         forwardOptions.bikeRentalPickupTime = 4;
         forwardOptions.bikeRentalDropoffTime = 2;
 
@@ -728,36 +754,92 @@ public class PlanGeneratorTest {
         State s2Backward = e3.traverse(s4Backward);
         State s0Backward = e1.traverse(s2Backward);
 
-        return new GraphPath[] {new GraphPath(s60Forward, false), new GraphPath(s0Backward, false)};
+        // Perform a forward traversal starting onboard
+        RoutingRequest onboardOptions = options.clone();
+        RoutingContext onboardContext = new RoutingContext(onboardOptions, graph,
+                onboardDepartVertex, v60);
+
+        onboardContext.serviceDays = new ArrayList<ServiceDay>(1);
+        onboardContext.serviceDays.add(serviceDay);
+
+        onboardOptions.rctx = onboardContext;
+        onboardOptions.dateTime = 6L;
+        onboardOptions.bikeRentalPickupTime = 4;
+        onboardOptions.bikeRentalDropoffTime = 2;
+
+        // Onboard traversal of all edges
+        State s10Onboard = new State(onboardOptions);
+        State s12Onboard = onBoardDepartPatternHop.traverse(s10Onboard);
+        State s14Onboard = e13.traverse(s12Onboard);
+        State s16Onboard = e15.traverse(s14Onboard);
+        State s18Onboard = e17.traverse(s16Onboard);
+        State s20Onboard = e19.traverse(s18Onboard);
+        State s22Onboard = e21.traverse(s20Onboard);
+        State s24Onboard = e23.traverse(s22Onboard);
+        State s26Onboard = e25.traverse(s24Onboard);
+        State s28Onboard = e27.traverse(s26Onboard);
+        State s30Onboard = e29.traverse(s28Onboard);
+        State s32Onboard = e31.traverse(s30Onboard);
+        State s34Onboard = e33.traverse(s32Onboard);
+        State s36Onboard = e35.traverse(s34Onboard);
+        State s38Onboard = e37.traverse(s36Onboard);
+        State s40Onboard = e39.traverse(s38Onboard);
+        State s42Onboard = e41.traverse(s40Onboard);
+        State s44Onboard = e43.traverse(s42Onboard);
+        State s46Onboard = e45.traverse(s44Onboard);
+        State s48Onboard = e47.traverse(s46Onboard);
+        State s50Onboard = e49.traverse(s48Onboard);
+        State s52Onboard = e51.traverse(s50Onboard);
+        State s54Onboard = e53.traverse(s52Onboard);
+        State s56Onboard = e55.traverse(s54Onboard);
+        State s58Onboard = e57.traverse(s56Onboard);
+        State s60Onboard = e59.traverse(s58Onboard);
+
+        return new GraphPath[] {new GraphPath(s60Forward, false),
+                new GraphPath(s0Backward, false), new GraphPath(s60Onboard, false)};
     }
 
     /**
      * This method compares the itinerary's fields to their expected values. The actual work is
      * delegated to other methods. This method just calls them with the right arguments.
      */
-    private void compare(Itinerary itinerary, boolean backward) {
-        compareItinerary(itinerary);
+    private void compare(Itinerary itinerary, Type type) {
+        compareItinerary(itinerary, type);
 
         compareFare(itinerary.fare);
 
         Leg[] legs = itinerary.legs.toArray(new Leg[9]);
-        compareLegs(legs, backward);
+        if (type == Type.ONBOARD) {
+            legs[8] = legs[7];
+            legs[7] = legs[6];
+            legs[6] = legs[5];
+            legs[5] = legs[4];
+            legs[4] = legs[3];
+            legs[3] = legs[2];
+            legs[2] = legs[1];
+            legs[1] = legs[0];
+            legs[0] = null;
+        }
+        compareLegs(legs, type);
 
         WalkStep[][] steps = new WalkStep[9][0];
         for (int i = 0; i < steps.length; i++) {
+            if (legs[i] == null) continue;
             steps[i] = legs[i].walkSteps.toArray(steps[i]);
         }
-        compareSteps(steps);
+        compareSteps(steps, type);
 
         EncodedPolylineBean[] geometries = new EncodedPolylineBean[9];
         for (int i = 0; i < geometries.length; i++) {
+            if (legs[i] == null) continue;
             geometries[i] = legs[i].legGeometry;
         }
-        compareGeometries(geometries);
+        compareGeometries(geometries, type);
 
         // Java's multidimensional arrays are actually arrays of arrays, meaning they can be jagged.
         Place[][] places = new Place[9][2];
         for (int i = 0; i < places.length; i++) {
+            if (legs[i] == null) continue;
             if (legs[i].stop == null) {
                 places[i][0] = legs[i].from;
                 places[i][1] = legs[i].to;
@@ -769,7 +851,7 @@ public class PlanGeneratorTest {
                 places[i] = allStops.toArray(places[i]);
             }
         }
-        comparePlaces(places, backward);
+        comparePlaces(places, type);
 
         AgencyAndId[][] stopIds = new AgencyAndId[9][2];
         for (int i = 0; i < stopIds.length; i++) {
@@ -777,10 +859,11 @@ public class PlanGeneratorTest {
                 stopIds[i] = new AgencyAndId[places[i].length];
             }
             for (int j = 0; j < stopIds[i].length; j++) {
+                if (places[i][j] == null) continue;
                 stopIds[i][j] = places[i][j].stopId;
             }
         }
-        compareStopIds(stopIds);
+        compareStopIds(stopIds, type);
 
         /*
          * This four-dimensional array is indexed as follows:
@@ -803,25 +886,44 @@ public class PlanGeneratorTest {
                 }
             }
         }
-        compareElevations(elevations);
+        compareElevations(elevations, type);
     }
 
     /** Compare all simple itinerary fields to their expected values. */
-    private void compareItinerary(Itinerary itinerary) {
-        assertEquals(60000L, itinerary.duration);
-        assertEquals(0L, itinerary.startTime.getTimeInMillis());
+    private void compareItinerary(Itinerary itinerary, Type type) {
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(60000L, itinerary.duration);
+            assertEquals(0L, itinerary.startTime.getTimeInMillis());
+        } else if (type == Type.ONBOARD) {
+            assertEquals(54000L, itinerary.duration);
+            assertEquals(6000L, itinerary.startTime.getTimeInMillis());
+        }
         assertEquals(60000L, itinerary.endTime.getTimeInMillis());
 
-        assertEquals(27L, itinerary.walkTime);
-        assertEquals(23L, itinerary.transitTime);
-        assertEquals(10L, itinerary.waitingTime);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(27L, itinerary.walkTime);
+            assertEquals(23L, itinerary.transitTime);
+            assertEquals(10L, itinerary.waitingTime);
+        } else if (type == Type.ONBOARD) {
+            assertEquals(24L, itinerary.walkTime);
+            assertEquals(21L, itinerary.transitTime);
+            assertEquals(9L, itinerary.waitingTime);
+        }
 
-        assertEquals(21.0, itinerary.walkDistance, 0.0);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(21.0, itinerary.walkDistance, 0.0);
+        } else if (type == Type.ONBOARD) {
+            assertEquals(18.0, itinerary.walkDistance, 0.0);
+        }
 
         assertFalse(itinerary.walkLimitExceeded);
 
         assertEquals(10.0, itinerary.elevationLost, 0.0);
-        assertEquals(16.0, itinerary.elevationGained, 0.0);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(16.0, itinerary.elevationGained, 0.0);
+        } else if (type == Type.ONBOARD) {
+            assertEquals(6.1, itinerary.elevationGained, 0.0);
+        }
 
         assertEquals(1, itinerary.transfers.intValue());
 
@@ -838,40 +940,44 @@ public class PlanGeneratorTest {
     }
 
     /** Compare all simple leg fields to their expected values, leg by leg. */
-    private void compareLegs(Leg[] legs, boolean backward) {
+    private void compareLegs(Leg[] legs, Type type) {
         assertEquals(9, legs.length);
 
-        assertNull(legs[0].agencyId);
-        assertNull(legs[0].agencyName);
-        assertNull(legs[0].agencyUrl);
-        assertEquals(2, legs[0].agencyTimeZoneOffset);
-        assertNull(legs[0].notes);
-        assertNull(legs[0].alerts);
-        assertEquals("", legs[0].route);
-        assertNull(legs[0].routeId);
-        assertNull(legs[0].routeShortName);
-        assertNull(legs[0].routeLongName);
-        assertNull(legs[0].routeType);
-        assertNull(legs[0].routeColor);
-        assertNull(legs[0].routeTextColor);
-        assertNull(legs[0].tripId);
-        assertNull(legs[0].tripShortName);
-        assertNull(legs[0].tripBlockId);
-        assertNull(legs[0].serviceDate);
-        assertNull(legs[0].headsign);
-        assertFalse(legs[0].rentedBike);
-        assertFalse(legs[0].isTransitLeg());
-        assertFalse(legs[0].interlineWithPreviousLeg);
-        assertNull(legs[0].boardRule);
-        assertNull(legs[0].alightRule);
-        assertEquals("WALK", legs[0].mode);
-        assertEquals(0L, legs[0].startTime.getTimeInMillis());
-        assertEquals(3000L, legs[0].endTime.getTimeInMillis());
-        assertEquals(3000L, legs[0].getDuration());
-        assertEquals(0, legs[0].departureDelay);
-        assertEquals(0, legs[0].arrivalDelay);
-        assertFalse(legs[0].realTime);
-        assertEquals(DISTANCES[0], legs[0].distance, 0.0);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertNull(legs[0].agencyId);
+            assertNull(legs[0].agencyName);
+            assertNull(legs[0].agencyUrl);
+            assertEquals(2, legs[0].agencyTimeZoneOffset);
+            assertNull(legs[0].notes);
+            assertNull(legs[0].alerts);
+            assertEquals("", legs[0].route);
+            assertNull(legs[0].routeId);
+            assertNull(legs[0].routeShortName);
+            assertNull(legs[0].routeLongName);
+            assertNull(legs[0].routeType);
+            assertNull(legs[0].routeColor);
+            assertNull(legs[0].routeTextColor);
+            assertNull(legs[0].tripId);
+            assertNull(legs[0].tripShortName);
+            assertNull(legs[0].tripBlockId);
+            assertNull(legs[0].serviceDate);
+            assertNull(legs[0].headsign);
+            assertFalse(legs[0].rentedBike);
+            assertFalse(legs[0].isTransitLeg());
+            assertFalse(legs[0].interlineWithPreviousLeg);
+            assertNull(legs[0].boardRule);
+            assertNull(legs[0].alightRule);
+            assertEquals("WALK", legs[0].mode);
+            assertEquals(0L, legs[0].startTime.getTimeInMillis());
+            assertEquals(3000L, legs[0].endTime.getTimeInMillis());
+            assertEquals(3000L, legs[0].getDuration());
+            assertEquals(0, legs[0].departureDelay);
+            assertEquals(0, legs[0].arrivalDelay);
+            assertFalse(legs[0].realTime);
+            assertEquals(F_DISTANCE[0], legs[0].distance, 0.0);
+        } else if (type == Type.ONBOARD) {
+            assertNull(legs[0]);
+        }
 
         assertEquals("Train", legs[1].agencyId);
         assertEquals("John Train", legs[1].agencyName);
@@ -894,16 +1000,29 @@ public class PlanGeneratorTest {
         assertFalse(legs[1].rentedBike);
         assertTrue(legs[1].isTransitLeg());
         assertFalse(legs[1].interlineWithPreviousLeg);
-        assertEquals("coordinateWithDriver", legs[1].boardRule);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals("coordinateWithDriver", legs[1].boardRule);
+        } else if (type == Type.ONBOARD) {
+            assertNull(legs[1].boardRule);
+        }
         assertNull(legs[1].alightRule);
         assertEquals("RAIL", legs[1].mode);
-        assertEquals(4000L, legs[1].startTime.getTimeInMillis());
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(4000L, legs[1].startTime.getTimeInMillis());
+            assertEquals(12000L, legs[1].getDuration());
+        } else if (type == Type.ONBOARD) {
+            assertEquals(6000L, legs[1].startTime.getTimeInMillis());
+            assertEquals(10000L, legs[1].getDuration());
+        }
         assertEquals(16000L, legs[1].endTime.getTimeInMillis());
-        assertEquals(12000L, legs[1].getDuration());
         assertEquals(0, legs[1].departureDelay);
         assertEquals(0, legs[1].arrivalDelay);
         assertFalse(legs[1].realTime);
-        assertEquals(DISTANCES[1], legs[1].distance, EPSILON);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(F_DISTANCE[1], legs[1].distance, EPSILON);
+        } else if (type == Type.ONBOARD) {
+            assertEquals(O_DISTANCE, legs[1].distance, EPSILON);
+        }
 
         assertEquals("Train", legs[2].agencyId);
         assertEquals("John Train", legs[2].agencyName);
@@ -935,7 +1054,7 @@ public class PlanGeneratorTest {
         assertEquals(0, legs[2].departureDelay);
         assertEquals(0, legs[2].arrivalDelay);
         assertFalse(legs[2].realTime);
-        assertEquals(DISTANCES[2], legs[2].distance, EPSILON);
+        assertEquals(F_DISTANCE[2], legs[2].distance, EPSILON);
 
         assertNull(legs[3].agencyId);
         assertNull(legs[3].agencyName);
@@ -961,25 +1080,27 @@ public class PlanGeneratorTest {
         assertNull(legs[3].boardRule);
         assertNull(legs[3].alightRule);
         assertEquals("WALK", legs[3].mode);
-        if (backward) {
-            assertEquals(32000L, legs[3].startTime.getTimeInMillis());
-            assertEquals(40000L, legs[3].endTime.getTimeInMillis());
-        } else {
+        if (type == Type.FORWARD || type == Type.ONBOARD) {
             assertEquals(24000L, legs[3].startTime.getTimeInMillis());
             assertEquals(32000L, legs[3].endTime.getTimeInMillis());
+        } else if (type == Type.BACKWARD) {
+            assertEquals(32000L, legs[3].startTime.getTimeInMillis());
+            assertEquals(40000L, legs[3].endTime.getTimeInMillis());
         }
         assertEquals(8000L, legs[3].getDuration());
         assertEquals(0, legs[3].departureDelay);
         assertEquals(0, legs[3].arrivalDelay);
         assertFalse(legs[3].realTime);
-        assertEquals(DISTANCES[3], legs[3].distance, 0.0);
+        assertEquals(F_DISTANCE[3], legs[3].distance, 0.0);
 
         assertEquals("Ferry", legs[4].agencyId);
         assertEquals("Brian Ferry", legs[4].agencyName);
         assertEquals("http://www.ferry.org/", legs[4].agencyUrl);
         assertEquals(2, legs[4].agencyTimeZoneOffset);
-        assertNull(legs[4].notes);
-        assertNull(legs[4].alerts);
+        assertEquals(1, legs[4].notes.size());
+        assertEquals(alertsExample, legs[4].notes.get(0).text);
+        assertEquals(1, legs[4].alerts.size());
+        assertEquals(Alert.createSimpleAlerts(alertsExample), legs[4].alerts.get(0));
         assertEquals("C", legs[4].route);
         assertEquals("C", legs[4].routeId);
         assertEquals("C", legs[4].routeShortName);
@@ -1004,7 +1125,7 @@ public class PlanGeneratorTest {
         assertEquals(8, legs[4].departureDelay);
         assertEquals(7, legs[4].arrivalDelay);
         assertTrue(legs[4].realTime);
-        assertEquals(DISTANCES[4], legs[4].distance, EPSILON);
+        assertEquals(F_DISTANCE[4], legs[4].distance, EPSILON);
 
         assertNull(legs[5].agencyId);
         assertNull(legs[5].agencyName);
@@ -1036,7 +1157,7 @@ public class PlanGeneratorTest {
         assertEquals(0, legs[5].departureDelay);
         assertEquals(0, legs[5].arrivalDelay);
         assertFalse(legs[5].realTime);
-        assertEquals(DISTANCES[5], legs[5].distance, 0.0);
+        assertEquals(F_DISTANCE[5], legs[5].distance, 0.0);
 
         assertNull(legs[6].agencyId);
         assertNull(legs[6].agencyName);
@@ -1068,7 +1189,7 @@ public class PlanGeneratorTest {
         assertEquals(0, legs[6].departureDelay);
         assertEquals(0, legs[6].arrivalDelay);
         assertFalse(legs[6].realTime);
-        assertEquals(DISTANCES[6], legs[6].distance, 0.0);
+        assertEquals(F_DISTANCE[6], legs[6].distance, 0.0);
 
         assertNull(legs[7].agencyId);
         assertNull(legs[7].agencyName);
@@ -1102,7 +1223,7 @@ public class PlanGeneratorTest {
         assertEquals(0, legs[7].departureDelay);
         assertEquals(0, legs[7].arrivalDelay);
         assertFalse(legs[7].realTime);
-        assertEquals(DISTANCES[7], legs[7].distance, 0.0);
+        assertEquals(F_DISTANCE[7], legs[7].distance, 0.0);
 
         assertNull(legs[8].agencyId);
         assertNull(legs[8].agencyName);
@@ -1134,12 +1255,16 @@ public class PlanGeneratorTest {
         assertEquals(0, legs[8].departureDelay);
         assertEquals(0, legs[8].arrivalDelay);
         assertFalse(legs[8].realTime);
-        assertEquals(DISTANCES[8], legs[8].distance, 0.0);
+        assertEquals(F_DISTANCE[8], legs[8].distance, 0.0);
     }
 
     /** Compare all simple walk step fields to their expected values, step by step. */
-    private void compareSteps(WalkStep[][] steps) {
-        assertEquals(1, steps[0].length);
+    private void compareSteps(WalkStep[][] steps, Type type) {
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(1, steps[0].length);
+        } else if (type == Type.ONBOARD) {
+            assertEquals(0, steps[0].length);
+        }
         assertEquals(0, steps[1].length);
         assertEquals(0, steps[2].length);
         assertEquals(1, steps[3].length);
@@ -1149,18 +1274,20 @@ public class PlanGeneratorTest {
         assertEquals(1, steps[7].length);
         assertEquals(0, steps[8].length);
 
-        assertEquals(AbsoluteDirection.NORTHEAST, steps[0][0].absoluteDirection);
-        assertEquals(RelativeDirection.DEPART, steps[0][0].relativeDirection);
-        assertEquals(NORTHEAST, steps[0][0].angle, EPSILON);
-        assertEquals("Edge 3", steps[0][0].streetName);
-        assertEquals(3.0, steps[0][0].distance, 0.0);
-        assertFalse(steps[0][0].bogusName);
-        assertFalse(steps[0][0].stayOn);
-        assertEquals(0, steps[0][0].lon, 0.0);
-        assertEquals(0, steps[0][0].lat, 0.0);
-        assertNull(steps[0][0].alerts);
-        assertFalse(steps[0][0].area);
-        assertEquals("Ausfahrt", steps[0][0].exit);
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(AbsoluteDirection.NORTHEAST, steps[0][0].absoluteDirection);
+            assertEquals(RelativeDirection.DEPART, steps[0][0].relativeDirection);
+            assertEquals(NORTHEAST, steps[0][0].angle, EPSILON);
+            assertEquals("Edge 3", steps[0][0].streetName);
+            assertEquals(3.0, steps[0][0].distance, 0.0);
+            assertFalse(steps[0][0].bogusName);
+            assertFalse(steps[0][0].stayOn);
+            assertEquals(0, steps[0][0].lon, 0.0);
+            assertEquals(0, steps[0][0].lat, 0.0);
+            assertNull(steps[0][0].alerts);
+            assertFalse(steps[0][0].area);
+            assertEquals("Ausfahrt", steps[0][0].exit);
+        }
 
         assertEquals(AbsoluteDirection.EAST, steps[3][0].absoluteDirection);
         assertEquals(RelativeDirection.DEPART, steps[3][0].relativeDirection);
@@ -1236,12 +1363,20 @@ public class PlanGeneratorTest {
     }
 
     /** Compare the encoded geometries to their expected values, leg by leg. */
-    private void compareGeometries(EncodedPolylineBean[] geometries) {
-        assertEquals(2, geometries[0].getLength());
-        assertEquals("??_ibE_ibE", geometries[0].getPoints());
+    private void compareGeometries(EncodedPolylineBean[] geometries, Type type) {
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(2, geometries[0].getLength());
+            assertEquals("??_ibE_ibE", geometries[0].getPoints());
+        } else if (type == Type.ONBOARD) {
+            assertNull(geometries[0]);
+        }
 
         assertEquals(3, geometries[1].getLength());
-        assertEquals("_ibE_ibE_{geC_wpkG_{geC_wpkG", geometries[1].getPoints());
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals("_ibE_ibE_{geC_wpkG_{geC_wpkG", geometries[1].getPoints());
+        } else if (type == Type.ONBOARD) {
+            assertEquals("_wfhA_ekkC_mcbA_{geC_{geC_wpkG", geometries[1].getPoints());
+        }
 
         assertEquals(2, geometries[2].getLength());
         assertEquals("_atqG_ye~O_{geC_wpkG", geometries[2].getPoints());
@@ -1266,7 +1401,7 @@ public class PlanGeneratorTest {
     }
 
     /** Compare all simple place fields to their expected values, place by place. */
-    private void comparePlaces(Place[][] places, boolean backward) {
+    private void comparePlaces(Place[][] places, Type type) {
         assertEquals(2, places[0].length);
         assertEquals(3, places[1].length);
         assertEquals(2, places[2].length);
@@ -1277,43 +1412,65 @@ public class PlanGeneratorTest {
         assertEquals(2, places[7].length);
         assertEquals(2, places[8].length);
 
-        assertEquals("Vertex 0", places[0][0].name);
-        assertEquals(0, places[0][0].lon, 0.0);
-        assertEquals(0, places[0][0].lat, 0.0);
-        assertNull(places[0][0].stopIndex);
-        assertNull(places[0][0].stopCode);
-        assertNull(places[0][0].platformCode);
-        assertNull(places[0][0].zoneId);
-        assertNull(places[0][0].orig);
-        assertNull(places[0][0].arrival);
-        assertEquals(0L, places[0][0].departure.getTimeInMillis());
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals("Vertex 0", places[0][0].name);
+            assertEquals(0, places[0][0].lon, 0.0);
+            assertEquals(0, places[0][0].lat, 0.0);
+            assertNull(places[0][0].stopIndex);
+            assertNull(places[0][0].stopSequence);
+            assertNull(places[0][0].stopCode);
+            assertNull(places[0][0].platformCode);
+            assertNull(places[0][0].zoneId);
+            assertNull(places[0][0].orig);
+            assertNull(places[0][0].arrival);
+            assertEquals(0L, places[0][0].departure.getTimeInMillis());
 
-        assertEquals("Train stop depart", places[0][1].name);
-        assertEquals(1, places[0][1].lon, 0.0);
-        assertEquals(1, places[0][1].lat, 0.0);
-        assertNull(places[0][1].stopIndex);
-        assertNull(places[0][1].stopCode);
-        assertNull(places[0][1].platformCode);
-        assertNull(places[0][1].zoneId);
-        assertNull(places[0][1].orig);
-        assertEquals(3000L, places[0][1].arrival.getTimeInMillis());
-        assertEquals(4000L, places[0][1].departure.getTimeInMillis());
+            assertEquals("Train stop depart", places[0][1].name);
+            assertEquals(1, places[0][1].lon, 0.0);
+            assertEquals(1, places[0][1].lat, 0.0);
+            assertEquals(0, places[0][1].stopIndex.intValue());
+            assertEquals(Integer.MIN_VALUE, places[0][1].stopSequence.intValue());
+            assertEquals("Train depart code", places[0][1].stopCode);
+            assertEquals("Train depart platform", places[0][1].platformCode);
+            assertEquals("Train depart zone", places[0][1].zoneId);
+            assertNull(places[0][1].orig);
+            assertEquals(3000L, places[0][1].arrival.getTimeInMillis());
+            assertEquals(4000L, places[0][1].departure.getTimeInMillis());
 
-        assertEquals("Train stop depart", places[1][0].name);
-        assertEquals(1, places[1][0].lon, 0.0);
-        assertEquals(1, places[1][0].lat, 0.0);
-        assertEquals(0, places[1][0].stopIndex.intValue());
-        assertEquals("Train depart code", places[1][0].stopCode);
-        assertEquals("Train depart platform", places[1][0].platformCode);
-        assertEquals("Train depart zone", places[1][0].zoneId);
-        assertNull(places[1][0].orig);
-        assertEquals(3000L, places[1][0].arrival.getTimeInMillis());
-        assertEquals(4000L, places[1][0].departure.getTimeInMillis());
+            assertEquals("Train stop depart", places[1][0].name);
+            assertEquals(1, places[1][0].lon, 0.0);
+            assertEquals(1, places[1][0].lat, 0.0);
+            assertEquals(0, places[1][0].stopIndex.intValue());
+            assertEquals(Integer.MIN_VALUE, places[1][0].stopSequence.intValue());
+            assertEquals("Train depart code", places[1][0].stopCode);
+            assertEquals("Train depart platform", places[1][0].platformCode);
+            assertEquals("Train depart zone", places[1][0].zoneId);
+            assertNull(places[1][0].orig);
+            assertEquals(3000L, places[1][0].arrival.getTimeInMillis());
+            assertEquals(4000L, places[1][0].departure.getTimeInMillis());
+        } else if (type == Type.ONBOARD) {
+            assertNull(places[0][0]);
+
+            assertNull(places[0][1]);
+
+            assertEquals("Onboard", places[1][0].name);
+            assertEquals(23, places[1][0].lon, 0.0);
+            assertEquals(12, places[1][0].lat, 0.0);
+            assertNull(places[1][0].stopIndex);
+            assertNull(places[1][0].stopSequence);
+            assertNull(places[1][0].stopCode);
+            assertNull(places[1][0].platformCode);
+            assertNull(places[1][0].zoneId);
+            assertNull(places[1][0].orig);
+            assertNull(places[1][0].arrival);
+            assertEquals(6000L, places[1][0].departure.getTimeInMillis());
+        }
 
         assertEquals("Train stop dwell", places[1][1].name);
         assertEquals(45, places[1][1].lon, 0.0);
         assertEquals(23, places[1][1].lat, 0.0);
         assertEquals(1, places[1][1].stopIndex.intValue());
+        assertEquals(0, places[1][1].stopSequence.intValue());
         assertEquals("Train dwell code", places[1][1].stopCode);
         assertEquals("Train dwell platform", places[1][1].platformCode);
         assertEquals("Train dwell zone", places[1][1].zoneId);
@@ -1325,6 +1482,7 @@ public class PlanGeneratorTest {
         assertEquals(89, places[1][2].lon, 0.0);
         assertEquals(45, places[1][2].lat, 0.0);
         assertEquals(2, places[1][2].stopIndex.intValue());
+        assertEquals(Integer.MAX_VALUE, places[1][2].stopSequence.intValue());
         assertEquals("Train interline code", places[1][2].stopCode);
         assertEquals("Train interline platform", places[1][2].platformCode);
         assertEquals("Train interline zone", places[1][2].zoneId);
@@ -1336,6 +1494,7 @@ public class PlanGeneratorTest {
         assertEquals(89, places[2][0].lon, 0.0);
         assertEquals(45, places[2][0].lat, 0.0);
         assertEquals(0, places[2][0].stopIndex.intValue());
+        assertEquals(0, places[2][0].stopSequence.intValue());
         assertEquals("Train interline code", places[2][0].stopCode);
         assertEquals("Train interline platform", places[2][0].platformCode);
         assertEquals("Train interline zone", places[2][0].zoneId);
@@ -1347,44 +1506,47 @@ public class PlanGeneratorTest {
         assertEquals(133, places[2][1].lon, 0.0);
         assertEquals(67, places[2][1].lat, 0.0);
         assertEquals(1, places[2][1].stopIndex.intValue());
+        assertEquals(1, places[2][1].stopSequence.intValue());
         assertEquals("Train arrive code", places[2][1].stopCode);
         assertEquals("Train arrive platform", places[2][1].platformCode);
         assertEquals("Train arrive zone", places[2][1].zoneId);
         assertNull(places[2][1].orig);
         assertEquals(24000L, places[2][1].arrival.getTimeInMillis());
-        if (backward) {
-            assertEquals(32000L, places[2][1].departure.getTimeInMillis());
-        } else {
+        if (type == Type.FORWARD || type == Type.ONBOARD) {
             assertEquals(24000L, places[2][1].departure.getTimeInMillis());
+        } else if (type == Type.BACKWARD) {
+            assertEquals(32000L, places[2][1].departure.getTimeInMillis());
         }
 
         assertEquals("Train stop arrive", places[3][0].name);
         assertEquals(133, places[3][0].lon, 0.0);
         assertEquals(67, places[3][0].lat, 0.0);
-        assertNull(places[3][0].stopIndex);
-        assertNull(places[3][0].stopCode);
-        assertNull(places[3][0].platformCode);
-        assertNull(places[3][0].zoneId);
+        assertEquals(1, places[3][0].stopIndex.intValue());
+        assertEquals(1, places[3][0].stopSequence.intValue());
+        assertEquals("Train arrive code", places[3][0].stopCode);
+        assertEquals("Train arrive platform", places[3][0].platformCode);
+        assertEquals("Train arrive zone", places[3][0].zoneId);
         assertNull(places[3][0].orig);
         assertEquals(24000L, places[3][0].arrival.getTimeInMillis());
-        if (backward) {
-            assertEquals(32000L, places[3][0].departure.getTimeInMillis());
-        } else {
+        if (type == Type.FORWARD || type == Type.ONBOARD) {
             assertEquals(24000L, places[3][0].departure.getTimeInMillis());
+        } else if (type == Type.BACKWARD) {
+            assertEquals(32000L, places[3][0].departure.getTimeInMillis());
         }
 
         assertEquals("Ferry stop depart", places[3][1].name);
         assertEquals(135, places[3][1].lon, 0.0);
         assertEquals(67, places[3][1].lat, 0.0);
-        assertNull(places[3][1].stopIndex);
-        assertNull(places[3][1].stopCode);
-        assertNull(places[3][1].platformCode);
-        assertNull(places[3][1].zoneId);
+        assertEquals(0, places[3][1].stopIndex.intValue());
+        assertEquals(-1, places[3][1].stopSequence.intValue());
+        assertEquals("Ferry depart code", places[3][1].stopCode);
+        assertEquals("Ferry depart platform", places[3][1].platformCode);
+        assertEquals("Ferry depart zone", places[3][1].zoneId);
         assertNull(places[3][1].orig);
-        if (backward) {
-            assertEquals(40000L, places[3][1].arrival.getTimeInMillis());
-        } else {
+        if (type == Type.FORWARD || type == Type.ONBOARD) {
             assertEquals(32000L, places[3][1].arrival.getTimeInMillis());
+        } else if (type == Type.BACKWARD) {
+            assertEquals(40000L, places[3][1].arrival.getTimeInMillis());
         }
         assertEquals(40000L, places[3][1].departure.getTimeInMillis());
 
@@ -1392,14 +1554,15 @@ public class PlanGeneratorTest {
         assertEquals(135, places[4][0].lon, 0.0);
         assertEquals(67, places[4][0].lat, 0.0);
         assertEquals(0, places[4][0].stopIndex.intValue());
+        assertEquals(-1, places[4][0].stopSequence.intValue());
         assertEquals("Ferry depart code", places[4][0].stopCode);
         assertEquals("Ferry depart platform", places[4][0].platformCode);
         assertEquals("Ferry depart zone", places[4][0].zoneId);
         assertNull(places[4][0].orig);
-        if (backward) {
-            assertEquals(40000L, places[4][0].arrival.getTimeInMillis());
-        } else {
+        if (type == Type.FORWARD || type == Type.ONBOARD) {
             assertEquals(32000L, places[4][0].arrival.getTimeInMillis());
+        } else if (type == Type.BACKWARD) {
+            assertEquals(40000L, places[4][0].arrival.getTimeInMillis());
         }
         assertEquals(40000L, places[4][0].departure.getTimeInMillis());
 
@@ -1407,6 +1570,7 @@ public class PlanGeneratorTest {
         assertEquals(179, places[4][1].lon, 0.0);
         assertEquals(89, places[4][1].lat, 0.0);
         assertEquals(1, places[4][1].stopIndex.intValue());
+        assertEquals(0, places[4][1].stopSequence.intValue());
         assertEquals("Ferry arrive code", places[4][1].stopCode);
         assertEquals("Ferry arrive platform", places[4][1].platformCode);
         assertEquals("Ferry arrive zone", places[4][1].zoneId);
@@ -1417,10 +1581,11 @@ public class PlanGeneratorTest {
         assertEquals("Ferry stop arrive", places[5][0].name);
         assertEquals(179, places[5][0].lon, 0.0);
         assertEquals(89, places[5][0].lat, 0.0);
-        assertNull(places[5][0].stopIndex);
-        assertNull(places[5][0].stopCode);
-        assertNull(places[5][0].platformCode);
-        assertNull(places[5][0].zoneId);
+        assertEquals(1, places[5][0].stopIndex.intValue());
+        assertEquals(0, places[5][0].stopSequence.intValue());
+        assertEquals("Ferry arrive code", places[5][0].stopCode);
+        assertEquals("Ferry arrive platform", places[5][0].platformCode);
+        assertEquals("Ferry arrive zone", places[5][0].zoneId);
         assertNull(places[5][0].orig);
         assertEquals(43000L, places[5][0].arrival.getTimeInMillis());
         assertEquals(44000L, places[5][0].departure.getTimeInMillis());
@@ -1429,6 +1594,7 @@ public class PlanGeneratorTest {
         assertEquals(180, places[5][1].lon, 0.0);
         assertEquals(90, places[5][1].lat, 0.0);
         assertNull(places[5][1].stopIndex);
+        assertNull(places[5][1].stopSequence);
         assertNull(places[5][1].stopCode);
         assertNull(places[5][1].platformCode);
         assertNull(places[5][1].zoneId);
@@ -1440,6 +1606,7 @@ public class PlanGeneratorTest {
         assertEquals(180, places[6][0].lon, 0.0);
         assertEquals(90, places[6][0].lat, 0.0);
         assertNull(places[6][0].stopIndex);
+        assertNull(places[6][0].stopSequence);
         assertNull(places[6][0].stopCode);
         assertNull(places[6][0].platformCode);
         assertNull(places[6][0].zoneId);
@@ -1451,6 +1618,7 @@ public class PlanGeneratorTest {
         assertEquals(90, places[6][1].lon, 0.0);
         assertEquals(90, places[6][1].lat, 0.0);
         assertNull(places[6][1].stopIndex);
+        assertNull(places[6][1].stopSequence);
         assertNull(places[6][1].stopCode);
         assertNull(places[6][1].platformCode);
         assertNull(places[6][1].zoneId);
@@ -1462,6 +1630,7 @@ public class PlanGeneratorTest {
         assertEquals(90, places[7][0].lon, 0.0);
         assertEquals(90, places[7][0].lat, 0.0);
         assertNull(places[7][0].stopIndex);
+        assertNull(places[7][0].stopSequence);
         assertNull(places[7][0].stopCode);
         assertNull(places[7][0].platformCode);
         assertNull(places[7][0].zoneId);
@@ -1473,6 +1642,7 @@ public class PlanGeneratorTest {
         assertEquals(0, places[7][1].lon, 0.0);
         assertEquals(90, places[7][1].lat, 0.0);
         assertNull(places[7][1].stopIndex);
+        assertNull(places[7][1].stopSequence);
         assertNull(places[7][1].stopCode);
         assertNull(places[7][1].platformCode);
         assertNull(places[7][1].zoneId);
@@ -1484,6 +1654,7 @@ public class PlanGeneratorTest {
         assertEquals(0, places[8][0].lon, 0.0);
         assertEquals(90, places[8][0].lat, 0.0);
         assertNull(places[8][0].stopIndex);
+        assertNull(places[8][0].stopSequence);
         assertNull(places[8][0].stopCode);
         assertNull(places[8][0].platformCode);
         assertNull(places[8][0].zoneId);
@@ -1495,6 +1666,7 @@ public class PlanGeneratorTest {
         assertEquals(0, places[8][1].lon, 0.0);
         assertEquals(90, places[8][1].lat, 0.0);
         assertNull(places[8][1].stopIndex);
+        assertNull(places[8][1].stopSequence);
         assertNull(places[8][1].stopCode);
         assertNull(places[8][1].platformCode);
         assertNull(places[8][1].zoneId);
@@ -1504,7 +1676,7 @@ public class PlanGeneratorTest {
     }
 
     /** Compare the stop ids to their expected values, place by place. */
-    private void compareStopIds(AgencyAndId[][] stopIds) {
+    private void compareStopIds(AgencyAndId[][] stopIds, Type type) {
         assertEquals(2, stopIds[0].length);
         assertEquals(3, stopIds[1].length);
         assertEquals(2, stopIds[2].length);
@@ -1517,11 +1689,19 @@ public class PlanGeneratorTest {
 
         assertNull(stopIds[0][0]);
 
-        assertEquals("Train", stopIds[0][1].getAgencyId());
-        assertEquals("Depart", stopIds[0][1].getId());
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals("Train", stopIds[0][1].getAgencyId());
+            assertEquals("Depart", stopIds[0][1].getId());
+        } else if (type == Type.ONBOARD) {
+            assertNull(stopIds[0][1]);
+        }
 
-        assertEquals("Train", stopIds[1][0].getAgencyId());
-        assertEquals("Depart", stopIds[1][0].getId());
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals("Train", stopIds[1][0].getAgencyId());
+            assertEquals("Depart", stopIds[1][0].getId());
+        } else if (type == Type.ONBOARD) {
+            assertNull(stopIds[1][0]);
+        }
 
         assertEquals("Train", stopIds[1][1].getAgencyId());
         assertEquals("Dwell", stopIds[1][1].getId());
@@ -1566,11 +1746,18 @@ public class PlanGeneratorTest {
     }
 
     /** Compare the elevations to their expected values, step by step. */
-    private void compareElevations(Double[][][][] elevations) {
-        assertEquals(0.0, elevations[0][0][0][0], 0.0);
-        assertEquals(0.0, elevations[0][0][0][1], 0.0);
-        assertEquals(3.0, elevations[0][0][1][0], 0.0);
-        assertEquals(9.9, elevations[0][0][1][1], 0.0);
+    private void compareElevations(Double[][][][] elevations, Type type) {
+        if (type == Type.FORWARD || type == Type.BACKWARD) {
+            assertEquals(0.0, elevations[0][0][0][0], 0.0);
+            assertEquals(0.0, elevations[0][0][0][1], 0.0);
+            assertEquals(3.0, elevations[0][0][1][0], 0.0);
+            assertEquals(9.9, elevations[0][0][1][1], 0.0);
+        } else if (type == Type.ONBOARD) {
+            assertNull(elevations[0][0][0][0]);
+            assertNull(elevations[0][0][0][1]);
+            assertNull(elevations[0][0][1][0]);
+            assertNull(elevations[0][0][1][1]);
+        }
 
         assertNull(elevations[0][1][0][0]);
         assertNull(elevations[0][1][0][1]);
@@ -1702,5 +1889,16 @@ public class PlanGeneratorTest {
             fare.addFare(FareType.special, new WrappedCurrency(), 8);
             return fare;
         }
+    }
+
+    /**
+     * This enum is used to distinguish between the different graph paths and resulting itineraries.
+     * Its three values correspond to the forward, backward and onboard graph paths and itineraries.
+     * When future values are added, the test should not be assumed to fail upon encountering those.
+     */
+    private static enum Type {
+        FORWARD,
+        BACKWARD,
+        ONBOARD
     }
 }

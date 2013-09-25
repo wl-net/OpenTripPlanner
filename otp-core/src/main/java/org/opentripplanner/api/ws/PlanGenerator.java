@@ -65,6 +65,7 @@ import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.util.ElevationProfileSegment;
 import org.opentripplanner.routing.vertextype.ExitVertex;
+import org.opentripplanner.routing.vertextype.OnboardDepartVertex;
 import org.opentripplanner.routing.vertextype.TransitVertex;
 import org.opentripplanner.util.PolylineEncoder;
 import org.slf4j.Logger;
@@ -236,7 +237,10 @@ public class PlanGenerator {
 
         itinerary.walkDistance = lastState.getWalkDistance();
 
-        if (lastState.getNumBoardings() > 1) itinerary.transfers = lastState.getNumBoardings() - 1;
+        itinerary.transfers = lastState.getNumBoardings();
+        if (itinerary.transfers > 0 && !(states[0].getVertex() instanceof OnboardDepartVertex)) {
+            itinerary.transfers--;
+        }
 
         return itinerary;
     }
@@ -420,8 +424,11 @@ public class PlanGenerator {
                     PatternEdge patternEdge = (PatternEdge) legsStates[i][j].getBackEdge();
                     TripPattern tripPattern = patternEdge.getPattern();
 
-                    int boardType = tripPattern.getBoardType(legs.get(i).from.stopIndex);
-                    int alightType = tripPattern.getAlightType(legs.get(i).to.stopIndex);
+                    Integer fromIndex = legs.get(i).from.stopIndex;
+                    Integer toIndex = legs.get(i).to.stopIndex;
+
+                    int boardType = (fromIndex != null) ? (tripPattern.getBoardType(fromIndex)) : 0;
+                    int alightType = (toIndex != null) ? (tripPattern.getAlightType(toIndex)) : 0;
 
                     boardRules[i] = TransitUtils.determineBoardAlightType(boardType);
                     alightRules[i] = TransitUtils.determineBoardAlightType(alightType);
@@ -443,12 +450,10 @@ public class PlanGenerator {
             }
 
             if (legs.get(i).isTransitLeg() && !legs.get(i + 1).isTransitLeg()) {
-                legs.get(i + 1).from.name = legs.get(i).to.name;
-                legs.get(i + 1).from.stopId = legs.get(i).to.stopId;
+                legs.get(i + 1).from = legs.get(i).to;
             }
             if (!legs.get(i).isTransitLeg() && legs.get(i + 1).isTransitLeg()) {
-                legs.get(i).to.name = legs.get(i + 1).from.name;
-                legs.get(i).to.stopId = legs.get(i + 1).from.stopId;
+                legs.get(i).to = legs.get(i + 1).from;
             }
         }
 
@@ -604,6 +609,7 @@ public class PlanGenerator {
 
         Edge firstEdge = edges[0];
         Edge lastEdge = edges[edges.length - 1];
+        TripTimes tripTimes = states[states.length - 1].getTripTimes();
 
         leg.from = new Place(firstVertex.getX(), firstVertex.getY(), firstVertex.getName(),
                 null, makeCalendar(states[0]));
@@ -622,6 +628,7 @@ public class PlanGenerator {
                 leg.from.platformCode = firstStop.getPlatformCode();
                 leg.from.zoneId = firstStop.getZoneId();
                 leg.from.stopIndex = ((OnboardEdge) firstEdge).getStopIndex();
+                leg.from.stopSequence = tripTimes.getStopSequence(leg.from.stopIndex);
             }
         }
 
@@ -634,6 +641,7 @@ public class PlanGenerator {
                 leg.to.platformCode = lastStop.getPlatformCode();
                 leg.to.zoneId = lastStop.getZoneId();
                 leg.to.stopIndex = ((OnboardEdge) lastEdge).getStopIndex() + 1;
+                leg.to.stopSequence = tripTimes.getStopSequence(leg.to.stopIndex);
             }
         }
 
@@ -669,6 +677,7 @@ public class PlanGenerator {
                     place.platformCode = currentStop.getPlatformCode();
                     place.zoneId = currentStop.getZoneId();
                     place.stopIndex = ((OnboardEdge) edges[i]).getStopIndex();
+                    place.stopSequence = tripTimes.getStopSequence(place.stopIndex);
                 }
 
                 leg.stop.add(place);
@@ -687,7 +696,9 @@ public class PlanGenerator {
 
         if (tripTimes != null && !tripTimes.isScheduled()) {
             leg.realTime = true;
-            leg.departureDelay = tripTimes.getDepartureDelay(leg.from.stopIndex);
+            if (leg.from.stopIndex != null) {
+                leg.departureDelay = tripTimes.getDepartureDelay(leg.from.stopIndex);
+            }
             leg.arrivalDelay = tripTimes.getArrivalDelay(leg.to.stopIndex - 1);
         }
     }
