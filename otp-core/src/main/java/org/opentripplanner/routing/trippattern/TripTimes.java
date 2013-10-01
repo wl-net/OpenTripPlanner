@@ -13,12 +13,19 @@
 
 package org.opentripplanner.routing.trippattern;
 
+import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 import org.onebusaway.gtfs.model.Stop;
+import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
+import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.ServiceDay;
 import org.opentripplanner.routing.core.State;
@@ -26,6 +33,7 @@ import org.opentripplanner.routing.core.StopTransfer;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.edgetype.TimedTransferEdge;
 import org.opentripplanner.routing.request.BannedStopSet;
+import org.opentripplanner.routing.trippattern.Update.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,56 +47,202 @@ import org.slf4j.LoggerFactory;
  * it saves two extra array elements in every stopTimes. It might be worth it to just use stop 
  * indexes everywhere for simplicity.
  */
-public abstract class TripTimes {
-
+public class TripTimes implements Serializable {
+    private static final long serialVersionUID = MavenVersion.VERSION.getUID();
     private static final Logger LOG = LoggerFactory.getLogger(TripTimes.class);
+
     public static final int PASSED = -1;
     public static final int CANCELED = -2;
-    
-    /* ABSTRACT INSTANCE METHODS */
-    
-    /** @return the trips whose arrivals and departures are represented by this TripTimes */
-    public abstract Trip getTrip();
-    
-//    /** @return the index of this TripTimes in the enclosing Timetable */
-//      so far doesn't need to be visible
-//    public Trip getTripIndex();
 
-    /** @return the base trip times which this particular TripTimes represents or modifies */
-    public abstract ScheduledTripTimes getScheduledTripTimes();
-
-    /** @return the number of inter-stop segments (hops) on this trip */
-    public abstract int getNumHops();
-        
-    /** 
-     * @return the time in seconds after midnight at which the vehicle begins traversing each 
-     * inter-stop segment ("hop"). 
-     */
-    public abstract int getDepartureTime(int hop);
-    
-    /** 
-     * @return the time in seconds after midnight at which the vehicle arrives at the end of each 
-     * inter-stop segment ("hop"). A null value indicates that all dwells are 0-length, and arrival 
-     * times are to be derived from the departure times array. 
-     */
-    public abstract int getArrivalTime(int hop);
+    /** The trips whose arrivals and departures are represented by this TripTimes */
+    @Getter private final Trip trip;
 
     /**
-     * It all depends whether we store pointers to the enclosing Timetable in ScheduledTripTimes...
+     * Both trip_headsign and stop_headsign (per stop on a particular trip) are optional GTFS
+     * fields. If the headsigns array is null, we will report the trip_headsign (which may also
+     * be null) at every stop on the trip. If all the stop_headsigns are the same as the
+     * trip_headsign we may also set the headsigns array to null to save space.
      */
-    public abstract String getHeadsign(int hop);
+    private final String[] headsigns;
+
+    /**
+     * The time in seconds after midnight at which the vehicle should begin traversing each
+     * inter-stop segment ("hop") according to the original schedule. Field is non-final to support
+     * compaction.
+     */ //@XmlElement
+    private int[] scheduledDepartureTimes;
+
+    /**
+     * The time in seconds after midnight at which the vehicle should arrive at the end of each
+     * inter-stop segment ("hop") according to the original schedule. A null value indicates that
+     * all dwells are 0-length, and arrival times are to be derived from the departure times array.
+     * Field is non-final to support compaction.
+     */ //@XmlElement
+    private int[] scheduledArrivalTimes;
+
+    /**
+     * The time in seconds after midnight at which the vehicle begins traversing each inter-stop
+     * segment ("hop"). A null value indicates that the original schedule still applies. Field is
+     * non-final to support compaction.
+     */
+    private int[] departureTimes;
+
+    /**
+     * The time in seconds after midnight at which the vehicle arrives at the end of each
+     * inter-stop segment ("hop"). A null value indicates that arrival times are to be derived from
+     * the departure times array or the original schedule. Field is non-final to support compaction.
+     */
+    private int[] arrivalTimes;
+
+    private int[] stopSequences;
+
+    /** The provided stopTimes are assumed to be pre-filtered, valid, and monotonically increasing. */
+    public TripTimes(Trip trip, List<StopTime> stopTimes) {
+        this.trip = trip;
+        int nStops = stopTimes.size();
+        int nHops = nStops - 1;
+        scheduledDepartureTimes = new int[nHops];
+        scheduledArrivalTimes = new int[nHops];
+        stopSequences = new int[nStops];
+        // this might be clearer if time array indexes were stops instead of hops
+        for (int hop = 0; hop < nHops; hop++) {
+            scheduledDepartureTimes[hop] = stopTimes.get(hop).getDepartureTime();
+            scheduledArrivalTimes[hop] = stopTimes.get(hop + 1).getArrivalTime();
+        }
+        for (int stop = 0; stop < nStops; stop++) {
+            StopTime stopTime = stopTimes.get(stop);
+            stopSequences[stop] = stopTime.getStopSequence();
+        }
+        this.headsigns = makeHeadsignsArray(stopTimes);
+        // If all dwell times are 0, arrival times array is not needed. Attempt to save some memory.
+        this.compact();
+    }
+
+    /** This copy constructor does not copy the actual times, only the scheduled times. */
+    public TripTimes(TripTimes object) {
+        this.trip = object.trip;
+        this.headsigns = object.headsigns;
+        this.scheduledDepartureTimes = object.scheduledDepartureTimes;
+        this.scheduledArrivalTimes = object.scheduledArrivalTimes;
+        this.stopSequences = object.stopSequences;
+    }
+
+    /**
+     * @return either an array of headsigns (one for each stop on this trip) or null if the
+     * headsign is the same at all stops (including null) and can be found in the Trip object.
+     */
+    private String[] makeHeadsignsArray(List<StopTime> stopTimes) {
+        String tripHeadsign = trip.getTripHeadsign();
+        boolean useStopHeadsigns = false;
+        if (tripHeadsign == null) {
+            useStopHeadsigns = true;
+        } else {
+            for (StopTime st : stopTimes) {
+                if ( ! (tripHeadsign.equals(st.getStopHeadsign()))) {
+                    useStopHeadsigns = true;
+                    break;
+                }
+            }
+        }
+        if (!useStopHeadsigns) {
+            return null; //defer to trip_headsign
+        }
+        boolean allNull = true;
+        int i = 0;
+        String[] hs = new String[stopTimes.size()];
+        for (StopTime st : stopTimes) {
+            String headsign = st.getStopHeadsign();
+            hs[i++] = headsign;
+            if (headsign != null) allNull = false;
+        }
+        if (allNull) {
+            return null;
+        } else {
+            return hs;
+        }
+    }
+
+    /** @return the number of inter-stop segments (hops) on this trip */
+    public int getNumHops() {
+        // The arrivals array may not be present, and the departures array may have grown by 1 due
+        // to compaction, so we can't directly use array lengths as an indicator of number of hops.
+        if (scheduledArrivalTimes == null) {
+            return scheduledDepartureTimes.length - 1;
+        } else {
+            return scheduledArrivalTimes.length;
+        }
+    }
+
+    /**
+     * @return the time in seconds after midnight at which the vehicle should begin traversing each
+     * inter-stop segment ("hop") according to the original schedule.
+     */
+    public int getScheduledDepartureTime(int hop) {
+        return scheduledDepartureTimes[hop];
+    }
+
+    /**
+     * @return the time in seconds after midnight at which the vehicle should arrive at the end of
+     * each inter-stop segment ("hop") according to the original schedule.
+     */
+    public int getScheduledArrivalTime(int hop) {
+        if (scheduledArrivalTimes == null) {
+            return scheduledDepartureTimes[hop + 1];
+        } else {
+            return scheduledArrivalTimes[hop];
+        }
+    }
+
+    /**
+     * @return the time in seconds after midnight at which the vehicle begins traversing each
+     * inter-stop segment ("hop").
+     */
+    public int getDepartureTime(int hop) {
+        if (departureTimes == null) {
+            return scheduledDepartureTimes[hop];
+        } else {
+            return departureTimes[hop];
+        }
+    }
+
+    /**
+     * @return the time in seconds after midnight at which the vehicle arrives at the end of each
+     * inter-stop segment ("hop"). A null value indicates that all dwells are 0-length, and arrival
+     * times are to be derived from the departure times array.
+     */
+    public int getArrivalTime(int hop) {
+        if (departureTimes == null) {
+            return getScheduledArrivalTime(hop);
+        } else if (arrivalTimes == null) {
+            return departureTimes[hop + 1];
+        } else {
+            return arrivalTimes[hop];
+        }
+    }
+
+    /**
+     * It all depends whether we store pointers to the enclosing Timetable...
+     */
+    public String getHeadsign(int hop) {
+        if (headsigns == null) {
+            return trip.getTripHeadsign();
+        } else {
+            return headsigns[hop];
+        }
+    }
 
     /** Return the stopSequence for the given stop. */
-    public abstract int getStopSequence(int stopIndex);
+    public int getStopSequence(int stopIndex) {
+        return stopSequences[stopIndex];
+    }
 
-    /* IMPLEMENTED INSTANCE METHODS */
-    
-    /** 
-     * @return the amount of time in seconds that the vehicle waits at the stop *before* traversing 
-     * each inter-stop segment ("hop"). It is undefined for hop 0, and at the end of a trip. 
+    /**
+     * @return the amount of time in seconds that the vehicle waits at the stop *before* traversing
+     * each inter-stop segment ("hop"). It is undefined for hop 0, and at the end of a trip. A value
+     * of -1 indicates such a range error.
      */
     public int getDwellTime(int hop) {
-        // TODO: Add range checking and -1 error value? see GTFSPatternHopFactory.makeTripPattern().
+        if (hop <= 0 || hop >= getNumHops()) return -1;
         int arrivalTime = getArrivalTime(hop-1);
         int departureTime = getDepartureTime(hop);
         return departureTime - arrivalTime;
@@ -106,8 +260,7 @@ public abstract class TripTimes {
             return 0;
         }
 
-        while(hop >= 0 && departureTime == TripTimes.CANCELED) {
-            hop--;
+        while(--hop >= 0 && departureTime == TripTimes.CANCELED) {
             departureTime = getDepartureTime(hop);
         }
 
@@ -120,12 +273,12 @@ public abstract class TripTimes {
 
     /** @return the difference between the scheduled and actual departure times for this hop. */
     public int getDepartureDelay(int hop) {
-        return getDepartureTime(hop) - getScheduledTripTimes().getDepartureTime(hop); 
+        return getDepartureTime(hop) - getScheduledDepartureTime(hop);
     }
 
     /** @return the difference between the scheduled and actual arrival times for this hop. */
     public int getArrivalDelay(int hop) {
-        return getArrivalTime(hop) - getScheduledTripTimes().getArrivalTime(hop); 
+        return getArrivalTime(hop) - getScheduledArrivalTime(hop);
     }
     
     /** 
@@ -133,7 +286,7 @@ public abstract class TripTimes {
      * timetable or false if it is a updated, cancelled, or otherwise modified one.
      */
     public boolean isScheduled() {
-        return this.getScheduledTripTimes() == this;
+        return departureTimes == null;
     }
     
     private String formatSeconds(int s) {
@@ -159,12 +312,58 @@ public abstract class TripTimes {
     }
 
     /** 
-     * Request that this TripTimes be analyzed and its memory usage reduced if possible. Default
-     * implementation does nothing since only certain TripTimes subclasses will need this.
+     * Request that this TripTimes be analyzed and its memory usage reduced if possible. Replaces
+     * the arrivals array with null if all dwell times are zero.
      * @return whether or not compaction occurred. 
      */
     public boolean compact() {
-        return false;
+        return compactScheduledArrivalsAndDepartures() || compactArrivalsAndDepartures();
+    }
+
+    private boolean compactScheduledArrivalsAndDepartures() {
+        if (scheduledArrivalTimes == null) return false;
+        // use scheduledArrivalTimes to determine number of hops because scheduledDepartureTimes may
+        // have grown by 1 due to successive compact/decompact operations
+        int nHops = scheduledArrivalTimes.length;
+        // dwell time is undefined for hop 0, because there is no arrival for hop -1
+        for (int hop = 1; hop < nHops; hop++) {
+            if (this.getDwellTime(hop) != 0) {
+                LOG.trace("compact failed: nonzero dwell time before hop {}", hop);
+                return false;
+            }
+        }
+        // extend scheduledDepartureTimes array by 1 to hold final arrival time
+        scheduledDepartureTimes = Arrays.copyOf(scheduledDepartureTimes, nHops+1);
+        scheduledDepartureTimes[nHops] = scheduledArrivalTimes[nHops-1];
+        scheduledArrivalTimes = null;
+        return true;
+    }
+
+    private boolean compactArrivalsAndDepartures() {
+        if (arrivalTimes == null || departureTimes == null) return false;
+        // use arrivalTimes to determine number of hops because departureTimes may have grown by 1
+        // due to successive compact/decompact operations
+        int nHops = arrivalTimes.length;
+        // dwell time is undefined for hop 0, because there is no arrival for hop -1
+        for (int hop = 1; hop < nHops; hop++) {
+            if (this.getDwellTime(hop) != 0) {
+                LOG.trace("compact failed: nonzero dwell time before hop {}", hop);
+                return false;
+            }
+        }
+        // extend departureTimes array by 1 to hold final arrival time
+        departureTimes = Arrays.copyOf(departureTimes, nHops+1);
+        departureTimes[nHops] = arrivalTimes[nHops-1];
+        arrivalTimes = null;
+        return true;
+    }
+
+    public void compactStopSequence(TripTimes firstTripTime) {
+        if(firstTripTime.stopSequences == null || stopSequences == null) {
+            return;
+        } else if(firstTripTime.stopSequences.equals(stopSequences)) {
+            stopSequences = firstTripTime.stopSequences;
+        }
     }
 
     /**
@@ -175,7 +374,6 @@ public abstract class TripTimes {
      */
     public boolean timesIncreasing() {
         // iterate over the new tripTimes, checking that dwells and hops are positive
-        boolean increasing = true;
         int nHops = getNumHops();
         int prevArr = -1;
         for (int hop = 0; hop < nHops; hop++) {
@@ -187,15 +385,15 @@ public abstract class TripTimes {
 
             if (arr < dep) { // negative hop time
                 LOG.error("Negative hop time in TripTimes at index {}.", hop);
-                increasing = false;
+                return false;
             }
             if (prevArr > dep) { // negative dwell time before this hop
                 LOG.error("Negative dwell time in TripTimes at index {}.", hop);
-                increasing = false;
+                return false;
             }
             prevArr = arr;
         }
-        return increasing;
+        return true;
     }
     
     /* STATIC METHODS TAKING TRIPTIMES AS ARGUMENTS */
@@ -325,6 +523,106 @@ public abstract class TripTimes {
         return true;
     }
 
+    public boolean apply(TripUpdateList tripUpdateList) {
+        if (!(trip.getId().equals(tripUpdateList.tripId))) {
+            LOG.error("Won't apply update for {} to trip {}.", tripUpdateList.tripId, trip.getId());
+            return false;
+        }
+
+        Iterator<Update> updates = tripUpdateList.getUpdates().iterator();
+        if (!updates.hasNext()) {
+            LOG.warn("Won't apply zero-length update block to trip {}.", trip.getId());
+            return false;
+        }
+        Update update = updates.next();
+
+        Integer delay = null;
+        for (int i = 0; i <= getNumHops(); i++) {               // Updates must use sequence numbers
+            if (update != null && update.stopSeq == getStopSequence(i)) {
+                if (update.status == Status.CANCEL) {           // Not really supported right now
+                    if (i > 0) updateArrivalTime(i - 1, CANCELED);
+                    if (i < getNumHops()) updateDepartureTime(i, CANCELED);
+                } else if (update.status == Status.PASSED) {    // Only makes sense at the beginning
+                    if (i > 0) updateArrivalTime(i - 1, PASSED);
+                    if (i < getNumHops()) updateDepartureTime(i, PASSED);
+                    delay = 0;
+                } else if (update.status == Status.PLANNED || update.status == Status.UNKNOWN) {
+                    if (i > 0) updateArrivalDelay(i - 1, 0);
+                    if (i < getNumHops()) updateDepartureDelay(i, 0);
+                    delay = 0;
+                } else if (update.hasDelay()) {
+                    delay = update.delay;
+                    if (i > 0) updateArrivalDelay(i - 1, delay);
+                    if (i < getNumHops()) updateDepartureDelay(i, delay);
+                } else {
+                    if (i > 0) updateArrivalTime(i - 1, update.arrive);
+                    if (i < getNumHops()) {
+                        updateDepartureTime(i, update.depart);
+                        delay = getDepartureDelay(i);
+                    }
+                }
+
+                if (updates.hasNext()) {
+                    update = updates.next();
+                } else {
+                    update = null;
+                }
+            } else {
+                if (delay == null) {
+                    if (i > 0) updateArrivalTime(i - 1, PASSED);
+                    if (i < getNumHops()) updateDepartureTime(i, PASSED);
+                } else {
+                    if (i > 0) updateArrivalDelay(i - 1, delay);
+                    if (i < getNumHops()) updateDepartureDelay(i, delay);
+                }
+            }
+        }
+
+        compactArrivalsAndDepartures();
+        return update == null;          // We're done iff all updates have been applied successfully
+    }
+
+    /** Cancel this entire trip */
+    public void cancel() {
+        departureTimes = new int[getNumHops()];
+        Arrays.fill(departureTimes, CANCELED);
+        arrivalTimes = departureTimes;
+    }
+
+    private void updateDepartureTime(int hop, int time) {
+        if (departureTimes == null) createDepartureTimesArray();
+        departureTimes[hop] = time;
+    }
+
+    private void updateDepartureDelay(int hop, int delay) {
+        if (departureTimes == null) createDepartureTimesArray();
+        departureTimes[hop] = getScheduledDepartureTime(hop) + delay;
+    }
+
+    private void updateArrivalTime(int hop, int time) {
+        if (arrivalTimes == null) createArrivalTimesArray();
+        arrivalTimes[hop] = time;
+    }
+
+    private void updateArrivalDelay(int hop, int delay) {
+        if (arrivalTimes == null) createArrivalTimesArray();
+        arrivalTimes[hop] = getScheduledArrivalTime(hop) + delay;
+    }
+
+    /** Create an array of departure times that's just a copy of the scheduled departure times */
+    private void createDepartureTimesArray() {
+        departureTimes = Arrays.copyOf(scheduledDepartureTimes, scheduledDepartureTimes.length);
+    }
+
+    /** Create an array of arrival times that's just a copy of the scheduled arrival times */
+    private void createArrivalTimesArray() {
+        if (scheduledArrivalTimes == null) {
+            int size = scheduledDepartureTimes.length;  // Is this really the right value? Unsure...
+            arrivalTimes = Arrays.copyOfRange(scheduledDepartureTimes, 1, size);
+        } else {
+            arrivalTimes = Arrays.copyOf(scheduledArrivalTimes, scheduledArrivalTimes.length);
+        }
+    }
 
     /* NESTED STATIC CLASSES */
     

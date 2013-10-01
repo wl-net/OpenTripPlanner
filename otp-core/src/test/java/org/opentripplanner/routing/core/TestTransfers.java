@@ -528,7 +528,7 @@ public class TestTransfers extends TestCase {
         // Now apply a real-time update: let the to-trip be early by 27600 seconds, resulting in a transfer time of 0 seconds
         @SuppressWarnings("deprecation")
         TableTripPattern pattern = ((PatternStopVertex) graph.getVertex("agency_F_agency_4.3_1_D")).getTripPattern();
-        applyUpdateToTripPattern(pattern, "4.2", "F", 0, 55200, 55200, Update.Status.PREDICTION, 0, "20090711");
+        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 55200, 55200, Update.Status.PREDICTION, 0, "20090711");
         
         // Plan journey
         path = planJourney(options);
@@ -538,7 +538,7 @@ public class TestTransfers extends TestCase {
         assertEquals("4.2", trips.get(1).getId().getId());
         
         // Now apply a real-time update: let the to-trip be early by 27601 seconds, resulting in a transfer time of -1 seconds
-        applyUpdateToTripPattern(pattern, "4.2", "F", 0, 55199, 55199, Update.Status.PREDICTION, 0, "20090711");
+        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 55199, 55199, Update.Status.PREDICTION, 0, "20090711");
         
         // Plan journey
         path = planJourney(options);
@@ -548,7 +548,7 @@ public class TestTransfers extends TestCase {
         assertEquals("4.3", trips.get(1).getId().getId());
         
         // "Revert" the real-time update
-        applyUpdateToTripPattern(pattern, "4.2", "F", 0, 82800, 82800, Update.Status.PREDICTION, 0, "20090711");
+        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 82800, 82800, Update.Status.PREDICTION, 0, "20090711");
         // Remove the timed transfer from the graph
         timedTransferEdge.detach();
         // Revert the graph, thus using the original transfer table again

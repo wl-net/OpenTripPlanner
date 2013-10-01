@@ -762,14 +762,14 @@ public class TestRequest extends TestCase {
         // Do the planning again
         response = planner.getItineraries();
         itinerary = response.getPlan().itinerary.get(0);
-        // The ids of the first two busses should be different
-        assertFalse("190W1280".equals(itinerary.legs.get(1).tripId)
-                && "751W1330".equals(itinerary.legs.get(3).tripId));
+        // The id of the second bus should be different
+        assertEquals("190W1280", itinerary.legs.get(1).tripId);
+        assertFalse("751W1330".equals(itinerary.legs.get(3).tripId));
         
         // Now apply a real-time update: let the to-trip have a delay of 3 seconds
         @SuppressWarnings("deprecation")
         TableTripPattern pattern = ((PatternStopVertex) graph.getVertex("TriMet_7452_TriMet_751W1090_79_A")).getTripPattern();
-        applyUpdateToTripPattern(pattern, "751W1330", "7452", 78, 41228, 41228, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "751W1330", "7452", 79, 41228, 41228, Update.Status.PREDICTION, 0, "20091001");
         
         // Do the planning again
         response = planner.getItineraries();
@@ -779,7 +779,7 @@ public class TestRequest extends TestCase {
         assertEquals("751W1330", itinerary.legs.get(3).tripId);
         
         // "Revert" the real-time update
-        applyUpdateToTripPattern(pattern, "751W1330", "7452", 78, 41225, 41225, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "751W1330", "7452", 79, 41225, 41225, Update.Status.PREDICTION, 0, "20091001");
         // Revert the graph, thus using the original transfer table again
         reset(graph);
     }
@@ -882,7 +882,7 @@ public class TestRequest extends TestCase {
         // Now apply a real-time update: let the to-trip be early by 240 seconds, resulting in a transfer time of 0 seconds
         @SuppressWarnings("deprecation")
         TableTripPattern pattern = ((PatternStopVertex) graph.getVertex("TriMet_9756_TriMet_120W1320_22_A")).getTripPattern();
-        applyUpdateToTripPattern(pattern, "120W1320", "9756", 21, 41580, 41580, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "120W1320", "9756", 22, 41580, 41580, Update.Status.PREDICTION, 0, "20091001");
         
         // Do the planning again
         response = planner.getItineraries();
@@ -892,7 +892,7 @@ public class TestRequest extends TestCase {
         assertEquals("120W1320", itinerary.legs.get(3).tripId);
         
         // "Revert" the real-time update
-        applyUpdateToTripPattern(pattern, "120W1320", "9756", 21, 41820, 41820, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "120W1320", "9756", 22, 41820, 41820, Update.Status.PREDICTION, 0, "20091001");
         // Remove the timed transfer from the graph
         timedTransferEdge.detach();
         // Revert the graph, thus using the original transfer table again
@@ -934,7 +934,7 @@ public class TestRequest extends TestCase {
         // Now apply a real-time update: let the to-trip be early by 240 seconds, resulting in a transfer time of 0 seconds
         @SuppressWarnings("deprecation")
         TableTripPattern pattern = ((PatternStopVertex) graph.getVertex("TriMet_9756_TriMet_120W1320_22_A")).getTripPattern();
-        applyUpdateToTripPattern(pattern, "120W1320", "9756", 21, 41580, 41580, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "120W1320", "9756", 22, 41580, 41580, Update.Status.PREDICTION, 0, "20091001");
         
         // Do the planning again
         response = planner.getItineraries();
@@ -944,7 +944,7 @@ public class TestRequest extends TestCase {
         assertEquals("120W1320", itinerary.legs.get(3).tripId);
         
         // Now apply a real-time update: let the to-trip be early by 241 seconds, resulting in a transfer time of -1 seconds
-        applyUpdateToTripPattern(pattern, "120W1320", "9756", 21, 41579, 41579, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "120W1320", "9756", 22, 41579, 41579, Update.Status.PREDICTION, 0, "20091001");
         
         // Do the planning again
         response = planner.getItineraries();
@@ -954,7 +954,7 @@ public class TestRequest extends TestCase {
                 && "751W1330".equals(itinerary.legs.get(3).tripId));
         
         // "Revert" the real-time update
-        applyUpdateToTripPattern(pattern, "120W1320", "9756", 21, 41820, 41820, Update.Status.PREDICTION, 0, "20091001");
+        applyUpdateToTripPattern(pattern, "120W1320", "9756", 22, 41820, 41820, Update.Status.PREDICTION, 0, "20091001");
         // Remove the timed transfer from the graph
         timedTransferEdge.detach();
         // Revert the graph, thus using the original transfer table again

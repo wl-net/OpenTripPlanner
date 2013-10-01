@@ -28,12 +28,8 @@ import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.routing.core.ServiceDay;
 import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.trippattern.CanceledTripTimes;
-import org.opentripplanner.routing.trippattern.DecayingDelayTripTimes;
-import org.opentripplanner.routing.trippattern.ScheduledTripTimes;
 import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
-import org.opentripplanner.routing.trippattern.UpdatedTripTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -355,57 +351,29 @@ public class Timetable implements Serializable {
      * @return whether or not the timetable actually changed as a result of this operation
      * (maybe it should do the cloning and return the new timetable to enforce copy-on-write?) 
      */
-    public boolean update(TripUpdateList tripUpdate) {
+    public boolean update(TripUpdateList tripUpdateList) {
         try {
              // Though all timetables have the same trip ordering, some may have extra trips due to 
              // the dynamic addition of unscheduled trips.
              // However, we want to apply trip update blocks on top of *scheduled* times 
-            int tripIndex = getTripIndex(tripUpdate.getTripId());
+            int tripIndex = getTripIndex(tripUpdateList.getTripId());
             if (tripIndex == -1) {
-                LOG.info("tripId {} not found in pattern.", tripUpdate.getTripId());
+                LOG.info("tripId {} not found in pattern.", tripUpdateList.getTripId());
                 return false;
             } else {
-                LOG.trace("tripId {} found at index {} (in scheduled timetable)", tripUpdate.getTripId(), tripIndex);
+                LOG.trace("tripId {} found at index {} (in scheduled timetable)", tripUpdateList.getTripId(), tripIndex);
             }
             TripTimes existingTimes = getTripTimes(tripIndex);
-            ScheduledTripTimes scheduledTimes = existingTimes.getScheduledTripTimes();
-            TripTimes newTimes;
-            if (tripUpdate.isCancellation()) {
-                newTimes = new CanceledTripTimes(scheduledTimes);
-            }
-            else if(tripUpdate.hasDelay()) {
-                // 'stop' Index as in transit stop (not 'end', not 'hop')
-                int stopIndex = tripUpdate.findUpdateStopIndex(pattern);
-                if (stopIndex == TripUpdateList.MATCH_FAILED) {
-                    LOG.warn("Unable to match update block to stopIds.");
-                    return false;
-                }
-                int delay = tripUpdate.getUpdates().get(0).getDelay();
-                newTimes = new DecayingDelayTripTimes(scheduledTimes, stopIndex, delay);
+            TripTimes newTimes = new TripTimes(existingTimes);
+            if (tripUpdateList.isCancellation()) {
+                newTimes.cancel();
             }
             else {
-                // 'stop' Index as in transit stop (not 'end', not 'hop')
-                int stopIndex = tripUpdate.findUpdateStopIndex(pattern);
-                if (stopIndex == TripUpdateList.MATCH_FAILED) {
-                    LOG.warn("Unable to match update block to stopIds.");
-                    return false;
-                }
-                newTimes = new UpdatedTripTimes(scheduledTimes, tripUpdate, stopIndex);
-                if ( ! newTimes.timesIncreasing()) {
-                    LOG.warn("Resulting UpdatedTripTimes has non-increasing times. " +
-                             "Falling back on DecayingDelayTripTimes.");
-                    LOG.warn(tripUpdate.toString());
-                    LOG.warn(newTimes.toString());
-                    int delay = newTimes.getDepartureDelay(stopIndex);
-                    // maybe decay should be applied on top of the update (wrap Updated in Decaying), 
-                    // starting at the end of the update block
-                    newTimes = new DecayingDelayTripTimes(scheduledTimes, stopIndex, delay);
-                    LOG.warn(newTimes.toString());
-                    if ( ! newTimes.timesIncreasing()) {
-                        LOG.error("Even these trip times are non-increasing. Underlying schedule problem?");
-                        return false;
-                    }
-                }
+                if (!newTimes.apply(tripUpdateList)) return false;
+            }
+            if (!newTimes.timesIncreasing()) {
+                LOG.error("TripTimes are non-increasing after applying GTFS-RT delay propagation.");
+                return false;
             }
             // Update succeeded, save the new TripTimes back into this Timetable.
             this.tripTimes.set(tripIndex, newTimes);
@@ -427,9 +395,9 @@ public class Timetable implements Serializable {
      * distinction clear.
      */
     public void addTrip(Trip trip, List<StopTime> stopTimes) {
-        ScheduledTripTimes tripTime = new ScheduledTripTimes(trip, stopTimes);
+        TripTimes tripTime = new TripTimes(trip, stopTimes);
         if(!tripTimes.isEmpty()) {
-            ScheduledTripTimes firstTripTime = (ScheduledTripTimes) tripTimes.get(0);
+            TripTimes firstTripTime = tripTimes.get(0);
             tripTime.compactStopSequence(firstTripTime);
         }
         tripTimes.add(tripTime);

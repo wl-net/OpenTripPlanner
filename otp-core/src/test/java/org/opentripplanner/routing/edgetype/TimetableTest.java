@@ -40,10 +40,9 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.edgetype.factory.GTFSPatternHopFactory;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.request.BannedStopSet;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.trippattern.CanceledTripTimes;
+import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.routing.trippattern.Update;
 import org.opentripplanner.routing.trippattern.Update.Status;
@@ -90,9 +89,6 @@ public class TimetableTest {
         TripUpdateList tripUpdateList;
         AgencyAndId trip_1_1_id = new AgencyAndId("agency", "1.1");
         int trip_1_1_index = timetable.getTripIndex(trip_1_1_id);
-        AgencyAndId stop_a_id = new AgencyAndId("agency", "A");
-        AgencyAndId stop_b_id = new AgencyAndId("agency", "B");
-        AgencyAndId stop_c_id = new AgencyAndId("agency", "C");
         
         @SuppressWarnings("deprecation")
         Vertex stop_a = graph.getVertex("agency_A");
@@ -109,7 +105,12 @@ public class TimetableTest {
         
         // update trip with bad data
         tripUpdateList = TripUpdateList.forUpdatedTrip(trip_1_1_id, 0, new ServiceDate(), Collections.<Update> singletonList(
-                        new Update(trip_1_1_id, stop_a_id, 0, 1200, 1200, Status.PREDICTION, 0, new ServiceDate())));
+                        new Update(trip_1_1_id, null, 0, 1200, 1200, Status.PREDICTION, 0, new ServiceDate())));
+        assertFalse(timetable.update(tripUpdateList));
+
+        // update trip with non-increasing data
+        tripUpdateList = TripUpdateList.forUpdatedTrip(trip_1_1_id, 0, new ServiceDate(), Collections.<Update> singletonList(
+                        new Update(trip_1_1_id, null, 2, 601, 600, Status.PREDICTION, 0, new ServiceDate())));
         assertFalse(timetable.update(tripUpdateList));
         
         //---
@@ -127,9 +128,9 @@ public class TimetableTest {
         
         // update trip
         List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(trip_1_1_id, stop_a_id, 0,  0*60 + 120,  0*60 + 120, Status.PREDICTION, 0, new ServiceDate()));
-        updates.add(new Update(trip_1_1_id, stop_b_id, 1, 10*60 + 120, 10*60 + 120, Status.PREDICTION, 0, new ServiceDate()));
-        updates.add(new Update(trip_1_1_id, stop_c_id, 2, 20*60 + 120, 20*60 + 120, Status.PREDICTION, 0, new ServiceDate()));
+        updates.add(new Update(trip_1_1_id, null, 1,  0*60 + 120,  0*60 + 120, Status.PREDICTION, 0, new ServiceDate()));
+        updates.add(new Update(trip_1_1_id, null, 2, 10*60 + 120, 10*60 + 120, Status.PREDICTION, 0, new ServiceDate()));
+        updates.add(new Update(trip_1_1_id, null, 3, 20*60 + 120, 20*60 + 120, Status.PREDICTION, 0, new ServiceDate()));
         tripUpdateList = TripUpdateList.forUpdatedTrip(trip_1_1_id, 0, new ServiceDate(), updates);
         assertEquals(timetable.getArrivalTime(1, trip_1_1_index), 20*60);
         assertTrue(timetable.update(tripUpdateList));
@@ -146,7 +147,12 @@ public class TimetableTest {
         // cancel trip
         tripUpdateList = TripUpdateList.forCanceledTrip(trip_1_1_id, 0, new ServiceDate());
         assertTrue(timetable.update(tripUpdateList));
-        assertEquals(CanceledTripTimes.class, timetable.getTripTimes(trip_1_1_index).getClass());
+
+        TripTimes tripTimes = timetable.getTripTimes(trip_1_1_index);
+        for (int i = 0; i < tripTimes.getNumHops(); i++) {
+            assertEquals(TripTimes.CANCELED, tripTimes.getDepartureTime(i));
+            assertEquals(TripTimes.CANCELED, tripTimes.getArrivalTime(i));
+        }
         
         //---
         options.setRoutingContext(graph, stop_a, stop_c);

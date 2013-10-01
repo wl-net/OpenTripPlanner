@@ -498,10 +498,6 @@ public class TripUpdateList extends AbstractUpdate {
             return null;
         }
 
-        if (maxStopSeq - minStopSeq >= updates.size() && pattern != null) {
-            updates = interpolateUpdates(updates, pattern, tripId);
-        }
-
         return TripUpdateList.forUpdatedTrip(tripId, timestamp, serviceDate, updates);
     }
 
@@ -595,56 +591,6 @@ public class TripUpdateList extends AbstractUpdate {
         }
         
         return tripDescriptor.hasTripId();
-    }
-
-    /**
-     * Attempt to interpolate missing updates from the ones that are present.
-     *
-     * @param updates The incomplete list of updates
-     * @return The list of updates interspersed with interpolations for updates that were missing
-     */
-    static List<Update> interpolateUpdates(List<Update> updates, TableTripPattern pattern,
-            AgencyAndId tripId) {
-        Update update = null;
-        List<Update> newUpdates = new ArrayList<Update>();
-        ScheduledTripTimes tripTimes =
-                pattern.getTripTimes(pattern.getTripIndex(tripId)).getScheduledTripTimes();
-
-        for (int i = 0, j = 0, k = 0; i <= tripTimes.getNumHops() && j < updates.size(); i++) {
-            int sequence = tripTimes.getStopSequence(i);
-            if (update == null && sequence != updates.get(0).stopSeq) continue;
-
-            if (sequence == updates.get(j).stopSeq) {
-                k = i;
-                update = updates.get(j++);
-                newUpdates.add(update);
-            } else {
-                Update newUpdate;
-                if (update.getDelay() == null) {
-                    int arrive;
-                    int depart;
-                    int delay = update.getDepart() - tripTimes.getDepartureTime(k);
-
-                    arrive = tripTimes.getArrivalTime(i - 1) + delay;
-                    if (i < tripTimes.getNumHops()) {
-                        depart = tripTimes.getDepartureTime(i) + delay;
-                    } else {
-                        depart = arrive;
-                    }
-
-                    newUpdate = new Update(tripId, pattern.getStop(i).getId(), sequence,
-                            arrive, depart, update.getStatus(), update.getTimestamp(),
-                            update.getServiceDate());
-                } else {
-                    newUpdate = new Update(tripId, pattern.getStop(i).getId(), sequence,
-                            update.getDelay(), update.getStatus(), update.getTimestamp(),
-                            update.getServiceDate());
-                }
-                newUpdates.add(newUpdate);
-            }
-        }
-
-        return newUpdates;
     }
 
     @Override

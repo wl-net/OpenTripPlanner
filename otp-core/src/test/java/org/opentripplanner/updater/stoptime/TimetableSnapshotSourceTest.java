@@ -36,8 +36,7 @@ import org.opentripplanner.routing.edgetype.TimetableResolver;
 import org.opentripplanner.routing.edgetype.factory.GTFSPatternHopFactory;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.services.TransitIndexService;
-import org.opentripplanner.routing.trippattern.CanceledTripTimes;
-import org.opentripplanner.routing.trippattern.DecayingDelayTripTimes;
+import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.routing.trippattern.Update;
 
@@ -108,8 +107,13 @@ public class TimetableSnapshotSourceTest {
         Timetable schedule = resolver.resolve(pattern, null);
         assertNotSame(forToday, schedule);
         assertNotSame(forToday.getTripTimes(tripIndex), schedule.getTripTimes(tripIndex));
-        assertEquals(CanceledTripTimes.class, forToday.getTripTimes(tripIndex).getClass());
         assertSame(forToday.getTripTimes(tripIndex2), schedule.getTripTimes(tripIndex2));
+
+        TripTimes tripTimes = forToday.getTripTimes(tripIndex);
+        for (int i = 0; i < tripTimes.getNumHops(); i++) {
+            assertEquals(TripTimes.CANCELED, tripTimes.getDepartureTime(i));
+            assertEquals(TripTimes.CANCELED, tripTimes.getArrivalTime(i));
+        }
     }
     
     @Test
@@ -122,7 +126,7 @@ public class TimetableSnapshotSourceTest {
         int tripIndex = pattern.getTripIndex(tripId);
         int tripIndex2 = pattern.getTripIndex(tripId2);
         
-        Update u = new Update(tripId, stopId, 0, 0, Update.Status.PREDICTION, 0, today);
+        Update u = new Update(tripId, stopId, 2, 1, Update.Status.PREDICTION, 0, today);
         TripUpdateList tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, today, Collections.singletonList(u));
         updater.applyTripUpdateLists(Arrays.asList(tripUpdateList));
         
@@ -131,8 +135,9 @@ public class TimetableSnapshotSourceTest {
         Timetable schedule = resolver.resolve(pattern, null);
         assertNotSame(forToday, schedule);
         assertNotSame(forToday.getTripTimes(tripIndex), schedule.getTripTimes(tripIndex));
-        assertEquals(DecayingDelayTripTimes.class, forToday.getTripTimes(tripIndex).getClass());
         assertSame(forToday.getTripTimes(tripIndex2), schedule.getTripTimes(tripIndex2));
+        assertEquals(1, forToday.getTripTimes(tripIndex).getArrivalDelay(0));
+        assertEquals(1, forToday.getTripTimes(tripIndex).getDepartureDelay(1));
     }
 
     @Test

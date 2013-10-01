@@ -627,9 +627,9 @@ public class PlanGeneratorTest {
 
         // Updates for leg 4, the ferry leg
         Update ferryStopDepartUpdate = new Update(thirdTrip.getId(),
-                ferryStopDepart.getId(), 0, 40, 40, Status.PREDICTION, 0L, serviceDate);
+                ferryStopDepart.getId(), -1, 40, 40, Status.PREDICTION, 0L, serviceDate);
         Update ferryStopArriveUpdate = new Update(thirdTrip.getId(),
-                ferryStopArrive.getId(), 1, 43, 43, Status.PREDICTION, 0L, serviceDate);
+                ferryStopArrive.getId(), 0, 43, 43, Status.PREDICTION, 0L, serviceDate);
 
         ArrayList<Update> updates = new ArrayList<Update>();
 
