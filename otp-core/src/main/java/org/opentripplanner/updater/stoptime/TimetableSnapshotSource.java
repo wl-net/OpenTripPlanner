@@ -13,8 +13,9 @@
 
 package org.opentripplanner.updater.stoptime;
 
-import java.util.Collection;
+import java.text.ParseException;
 import java.util.List;
+import java.util.TimeZone;
 
 import lombok.Setter;
 
@@ -24,9 +25,11 @@ import org.opentripplanner.routing.edgetype.TableTripPattern;
 import org.opentripplanner.routing.edgetype.TimetableResolver;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.services.TransitIndexService;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 /**
  * This class should be used to create snapshots of lookup tables of realtime data. This is
@@ -66,8 +69,11 @@ public class TimetableSnapshotSource {
     protected ServiceDate lastPurgeDate = null;
     
     protected long lastSnapshotTime = -1;
+
+    private final TimeZone timeZone;
     
     public TimetableSnapshotSource(Graph graph) {
+        timeZone = graph.getTimeZone();
         transitIndexService = graph.getService(TransitIndexService.class);
         if (transitIndexService == null)
             throw new RuntimeException(
@@ -104,7 +110,7 @@ public class TimetableSnapshotSource {
     /**
      * Method to apply a trip update list to the most recent version of the timetable snapshot.
      */
-    public void applyTripUpdateLists(Collection<TripUpdateList> updates) {
+    public void applyTripUpdates(List<TripUpdate> updates, String agencyId) {
         if (updates == null) {
             LOG.debug("updates is null");
             return;
@@ -112,31 +118,46 @@ public class TimetableSnapshotSource {
 
         LOG.debug("message contains {} trip update blocks", updates.size());
         int uIndex = 0;
-        for (TripUpdateList tripUpdateList : updates) {
+        for (TripUpdate tripUpdate : updates) {
+            ServiceDate serviceDate = new ServiceDate();
+            TripDescriptor tripDescriptor = tripUpdate.getTrip();
+
+            if (tripDescriptor.hasStartDate()) {
+                try {
+                    serviceDate = ServiceDate.parseString(tripDescriptor.getStartDate());
+                } catch (ParseException e) {
+                    LOG.warn("Failed to parse startDate in gtfs-rt trip update: \n{}", tripUpdate);
+                    continue;
+                }
+            }
+
             uIndex += 1;
-            LOG.debug("trip update block #{} ({} updates) :", uIndex, tripUpdateList.getUpdates().size());
-            LOG.trace("{}", tripUpdateList);
+            LOG.debug("trip update block #{} ({} updates) :", uIndex, tripUpdate.getStopTimeUpdateCount());
+            LOG.trace("{}", tripUpdate);
             
             boolean applied = false;
-            switch(tripUpdateList.getStatus()) {
+            switch(tripDescriptor.getScheduleRelationship()) {
+            case SCHEDULED:
+                applied = handleScheduledTrip(tripUpdate, agencyId, serviceDate);
+                break;
             case ADDED:
-                applied = handleAddedTrip(tripUpdateList);
+                applied = handleAddedTrip(tripUpdate, agencyId, serviceDate);
+                break;
+            case UNSCHEDULED:
+                applied = handleUnscheduledTrip(tripUpdate, agencyId, serviceDate);
                 break;
             case CANCELED:
-                applied = handleCanceledTrip(tripUpdateList);
+                applied = handleCanceledTrip(tripUpdate, agencyId, serviceDate);
                 break;
-            case MODIFIED:
-                applied = handleModifiedTrip(tripUpdateList);
-                break;
-            case REMOVED:
-                applied = handleRemovedTrip(tripUpdateList);
+            case REPLACEMENT:
+                applied = handleReplacementTrip(tripUpdate, agencyId, serviceDate);
                 break;
             }
-            
+
             if(applied) {
                 appliedBlockCount++;
              } else {
-                 LOG.warn("Failed to apply TripUpdateList: {}", tripUpdateList);
+                 LOG.warn("Failed to apply TripUpdate: {}", tripUpdate);
              }
 
              if (appliedBlockCount % logFrequency == 0) {
@@ -157,50 +178,52 @@ public class TimetableSnapshotSource {
 
     }
 
-    protected boolean handleAddedTrip(TripUpdateList tripUpdateList) {
+    protected boolean handleScheduledTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+        TripDescriptor tripDescriptor = tripUpdate.getTrip();
+        AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
+        TableTripPattern pattern = getPatternForTrip(tripId);
+
+        if (pattern == null) {
+            LOG.debug("No pattern found for tripId {}, skipping UpdateBlock.", tripId);
+            return false;
+        }
+
+        if (tripUpdate.getStopTimeUpdateCount() < 1) {
+            LOG.warn("TripUpdate contains no updates, skipping.");
+            return false;
+        }
+
+        // we have a message we actually want to apply
+        return buffer.update(pattern, tripUpdate, agencyId, timeZone, serviceDate);
+    }
+
+    protected boolean handleAddedTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
         // TODO: Handle added trip
         
         return false;
     }
 
-    protected boolean handleCanceledTrip(TripUpdateList tripUpdateList) {
-
-        TableTripPattern pattern = getPatternForTrip(tripUpdateList.getTripId());
-        if (pattern == null) {
-            LOG.debug("No pattern found for tripId {}, skipping UpdateBlock.", tripUpdateList.getTripId());
-            return false;
-        }
-
-        boolean applied = buffer.update(pattern, tripUpdateList);
+    protected boolean handleUnscheduledTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+        // TODO: Handle unscheduled trip
         
-        return applied;
+        return false;
     }
 
-    protected boolean handleModifiedTrip(TripUpdateList tripUpdateList) {
+    protected boolean handleCanceledTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+        TripDescriptor tripDescriptor = tripUpdate.getTrip();
+        AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
+        TableTripPattern pattern = getPatternForTrip(tripId);
 
-        tripUpdateList.filter(true, true, true);
-        if (! tripUpdateList.isCoherent()) {
-            LOG.warn("Incoherent TripUpdate, skipping.");
-            return false;
-        }
-        if (tripUpdateList.getUpdates().size() < 1) {
-            LOG.warn("TripUpdate contains no updates after filtering, skipping.");
-            return false;
-        }
-        TableTripPattern pattern = getPatternForTrip(tripUpdateList.getTripId());
         if (pattern == null) {
-            LOG.warn("No pattern found for tripId {}, skipping TripUpdate.", tripUpdateList.getTripId());
+            LOG.debug("No pattern found for tripId {}, skipping UpdateBlock.", tripId);
             return false;
         }
 
-        // we have a message we actually want to apply
-        boolean applied = buffer.update(pattern, tripUpdateList);
-        
-        return applied;
+        return buffer.update(pattern, tripUpdate, agencyId, timeZone, serviceDate);
     }
 
-    protected boolean handleRemovedTrip(TripUpdateList tripUpdateList) {
-        // TODO: Handle removed trip
+    protected boolean handleReplacementTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+        // TODO: Handle replacement trip
         
         return false;
     }

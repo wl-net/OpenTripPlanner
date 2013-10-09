@@ -15,19 +15,22 @@ package org.opentripplanner.updater.stoptime;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.Preferences;
 
+import lombok.Getter;
+
 import org.opentripplanner.updater.PreferencesConfigurable;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.services.TransitIndexService;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.transit.realtime.GtfsRealtime.FeedHeader;
+import com.google.transit.realtime.GtfsRealtime.FeedEntity;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, PreferencesConfigurable {
     
@@ -36,45 +39,33 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
     /**
      * Default agency id that is used for the trip id's in the TripUpdateLists
      */
+    @Getter
     private String agencyId;
 
     private String url;
-    
-    private Graph graph;
-    
-    private long lastTimestamp = Long.MIN_VALUE;
-
-    private TransitIndexService transitIndexService;
 
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
-        transitIndexService = graph.getService(TransitIndexService.class);
         String url = preferences.get("url", null);
         if (url == null)
             throw new IllegalArgumentException("Missing mandatory 'url' parameter");
-        this.graph = graph;
         this.url = url;
         this.agencyId = preferences.get("defaultAgencyId", null);
     }
 
     @Override
-    public List<TripUpdateList> getUpdates() {
-        FeedMessage feed = null;
-        List<TripUpdateList> updates = null;
+    public List<TripUpdate> getUpdates() {
+        FeedMessage feedMessage = null;
+        List<FeedEntity> feedEntityList = null;
+        List<TripUpdate> updates = null;
         try {
-            InputStream is = HttpUtils.getData(url, lastTimestamp);
+            InputStream is = HttpUtils.getData(url);
             if (is != null) {
-                feed = FeedMessage.PARSER.parseFrom(is);
-                updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId,
-                        transitIndexService, graph.getTimeZone());
-
-                FeedHeader header = feed.getHeader();
-                long feedTimestamp = header.getTimestamp();
-        
-                if(lastTimestamp < feedTimestamp) {
-                    updates = TripUpdateList.decodeFromGtfsRealtime(feed, agencyId,
-                            transitIndexService, graph.getTimeZone());
-                    lastTimestamp = feedTimestamp;
+                feedMessage = FeedMessage.PARSER.parseFrom(is);
+                feedEntityList = feedMessage.getEntityList();
+                updates = new ArrayList<TripUpdate>(feedEntityList.size());
+                for (FeedEntity feedEntity : feedEntityList) {
+                    updates.add(feedEntity.getTripUpdate());
                 }
             }
         } catch (Exception e) {

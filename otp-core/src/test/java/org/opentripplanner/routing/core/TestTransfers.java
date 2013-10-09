@@ -21,8 +21,9 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.SimpleTimeZone;
+import java.util.TimeZone;
 
 import junit.framework.TestCase;
 
@@ -45,12 +46,15 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
-import org.opentripplanner.routing.trippattern.Update;
-import org.opentripplanner.routing.trippattern.Update.Status;
 import org.opentripplanner.routing.vertextype.PatternStopVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.util.TestUtils;
+
+import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeEvent;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship;
 
 /**
  * This is a singleton class to hold graph data between test runs, since loading it is slow.
@@ -166,15 +170,37 @@ public class TestTransfers extends TestCase {
 
     /**
      * Apply an update to a table trip pattern and check whether the update was applied correctly
-     * @param serviceDate is a string of format YYYYMMDD indicating the date of the update
      */
     private void applyUpdateToTripPattern(TableTripPattern pattern, String tripId, String stopId,
-            int stopSeq, int arrive, int depart, Status prediction, int timestamp, String serviceDate) throws ParseException {
-        Update update = new Update(new AgencyAndId("agency", tripId), new AgencyAndId("agency", stopId), stopSeq, arrive, depart, prediction, timestamp, ServiceDate.parseString(serviceDate));
-        ArrayList<Update> updates = new ArrayList<Update>(Arrays.asList(update));
-        TripUpdateList tripUpdateList = TripUpdateList.splitByTrip(updates).get(0);
-        boolean success = pattern.update(tripUpdateList);
-        assertTrue(success);
+            int stopSeq, int arrive, int depart, ScheduleRelationship scheduleRelationship,
+            int timestamp, ServiceDate serviceDate) throws ParseException {
+        TimeZone timeZone = new SimpleTimeZone(-7, "PST");
+        long today = serviceDate.getAsDate(timeZone).getTime() / 1000;
+        TripDescriptor.Builder tripDescriptorBuilder = TripDescriptor.newBuilder();
+
+        tripDescriptorBuilder.setTripId(tripId);
+
+        StopTimeEvent.Builder departStopTimeEventBuilder = StopTimeEvent.newBuilder();
+        StopTimeEvent.Builder arriveStopTimeEventBuilder = StopTimeEvent.newBuilder();
+
+        departStopTimeEventBuilder.setTime(today + depart);
+        arriveStopTimeEventBuilder.setTime(today + arrive);
+
+        StopTimeUpdate.Builder stopTimeUpdateBuilder = StopTimeUpdate.newBuilder();
+
+        stopTimeUpdateBuilder.setStopSequence(stopSeq);
+        stopTimeUpdateBuilder.setDeparture(departStopTimeEventBuilder);
+        stopTimeUpdateBuilder.setArrival(arriveStopTimeEventBuilder);
+        stopTimeUpdateBuilder.setScheduleRelationship(scheduleRelationship);
+
+        TripUpdate.Builder tripUpdateBuilder = TripUpdate.newBuilder();
+
+        tripUpdateBuilder.setTrip(tripDescriptorBuilder);
+        tripUpdateBuilder.addStopTimeUpdate(0, stopTimeUpdateBuilder);
+
+        TripUpdate tripUpdate = tripUpdateBuilder.build();
+
+        assertTrue(pattern.update(tripUpdate, "agency", timeZone, serviceDate));
     }
     
     public void testStopToStopTransfer() throws Exception {
@@ -481,6 +507,8 @@ public class TestTransfers extends TestCase {
     }
 
     public void testTimedStopToStopTransfer() throws Exception {
+        ServiceDate serviceDate = new ServiceDate(2009, 07, 11);
+
         // Replace the transfer table with an empty table
         TransferTable table = new TransferTable();
         when(graph.getTransferTable()).thenReturn(table);
@@ -528,7 +556,7 @@ public class TestTransfers extends TestCase {
         // Now apply a real-time update: let the to-trip be early by 27600 seconds, resulting in a transfer time of 0 seconds
         @SuppressWarnings("deprecation")
         TableTripPattern pattern = ((PatternStopVertex) graph.getVertex("agency_F_agency_4.3_1_D")).getTripPattern();
-        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 55200, 55200, Update.Status.PREDICTION, 0, "20090711");
+        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 55200, 55200, ScheduleRelationship.SCHEDULED, 0, serviceDate);
         
         // Plan journey
         path = planJourney(options);
@@ -538,7 +566,7 @@ public class TestTransfers extends TestCase {
         assertEquals("4.2", trips.get(1).getId().getId());
         
         // Now apply a real-time update: let the to-trip be early by 27601 seconds, resulting in a transfer time of -1 seconds
-        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 55199, 55199, Update.Status.PREDICTION, 0, "20090711");
+        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 55199, 55199, ScheduleRelationship.SCHEDULED, 0, serviceDate);
         
         // Plan journey
         path = planJourney(options);
@@ -548,7 +576,7 @@ public class TestTransfers extends TestCase {
         assertEquals("4.3", trips.get(1).getId().getId());
         
         // "Revert" the real-time update
-        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 82800, 82800, Update.Status.PREDICTION, 0, "20090711");
+        applyUpdateToTripPattern(pattern, "4.2", "F", 1, 82800, 82800, ScheduleRelationship.SCHEDULED, 0, serviceDate);
         // Remove the timed transfer from the graph
         timedTransferEdge.detach();
         // Revert the graph, thus using the original transfer table again

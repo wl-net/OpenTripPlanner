@@ -25,7 +25,6 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlTransient;
 
 import lombok.Delegate;
-import lombok.Getter;
 
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
@@ -76,7 +75,6 @@ public class TableTripPattern implements TripPattern, Serializable {
      * expires. Via Lombok Delegate, calling timetable methods on a TableTripPattern will call 
      * them on its scheduled timetable.
      */
-    @Getter
     @Delegate
     protected final Timetable scheduledTimetable = new Timetable(this);
 

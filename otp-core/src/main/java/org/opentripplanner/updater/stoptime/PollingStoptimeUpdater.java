@@ -13,27 +13,20 @@
 
 package org.opentripplanner.updater.stoptime;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.prefs.Preferences;
-import org.onebusaway.gtfs.model.AgencyAndId;
 
 import org.opentripplanner.updater.PreferencesConfigurable;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.GraphUpdaterManager;
 import org.opentripplanner.updater.GraphWriterRunnable;
 import org.opentripplanner.updater.PollingGraphUpdater;
 import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 /**
  * Update OTP stop time tables from some (realtime) source
@@ -77,9 +70,12 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
      * Property to set on the RealtimeDataSnapshotSource
      */
     private Boolean purgeExpiredData;
-    
-    private Map<AgencyAndId, Long> seenUpdates = new HashMap<AgencyAndId, Long>();
 
+    /**
+     * Default agency id that is used for the trip id's in the TripUpdateLists
+     */
+    private String agencyId;
+    
     @Override
     public void setGraphUpdaterManager(GraphUpdaterManager updaterManager) {
         this.updaterManager = updaterManager;
@@ -94,14 +90,13 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
         }
 
         // Create update streamer from preferences
+        agencyId = preferences.get("defaultAgencyId", "");
         String sourceType = preferences.get("sourceType", null);
         if (sourceType != null) {
             if (sourceType.equals("gtfs-http")) {
                 updateSource = new GtfsRealtimeHttpTripUpdateSource();
             } else if (sourceType.equals("gtfs-zmq")) {
-                updateSource = new GtfsRealtimeZmqTripUpdateSource();
-            } else if (sourceType.equals("kv8-zmq")) {
-                updateSource = new Kv8ZmqTripUpdateSource();
+                updateSource = new GtfsRealtimeFileTripUpdateSource();
             }
         }
 
@@ -162,15 +157,10 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
     @Override
     public void runPolling() throws Exception {
         // Get update lists from update source
-        List<TripUpdateList> updates = updateSource.getUpdates();
-        if(updates == null)
-            return;
-        
-        // Filter seen updates based on the tripId + timestamp
-        Iterable<TripUpdateList> filteredUpdates = Iterables.filter(updates, TRIP_UPDATE_FILTER);
+        List<TripUpdate> updates = updateSource.getUpdates();
 
         // Handle trip updates via graph writer runnable
-        TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(Lists.newArrayList(filteredUpdates));
+        TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates, agencyId);
         updaterManager.execute(runnable);
     }
 
@@ -182,15 +172,5 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
         String s = (updateSource == null) ? "NONE" : updateSource.toString();
         return "Streaming stoptime updater with update source = " + s;
     }
-    
-    protected Predicate<TripUpdateList> TRIP_UPDATE_FILTER = new Predicate<TripUpdateList>() {
-        @Override
-        public boolean apply(TripUpdateList update) {
-            if (seenUpdates.containsKey(update.getTripId()) && seenUpdates.get(update.getTripId()) >= update.getTimestamp()) {
-                return false;
-            }
-            seenUpdates.put(update.getTripId(), update.getTimestamp());
-            return true;
-        }
-    };
+
 }

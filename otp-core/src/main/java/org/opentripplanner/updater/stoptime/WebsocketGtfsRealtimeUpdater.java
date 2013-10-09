@@ -13,13 +13,12 @@
 
 package org.opentripplanner.updater.stoptime;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.prefs.Preferences;
 
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.services.TransitIndexService;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.GraphUpdater;
 import org.opentripplanner.updater.GraphUpdaterManager;
 import org.opentripplanner.updater.GraphWriterRunnable;
@@ -28,7 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.transit.realtime.GtfsRealtime.FeedEntity;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.websocket.DefaultWebSocketListener;
 import com.ning.http.client.websocket.WebSocket;
@@ -79,10 +80,6 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
      * The number of seconds to wait before reconnecting after a failed connection.
      */
     private int reconnectPeriodSec;
-    
-    private Graph graph;
-
-    private TransitIndexService transitIndexService;
 
     @Override
     public void setGraphUpdaterManager(GraphUpdaterManager updaterManager) {
@@ -91,9 +88,7 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
 
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
-        transitIndexService = graph.getService(TransitIndexService.class);
         // Read configuration
-        this.graph = graph;
         url = preferences.get("url", null);
         agencyId = preferences.get("defaultAgencyId", "");
         reconnectPeriodSec = preferences.getInt("reconnectPeriodSec", DEFAULT_RECONNECT_PERIOD_SEC);
@@ -174,14 +169,20 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
     private class Listener extends DefaultWebSocketListener {
         @Override
         public void onMessage(byte[] message) {
+            FeedMessage feedMessage = null;
+            List<FeedEntity> feedEntityList = null;
+            List<TripUpdate> updates = null;
             try {
-                // Decode message into TripUpdateList
-                FeedMessage feed = FeedMessage.PARSER.parseFrom(message);
-                List<TripUpdateList> updates = TripUpdateList.decodeFromGtfsRealtime(feed,
-                        agencyId, transitIndexService, graph.getTimeZone());
+                // Decode message into List of TripUpdates
+                feedMessage = FeedMessage.PARSER.parseFrom(message);
+                feedEntityList = feedMessage.getEntityList();
+                updates = new ArrayList<TripUpdate>(feedEntityList.size());
+                for (FeedEntity feedEntity : feedEntityList) {
+                    updates.add(feedEntity.getTripUpdate());
+                }
 
                 // Handle trip updates via graph writer runnable
-                TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates);
+                TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates, agencyId);
                 updaterManager.execute(runnable);
             } catch (InvalidProtocolBufferException e) {
                 LOG.error("Could not decode gtfs-rt message:", e);

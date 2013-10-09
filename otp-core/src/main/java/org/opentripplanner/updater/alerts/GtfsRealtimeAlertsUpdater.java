@@ -13,7 +13,6 @@
 
 package org.opentripplanner.updater.alerts;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.prefs.Preferences;
 
@@ -92,9 +91,9 @@ public class GtfsRealtimeAlertsUpdater extends PollingGraphUpdater {
     @Override
     protected void runPolling() throws Exception {
         try {
-            InputStream data = HttpUtils.getData(url, lastTimestamp);
+            InputStream data = HttpUtils.getData(url);
             if (data == null) {
-                return;
+                throw new RuntimeException("Failed to get data from url " + url);
             }
 
             final FeedMessage feed = FeedMessage.PARSER.parseFrom(data);

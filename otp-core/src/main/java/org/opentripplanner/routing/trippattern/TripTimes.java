@@ -16,7 +16,6 @@ package org.opentripplanner.routing.trippattern;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -33,7 +32,6 @@ import org.opentripplanner.routing.core.StopTransfer;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.edgetype.TimedTransferEdge;
 import org.opentripplanner.routing.request.BannedStopSet;
-import org.opentripplanner.routing.trippattern.Update.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +67,7 @@ public class TripTimes implements Serializable {
      * The time in seconds after midnight at which the vehicle should begin traversing each
      * inter-stop segment ("hop") according to the original schedule. Field is non-final to support
      * compaction.
-     */ //@XmlElement
+     */
     private int[] scheduledDepartureTimes;
 
     /**
@@ -77,7 +75,7 @@ public class TripTimes implements Serializable {
      * inter-stop segment ("hop") according to the original schedule. A null value indicates that
      * all dwells are 0-length, and arrival times are to be derived from the departure times array.
      * Field is non-final to support compaction.
-     */ //@XmlElement
+     */
     private int[] scheduledArrivalTimes;
 
     /**
@@ -339,7 +337,7 @@ public class TripTimes implements Serializable {
         return true;
     }
 
-    private boolean compactArrivalsAndDepartures() {
+    public boolean compactArrivalsAndDepartures() {
         if (arrivalTimes == null || departureTimes == null) return false;
         // use arrivalTimes to determine number of hops because departureTimes may have grown by 1
         // due to successive compact/decompact operations
@@ -523,65 +521,6 @@ public class TripTimes implements Serializable {
         return true;
     }
 
-    public boolean apply(TripUpdateList tripUpdateList) {
-        if (!(trip.getId().equals(tripUpdateList.tripId))) {
-            LOG.error("Won't apply update for {} to trip {}.", tripUpdateList.tripId, trip.getId());
-            return false;
-        }
-
-        Iterator<Update> updates = tripUpdateList.getUpdates().iterator();
-        if (!updates.hasNext()) {
-            LOG.warn("Won't apply zero-length update block to trip {}.", trip.getId());
-            return false;
-        }
-        Update update = updates.next();
-
-        Integer delay = null;
-        for (int i = 0; i <= getNumHops(); i++) {               // Updates must use sequence numbers
-            if (update != null && update.stopSeq == getStopSequence(i)) {
-                if (update.status == Status.CANCEL) {           // Not really supported right now
-                    if (i > 0) updateArrivalTime(i - 1, CANCELED);
-                    if (i < getNumHops()) updateDepartureTime(i, CANCELED);
-                } else if (update.status == Status.PASSED) {    // Only makes sense at the beginning
-                    if (i > 0) updateArrivalTime(i - 1, PASSED);
-                    if (i < getNumHops()) updateDepartureTime(i, PASSED);
-                    delay = 0;
-                } else if (update.status == Status.PLANNED || update.status == Status.UNKNOWN) {
-                    if (i > 0) updateArrivalDelay(i - 1, 0);
-                    if (i < getNumHops()) updateDepartureDelay(i, 0);
-                    delay = 0;
-                } else if (update.hasDelay()) {
-                    delay = update.delay;
-                    if (i > 0) updateArrivalDelay(i - 1, delay);
-                    if (i < getNumHops()) updateDepartureDelay(i, delay);
-                } else {
-                    if (i > 0) updateArrivalTime(i - 1, update.arrive);
-                    if (i < getNumHops()) {
-                        updateDepartureTime(i, update.depart);
-                        delay = getDepartureDelay(i);
-                    }
-                }
-
-                if (updates.hasNext()) {
-                    update = updates.next();
-                } else {
-                    update = null;
-                }
-            } else {
-                if (delay == null) {
-                    if (i > 0) updateArrivalTime(i - 1, PASSED);
-                    if (i < getNumHops()) updateDepartureTime(i, PASSED);
-                } else {
-                    if (i > 0) updateArrivalDelay(i - 1, delay);
-                    if (i < getNumHops()) updateDepartureDelay(i, delay);
-                }
-            }
-        }
-
-        compactArrivalsAndDepartures();
-        return update == null;          // We're done iff all updates have been applied successfully
-    }
-
     /** Cancel this entire trip */
     public void cancel() {
         departureTimes = new int[getNumHops()];
@@ -589,22 +528,22 @@ public class TripTimes implements Serializable {
         arrivalTimes = departureTimes;
     }
 
-    private void updateDepartureTime(int hop, int time) {
+    public void updateDepartureTime(int hop, int time) {
         if (departureTimes == null) createDepartureTimesArray();
         departureTimes[hop] = time;
     }
 
-    private void updateDepartureDelay(int hop, int delay) {
+    public void updateDepartureDelay(int hop, int delay) {
         if (departureTimes == null) createDepartureTimesArray();
         departureTimes[hop] = getScheduledDepartureTime(hop) + delay;
     }
 
-    private void updateArrivalTime(int hop, int time) {
+    public void updateArrivalTime(int hop, int time) {
         if (arrivalTimes == null) createArrivalTimesArray();
         arrivalTimes[hop] = time;
     }
 
-    private void updateArrivalDelay(int hop, int delay) {
+    public void updateArrivalDelay(int hop, int delay) {
         if (arrivalTimes == null) createArrivalTimesArray();
         arrivalTimes[hop] = getScheduledArrivalTime(hop) + delay;
     }

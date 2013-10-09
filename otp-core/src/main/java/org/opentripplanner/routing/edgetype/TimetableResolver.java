@@ -20,12 +20,14 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TimeZone;
 import java.util.TreeSet;
 
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 // this is only currently in edgetype because that's where Trippattern is. move these classes elsewhere.
 
@@ -80,17 +82,17 @@ public class TimetableResolver {
     /**
      * @return whether or not the update was actually applied
      */
-    public boolean update(TableTripPattern pattern, TripUpdateList tripUpdateList) {
+    public boolean update(TableTripPattern pattern, TripUpdate tripUpdate, String agencyId, TimeZone timeZone, ServiceDate serviceDate) {
         // synchronization prevents commits/snapshots while update is in progress
         synchronized(this) {
             if (dirty == null)
                 throw new ConcurrentModificationException("This TimetableResolver is read-only.");
-            Timetable tt = resolve(pattern, tripUpdateList.getServiceDate());
+            Timetable tt = resolve(pattern, serviceDate);
             // we need to perform the copy of Timetable here rather than in Timetable.update()
             // to avoid repeatedly copying in case several updates are applied to the same timetable
             if ( ! dirty.contains(tt)) {
                 Timetable old = tt;
-                tt = tt.copy(tripUpdateList.getServiceDate());
+                tt = tt.copy(serviceDate);
                 SortedSet<Timetable> sortedTimetables = timetables.get(pattern);
                 if(sortedTimetables == null) {
                     sortedTimetables = new TreeSet<Timetable>(new SortedTimetableComparator());
@@ -105,7 +107,7 @@ public class TimetableResolver {
                 timetables.put(pattern, sortedTimetables);
                 dirty.add(tt);
             }
-            return tt.update(tripUpdateList);
+            return tt.update(tripUpdate, agencyId, timeZone, serviceDate);
         }
     }
 

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.TimeZone;
 
 import lombok.Getter;
 
@@ -29,9 +30,13 @@ import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.routing.core.ServiceDay;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.trippattern.TripTimes;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeEvent;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 
 
 /** 
@@ -342,34 +347,97 @@ public class Timetable implements Serializable {
     }
 
     /**
-     * Apply the UpdateBlock to the appropriate ScheduledTripTimes from this Timetable. 
-     * The existing TripTimes must not be modified directly because they may be shared with 
+     * Apply the TripUpdateList to the appropriate TripTimes from this Timetable.
+     * The existing TripTimes must not be modified directly because they may be shared with
      * the underlying scheduledTimetable, or other updated Timetables.
-     * The StoptimeUpdater performs the protective copying of this Timetable. It is not done in 
-     * this update method to avoid repeatedly cloning the same Timetable when several updates 
+     * The StoptimeUpdater performs the protective copying of this Timetable. It is not done in
+     * this update method to avoid repeatedly cloning the same Timetable when several updates
      * are applied to it at once.
      * @return whether or not the timetable actually changed as a result of this operation
-     * (maybe it should do the cloning and return the new timetable to enforce copy-on-write?) 
+     * (maybe it should do the cloning and return the new timetable to enforce copy-on-write?)
      */
-    public boolean update(TripUpdateList tripUpdateList) {
+    public boolean update(TripUpdate tripUpdate, String agencyId, TimeZone timeZone, ServiceDate updateServiceDate) {
         try {
-             // Though all timetables have the same trip ordering, some may have extra trips due to 
+             // Though all timetables have the same trip ordering, some may have extra trips due to
              // the dynamic addition of unscheduled trips.
-             // However, we want to apply trip update blocks on top of *scheduled* times 
-            int tripIndex = getTripIndex(tripUpdateList.getTripId());
+             // However, we want to apply trip update blocks on top of *scheduled* times
+            TripDescriptor tripDescriptor = tripUpdate.getTrip();
+            AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
+            int tripIndex = getTripIndex(tripId);
             if (tripIndex == -1) {
-                LOG.info("tripId {} not found in pattern.", tripUpdateList.getTripId());
+                LOG.info("tripId {} not found in pattern.", tripId);
                 return false;
             } else {
-                LOG.trace("tripId {} found at index {} (in scheduled timetable)", tripUpdateList.getTripId(), tripIndex);
+                LOG.trace("tripId {} found at index {} (in scheduled timetable)", tripId, tripIndex);
             }
             TripTimes existingTimes = getTripTimes(tripIndex);
             TripTimes newTimes = new TripTimes(existingTimes);
-            if (tripUpdateList.isCancellation()) {
+            if (tripDescriptor.getScheduleRelationship() == TripDescriptor.ScheduleRelationship.CANCELED) {
                 newTimes.cancel();
             }
             else {
-                if (!newTimes.apply(tripUpdateList)) return false;
+                Iterator<StopTimeUpdate> updates = tripUpdate.getStopTimeUpdateList().iterator();
+                if (!updates.hasNext()) {
+                    LOG.warn("Won't apply zero-length update block to trip {}.", tripId);
+                    return false;
+                }
+                StopTimeUpdate update = updates.next();
+
+                int numHops = newTimes.getNumHops();
+                Integer delay = null;
+                for (int i = 0; i <= numHops; i++) {               // Updates must use sequence numbers
+                    if (update != null && update.getStopSequence() == newTimes.getStopSequence(i)) {
+                        if (update.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.SKIPPED) {           // Not really supported right now
+                            if (i > 0) newTimes.updateArrivalTime(i - 1, TripTimes.CANCELED);
+                            if (i < numHops) newTimes.updateDepartureTime(i, TripTimes.CANCELED);
+                        } else if (update.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.NO_DATA) {
+                            if (i > 0) newTimes.updateArrivalDelay(i - 1, 0);
+                            if (i < numHops) newTimes.updateDepartureDelay(i, 0);
+                            delay = 0;
+                        } else {
+                            long today = updateServiceDate.getAsDate(timeZone).getTime() / 1000;
+
+                            if (i > 0 && update.hasArrival()) {
+                                StopTimeEvent arrival = update.getArrival();
+                                if (arrival.hasDelay()) {
+                                    delay = arrival.getDelay();
+                                    newTimes.updateArrivalDelay(i - 1, delay);
+                                } else if (arrival.hasTime()) {
+                                    newTimes.updateArrivalTime(i - 1, (int) (arrival.getTime() - today));
+                                    delay = newTimes.getArrivalDelay(i - 1);
+                                }
+                            }
+
+                            if (i < numHops && update.hasDeparture()) {
+                                StopTimeEvent departure = update.getDeparture();
+                                if (departure.hasDelay()) {
+                                    delay = departure.getDelay();
+                                    newTimes.updateDepartureDelay(i, delay);
+                                } else if (departure.hasTime()) {
+                                    newTimes.updateDepartureTime(i, (int) (departure.getTime() - today));
+                                    delay = newTimes.getDepartureDelay(i);
+                                }
+                            }
+                        }
+
+                        if (updates.hasNext()) {
+                            update = updates.next();
+                        } else {
+                            update = null;
+                        }
+                    } else {
+                        if (delay == null) {
+                            if (i > 0) newTimes.updateArrivalTime(i - 1, TripTimes.PASSED);
+                            if (i < numHops) newTimes.updateDepartureTime(i, TripTimes.PASSED);
+                        } else {
+                            if (i > 0) newTimes.updateArrivalDelay(i - 1, delay);
+                            if (i < numHops) newTimes.updateDepartureDelay(i, delay);
+                        }
+                    }
+                }
+
+                newTimes.compactArrivalsAndDepartures();
+                if (update != null) return false;          // We're done iff all updates have been applied successfully
             }
             if (!newTimes.timesIncreasing()) {
                 LOG.error("TripTimes are non-increasing after applying GTFS-RT delay propagation.");
@@ -388,11 +456,6 @@ public class Timetable implements Serializable {
      * Add a trip to this Timetable. The Timetable must be analyzed, compacted, and indexed
      * any time trips are added, but this is not done automatically because it is time consuming
      * and should only be done once after an entire batch of trips are added.
-     * Any new trip that is added is a ScheduledTripTimes. The scheduledTimetable will then 
-     * contain only ScheduledTripTimes, and any updated Timetables will contain TripTimes
-     * that wrap these ScheduledTripTimes, plus any additional trips as ScheduledTripTimes.
-     * Maybe subclass ScheduledTripTimes with an equivalent ExtraTripTimes class to make this 
-     * distinction clear.
      */
     public void addTrip(Trip trip, List<StopTime> stopTimes) {
         TripTimes tripTime = new TripTimes(trip, stopTimes);

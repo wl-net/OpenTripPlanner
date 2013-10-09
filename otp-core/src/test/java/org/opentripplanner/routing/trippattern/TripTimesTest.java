@@ -25,7 +25,6 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
-import org.onebusaway.gtfs.model.calendar.ServiceDate;
 
 public class TripTimesTest {
     private static final AgencyAndId tripId = new AgencyAndId("agency", "testtrip");
@@ -41,8 +40,6 @@ public class TripTimesTest {
 
     private static final AgencyAndId[] stops =
         {stop_a, stop_b, stop_c, stop_d, stop_e, stop_f, stop_g, stop_h};
-
-    private static final ServiceDate serviceDate = new ServiceDate();
 
     private static final TripTimes originalTripTimes;
 
@@ -69,18 +66,12 @@ public class TripTimesTest {
 
     @Test
     public void testStopCancellingUpdate() {
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 0, 0, 0, Update.Status.PLANNED, 0, serviceDate));
-        updates.add(new Update(tripId, null, 1, 0, 0, Update.Status.PLANNED, 0, serviceDate));
-        updates.add(new Update(tripId, null, 2, 0, 0, Update.Status.CANCEL , 0, serviceDate));
-        updates.add(new Update(tripId, null, 3, 0, 0, Update.Status.CANCEL , 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(originalTripTimes);
-        updatedTripTimesA.apply(tripUpdateList);
+
+        updatedTripTimesA.updateArrivalTime(1, TripTimes.CANCELED);
+        updatedTripTimesA.updateDepartureTime(2, TripTimes.CANCELED);
+        updatedTripTimesA.updateArrivalTime(2, TripTimes.CANCELED);
+        updatedTripTimesA.updateDepartureTime(3, TripTimes.CANCELED);
 
         assertTrue(updatedTripTimesA.timesIncreasing());
 
@@ -111,45 +102,24 @@ public class TripTimesTest {
 
     @Test
     public void testStopUpdate() {
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 3, 190, 190, Update.Status.PREDICTION , 0, serviceDate));
-        updates.add(new Update(tripId, null, 5, 311, 312, Update.Status.PREDICTION , 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(originalTripTimes);
-        updatedTripTimesA.apply(tripUpdateList);
 
-        assertEquals(TripTimes.PASSED, updatedTripTimesA.getDepartureTime(0));
-        assertEquals(TripTimes.PASSED, updatedTripTimesA.getDepartureTime(1));
-        assertEquals(TripTimes.PASSED, updatedTripTimesA.getDepartureTime(2));
-        assertEquals(3 * 60 + 10, updatedTripTimesA.getDepartureTime(3));
-        assertEquals(4 * 60 + 10, updatedTripTimesA.getDepartureTime(4));
-        assertEquals(5 * 60 + 12, updatedTripTimesA.getDepartureTime(5));
-        assertEquals(6 * 60 + 12, updatedTripTimesA.getDepartureTime(6));
+        updatedTripTimesA.updateArrivalTime(2, 190);
+        updatedTripTimesA.updateDepartureTime(3, 190);
+        updatedTripTimesA.updateArrivalTime(4, 311);
+        updatedTripTimesA.updateDepartureTime(5, 312);
 
-        assertEquals(TripTimes.PASSED, updatedTripTimesA.getArrivalTime(0));
-        assertEquals(TripTimes.PASSED, updatedTripTimesA.getArrivalTime(1));
         assertEquals(3 * 60 + 10, updatedTripTimesA.getArrivalTime(2));
-        assertEquals(4 * 60 + 10, updatedTripTimesA.getArrivalTime(3));
+        assertEquals(3 * 60 + 10, updatedTripTimesA.getDepartureTime(3));
         assertEquals(5 * 60 + 11, updatedTripTimesA.getArrivalTime(4));
-        assertEquals(6 * 60 + 12, updatedTripTimesA.getArrivalTime(5));
-        assertEquals(7 * 60 + 12, updatedTripTimesA.getArrivalTime(6));
+        assertEquals(5 * 60 + 12, updatedTripTimesA.getDepartureTime(5));
     }
 
     @Test
     public void testPassedUpdate() {
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 0, 0, 0, Update.Status.PASSED, 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(originalTripTimes);
-        updatedTripTimesA.apply(tripUpdateList);
+
+        updatedTripTimesA.updateDepartureTime(0, TripTimes.PASSED);
 
         assertEquals(TripTimes.PASSED, updatedTripTimesA.getDepartureTime(0));
         assertEquals(60, updatedTripTimesA.getArrivalTime(0));
@@ -157,58 +127,29 @@ public class TripTimesTest {
 
     @Test
     public void testNonIncreasingUpdate() {
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 1, 60, 59, Update.Status.PREDICTION , 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(originalTripTimes);
-        updatedTripTimesA.apply(tripUpdateList);
+
+        updatedTripTimesA.updateArrivalTime(0, 60);
+        updatedTripTimesA.updateDepartureTime(1, 59);
 
         assertFalse(updatedTripTimesA.timesIncreasing());
 
-        updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 0, 0, 0, Update.Status.PLANNED, 0, serviceDate));
-        updates.add(new Update(tripId, null, 7, 359, 360, Update.Status.PREDICTION , 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesB = new TripTimes(originalTripTimes);
-        updatedTripTimesB.apply(tripUpdateList);
+
+        updatedTripTimesB.updateDepartureTime(6, 421);
+        updatedTripTimesB.updateArrivalTime(6, 420);
 
         assertFalse(updatedTripTimesB.timesIncreasing());
     }
 
     @Test
     public void testDelay() {
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 0, 10, Update.Status.PREDICTION, 0, serviceDate));
-        updates.add(new Update(tripId, null, 5, 13, Update.Status.PREDICTION, 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(originalTripTimes);
-        updatedTripTimesA.apply(tripUpdateList);
+        updatedTripTimesA.updateDepartureDelay(0, 10);
+        updatedTripTimesA.updateArrivalDelay(5, 13);
 
         assertEquals(0 * 60 + 10, updatedTripTimesA.getDepartureTime(0));
-        assertEquals(1 * 60 + 10, updatedTripTimesA.getDepartureTime(1));
-        assertEquals(2 * 60 + 10, updatedTripTimesA.getDepartureTime(2));
-        assertEquals(3 * 60 + 10, updatedTripTimesA.getDepartureTime(3));
-        assertEquals(4 * 60 + 10, updatedTripTimesA.getDepartureTime(4));
-        assertEquals(5 * 60 + 13, updatedTripTimesA.getDepartureTime(5));
-        assertEquals(6 * 60 + 13, updatedTripTimesA.getDepartureTime(6));
-
-        assertEquals(1 * 60 + 10, updatedTripTimesA.getArrivalTime(0));
-        assertEquals(2 * 60 + 10, updatedTripTimesA.getArrivalTime(1));
-        assertEquals(3 * 60 + 10, updatedTripTimesA.getArrivalTime(2));
-        assertEquals(4 * 60 + 10, updatedTripTimesA.getArrivalTime(3));
-        assertEquals(5 * 60 + 13, updatedTripTimesA.getArrivalTime(4));
         assertEquals(6 * 60 + 13, updatedTripTimesA.getArrivalTime(5));
-        assertEquals(7 * 60 + 13, updatedTripTimesA.getArrivalTime(6));
     }
 
     @Test
@@ -264,30 +205,19 @@ public class TripTimesTest {
 
         TripTimes differingTripTimes = new TripTimes(trip, stopTimes);
 
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 2, 89, 98, Update.Status.PREDICTION , 0, serviceDate));
-        updates.add(new Update(tripId, null, 3, 99, 99, Update.Status.PREDICTION , 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(differingTripTimes);
 
-        assertFalse(updatedTripTimesA.apply(tripUpdateList));
+        updatedTripTimesA.updateArrivalTime(0, 89);
+        updatedTripTimesA.updateDepartureTime(1, 98);
+
+        assertFalse(updatedTripTimesA.timesIncreasing());
     }
 
     @Test
     public void testGetRunningTime() {
-        TripUpdateList tripUpdateList;
-
-        List<Update> updates = new LinkedList<Update>();
-        updates.add(new Update(tripId, null, 0, 0, 0, Update.Status.CANCEL , 0, serviceDate));
-
-        tripUpdateList = TripUpdateList.forUpdatedTrip(tripId, 0, serviceDate, updates);
-
         TripTimes updatedTripTimesA = new TripTimes(originalTripTimes);
-        updatedTripTimesA.apply(tripUpdateList);
+
+        updatedTripTimesA.updateDepartureTime(0, TripTimes.CANCELED);
 
         assertEquals(0, updatedTripTimesA.getRunningTime(0));
     }
