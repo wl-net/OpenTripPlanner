@@ -397,25 +397,41 @@ public class Timetable implements Serializable {
                         } else {
                             long today = updateServiceDate.getAsDate(timeZone).getTime() / 1000;
 
-                            if (i > 0 && update.hasArrival()) {
-                                StopTimeEvent arrival = update.getArrival();
-                                if (arrival.hasDelay()) {
-                                    delay = arrival.getDelay();
-                                    newTimes.updateArrivalDelay(i - 1, delay);
-                                } else if (arrival.hasTime()) {
-                                    newTimes.updateArrivalTime(i - 1, (int) (arrival.getTime() - today));
-                                    delay = newTimes.getArrivalDelay(i - 1);
+                            if (i > 0) {
+                                if (update.hasArrival()) {
+                                    StopTimeEvent arrival = update.getArrival();
+                                    if (arrival.hasDelay()) {
+                                        delay = arrival.getDelay();
+                                        newTimes.updateArrivalDelay(i - 1, delay);
+                                    } else if (arrival.hasTime()) {
+                                        newTimes.updateArrivalTime(i - 1, (int) (arrival.getTime() - today));
+                                        delay = newTimes.getArrivalDelay(i - 1);
+                                    }
+                                } else {
+                                    if (delay == null) {
+                                        newTimes.updateArrivalTime(i - 1, TripTimes.PASSED);
+                                    } else {
+                                        newTimes.updateArrivalDelay(i - 1, delay);
+                                    }
                                 }
                             }
 
-                            if (i < numHops && update.hasDeparture()) {
-                                StopTimeEvent departure = update.getDeparture();
-                                if (departure.hasDelay()) {
-                                    delay = departure.getDelay();
-                                    newTimes.updateDepartureDelay(i, delay);
-                                } else if (departure.hasTime()) {
-                                    newTimes.updateDepartureTime(i, (int) (departure.getTime() - today));
-                                    delay = newTimes.getDepartureDelay(i);
+                            if (i < numHops) {
+                                if (update.hasDeparture()) {
+                                    StopTimeEvent departure = update.getDeparture();
+                                    if (departure.hasDelay()) {
+                                        delay = departure.getDelay();
+                                        newTimes.updateDepartureDelay(i, delay);
+                                    } else if (departure.hasTime()) {
+                                        newTimes.updateDepartureTime(i, (int) (departure.getTime() - today));
+                                        delay = newTimes.getDepartureDelay(i);
+                                    }
+                                } else {
+                                    if (delay == null) {
+                                        newTimes.updateDepartureTime(i, TripTimes.PASSED);
+                                    } else {
+                                        newTimes.updateDepartureDelay(i, delay);
+                                    }
                                 }
                             }
                         }
