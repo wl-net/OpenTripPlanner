@@ -157,7 +157,7 @@ public class TimetableSnapshotSource {
             if(applied) {
                 appliedBlockCount++;
              } else {
-                 LOG.warn("Failed to apply TripUpdate: {}", tripUpdate);
+                 LOG.warn("Failed to apply TripUpdate:\n{}", tripUpdate);
              }
 
              if (appliedBlockCount % logFrequency == 0) {

@@ -357,7 +357,7 @@ public class Timetable implements Serializable {
     }
 
     /**
-     * Apply the TripUpdateList to the appropriate TripTimes from this Timetable.
+     * Apply the TripUpdate to the appropriate TripTimes from this Timetable.
      * The existing TripTimes must not be modified directly because they may be shared with
      * the underlying scheduledTimetable, or other updated Timetables.
      * The StoptimeUpdater performs the protective copying of this Timetable. It is not done in

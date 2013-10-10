@@ -72,7 +72,7 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
     private Boolean purgeExpiredData;
 
     /**
-     * Default agency id that is used for the trip id's in the TripUpdateLists
+     * Default agency id that is used for the trip ids in the TripUpdates
      */
     private String agencyId;
     

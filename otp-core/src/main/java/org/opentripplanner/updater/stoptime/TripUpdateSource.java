@@ -20,8 +20,8 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 public interface TripUpdateSource {
 
     /**
-     * Wait for one message to arrive, and decode it into an TripUpdateList. Blocking call. 
-     * @return a TripUpdateList potentially containing updates for several different trips,
+     * Wait for one message to arrive, and decode it into a List of TripUpdates. Blocking call.
+     * @return a List<TripUpdate> potentially containing TripUpdates for several different trips,
      *         or null if an exception occurred while processing the message
      */
     public List<TripUpdate> getUpdates();
