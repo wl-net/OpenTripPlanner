@@ -25,6 +25,7 @@ import org.opentripplanner.updater.PollingGraphUpdater;
 import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 
 /**

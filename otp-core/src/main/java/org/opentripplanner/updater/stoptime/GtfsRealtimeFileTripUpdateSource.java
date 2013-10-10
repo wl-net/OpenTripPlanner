@@ -38,7 +38,7 @@ public class GtfsRealtimeFileTripUpdateSource implements TripUpdateSource, Prefe
     private File file;
 
     /**
-     * Default agency id that is used for the trip id's in the TripUpdateLists
+     * Default agency id that is used for the trip ids in the TripUpdates
      */
     @Getter
     private String agencyId;

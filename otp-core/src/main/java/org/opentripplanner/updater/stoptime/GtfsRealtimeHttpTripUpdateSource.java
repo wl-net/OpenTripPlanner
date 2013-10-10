@@ -13,7 +13,6 @@
 
 package org.opentripplanner.updater.stoptime;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,8 +26,8 @@ import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.transit.realtime.GtfsRealtime.FeedHeader;
 import com.google.transit.realtime.GtfsRealtime.FeedEntity;
+import com.google.transit.realtime.GtfsRealtime.FeedHeader;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
@@ -37,7 +36,7 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
     private static final Logger LOG = LoggerFactory.getLogger(GtfsRealtimeHttpTripUpdateSource.class);
 
     /**
-     * Default agency id that is used for the trip id's in the TripUpdateLists
+     * Default agency id that is used for the trip ids in the TripUpdates
      */
     @Getter
     private String agencyId;

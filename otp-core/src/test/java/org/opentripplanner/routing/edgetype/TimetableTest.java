@@ -204,5 +204,61 @@ public class TimetableTest {
         assertNotNull(path);
         endTime = startTime + 40 * 60;
         assertEquals(endTime, path.getEndTime());
+
+        // update trip arrival time incorrectly
+        tripDescriptorBuilder = TripDescriptor.newBuilder();
+        tripDescriptorBuilder.setTripId("1.1");
+        tripDescriptorBuilder.setScheduleRelationship(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        tripUpdateBuilder = TripUpdate.newBuilder();
+        tripUpdateBuilder.setTrip(tripDescriptorBuilder);
+        stopTimeUpdateBuilder = tripUpdateBuilder.addStopTimeUpdateBuilder(0);
+        stopTimeUpdateBuilder.setStopSequence(1);
+        stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        stopTimeEventBuilder = stopTimeUpdateBuilder.getArrivalBuilder();
+        stopTimeEventBuilder.setDelay(0);
+        tripUpdate = tripUpdateBuilder.build();
+        assertTrue(timetable.update(tripUpdate, "agency", timeZone, serviceDate));
+
+        // update trip arrival time only
+        tripDescriptorBuilder = TripDescriptor.newBuilder();
+        tripDescriptorBuilder.setTripId("1.1");
+        tripDescriptorBuilder.setScheduleRelationship(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        tripUpdateBuilder = TripUpdate.newBuilder();
+        tripUpdateBuilder.setTrip(tripDescriptorBuilder);
+        stopTimeUpdateBuilder = tripUpdateBuilder.addStopTimeUpdateBuilder(0);
+        stopTimeUpdateBuilder.setStopSequence(2);
+        stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        stopTimeEventBuilder = stopTimeUpdateBuilder.getArrivalBuilder();
+        stopTimeEventBuilder.setDelay(1);
+        tripUpdate = tripUpdateBuilder.build();
+        assertTrue(timetable.update(tripUpdate, "agency", timeZone, serviceDate));
+
+        // update trip departure time only
+        tripDescriptorBuilder = TripDescriptor.newBuilder();
+        tripDescriptorBuilder.setTripId("1.1");
+        tripDescriptorBuilder.setScheduleRelationship(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        tripUpdateBuilder = TripUpdate.newBuilder();
+        tripUpdateBuilder.setTrip(tripDescriptorBuilder);
+        stopTimeUpdateBuilder = tripUpdateBuilder.addStopTimeUpdateBuilder(0);
+        stopTimeUpdateBuilder.setStopSequence(2);
+        stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        stopTimeEventBuilder = stopTimeUpdateBuilder.getDepartureBuilder();
+        stopTimeEventBuilder.setDelay(-1);
+        tripUpdate = tripUpdateBuilder.build();
+        assertTrue(timetable.update(tripUpdate, "agency", timeZone, serviceDate));
+
+        // update trip using stop id
+        tripDescriptorBuilder = TripDescriptor.newBuilder();
+        tripDescriptorBuilder.setTripId("1.1");
+        tripDescriptorBuilder.setScheduleRelationship(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        tripUpdateBuilder = TripUpdate.newBuilder();
+        tripUpdateBuilder.setTrip(tripDescriptorBuilder);
+        stopTimeUpdateBuilder = tripUpdateBuilder.addStopTimeUpdateBuilder(0);
+        stopTimeUpdateBuilder.setStopId("B");
+        stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        stopTimeEventBuilder = stopTimeUpdateBuilder.getDepartureBuilder();
+        stopTimeEventBuilder.setDelay(-1);
+        tripUpdate = tripUpdateBuilder.build();
+        assertTrue(timetable.update(tripUpdate, "agency", timeZone, serviceDate));
     }
 }

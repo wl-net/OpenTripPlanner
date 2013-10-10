@@ -72,10 +72,10 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
     private String url;
 
     /**
-     * Default agency id that is used for the trip id's in the TripUpdateLists
+     * Default agency id that is used for the trip ids in the TripUpdates
      */
     private String agencyId;
-    
+
     /**
      * The number of seconds to wait before reconnecting after a failed connection.
      */
