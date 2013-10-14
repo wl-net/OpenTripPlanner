@@ -368,12 +368,16 @@ public class Timetable implements Serializable {
      */
     public boolean update(TripUpdate tripUpdate, String agencyId, TimeZone timeZone,
             ServiceDate updateServiceDate) {
-        try {
+        if (!tripUpdate.hasTrip()) return false;
+        else try {
              // Though all timetables have the same trip ordering, some may have extra trips due to
              // the dynamic addition of unscheduled trips.
              // However, we want to apply trip update blocks on top of *scheduled* times
             TripDescriptor tripDescriptor = tripUpdate.getTrip();
+
+            if (!tripDescriptor.hasTripId()) return false;
             AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
+
             int tripIndex = getTripIndex(tripId);
             if (tripIndex == -1) {
                 LOG.info("tripId {} not found in pattern.", tripId);
@@ -381,13 +385,14 @@ public class Timetable implements Serializable {
             } else {
                 LOG.trace("tripId {} found at index {} (in scheduled timetable)", tripId, tripIndex);
             }
+
             TripTimes existingTimes = getTripTimes(tripIndex);
             TripTimes newTimes = new TripTimes(existingTimes);
-            if (tripDescriptor.getScheduleRelationship() ==
-                    TripDescriptor.ScheduleRelationship.CANCELED) {
+
+            if (tripDescriptor.hasScheduleRelationship() && tripDescriptor.getScheduleRelationship()
+                    == TripDescriptor.ScheduleRelationship.CANCELED) {
                 newTimes.cancel();
-            }
-            else {
+            } else {
                 Iterator<StopTimeUpdate> updates = tripUpdate.getStopTimeUpdateList().iterator();
                 if (!updates.hasNext()) {
                     LOG.warn("Won't apply zero-length update block to trip {}.", tripId);
@@ -402,16 +407,20 @@ public class Timetable implements Serializable {
                     if (update != null) {
                         if (update.hasStopSequence()) {
                             match = update.getStopSequence() == newTimes.getStopSequence(i);
-                        } else {
+                        } else if (update.hasStopId()) {
                             match = pattern.getStop(i).getId().getId().equals(update.getStopId());
                         }
                     }
+
                     if (match) {
-                        if (update.getScheduleRelationship() == // Not really supported right now
-                                StopTimeUpdate.ScheduleRelationship.SKIPPED) {
+                        StopTimeUpdate.ScheduleRelationship scheduleRelationship =
+                                update.hasScheduleRelationship() ? update.getScheduleRelationship()
+                                : StopTimeUpdate.ScheduleRelationship.SCHEDULED;
+                        if (scheduleRelationship == StopTimeUpdate.ScheduleRelationship.SKIPPED) {
+                            // Not really supported right now
                             if (i > 0) newTimes.updateArrivalTime(i - 1, TripTimes.CANCELED);
                             if (i < numHops) newTimes.updateDepartureTime(i, TripTimes.CANCELED);
-                        } else if (update.getScheduleRelationship() ==
+                        } else if (scheduleRelationship ==
                                 StopTimeUpdate.ScheduleRelationship.NO_DATA) {
                             if (i > 0) newTimes.updateArrivalDelay(i - 1, 0);
                             if (i < numHops) newTimes.updateDepartureDelay(i, 0);
@@ -429,6 +438,9 @@ public class Timetable implements Serializable {
                                         newTimes.updateArrivalTime(i - 1,
                                                 (int) (arrival.getTime() - today));
                                         delay = newTimes.getArrivalDelay(i - 1);
+                                    } else {
+                                        LOG.error("Arrival time at index {} is erroneous.", i);
+                                        return false;
                                     }
                                 } else {
                                     if (delay == null) {
@@ -449,6 +461,9 @@ public class Timetable implements Serializable {
                                         newTimes.updateDepartureTime(i,
                                                 (int) (departure.getTime() - today));
                                         delay = newTimes.getDepartureDelay(i);
+                                    } else {
+                                        LOG.error("Departure time at index {} is erroneous.", i);
+                                        return false;
                                     }
                                 } else {
                                     if (delay == null) {
@@ -483,13 +498,15 @@ public class Timetable implements Serializable {
                 LOG.error("TripTimes are non-increasing after applying GTFS-RT delay propagation.");
                 return false;
             }
+
             // Update succeeded, save the new TripTimes back into this Timetable.
             this.tripTimes.set(tripIndex, newTimes);
-            return true;
         } catch (Exception e) { // prevent server from dying while debugging
             e.printStackTrace();
             return false;
         }
+
+        return true;
     }
 
     /**

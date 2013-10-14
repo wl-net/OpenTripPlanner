@@ -32,7 +32,6 @@ import com.google.transit.realtime.GtfsRealtime.EntitySelector;
 import com.google.transit.realtime.GtfsRealtime.FeedEntity;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 import com.google.transit.realtime.GtfsRealtime.TimeRange;
-import com.google.transit.realtime.GtfsRealtime.TranslatedString.Translation;
 
 /**  
  * This presently only includes GTFS-Realtime Service Alert feeds; 
@@ -161,12 +160,12 @@ public class AlertsUpdateHandler {
 
     /**
      * convert a protobuf TranslatedString to a OTP TranslatedString
-     * 
-     * @return
+     *
+     * @return A TranslatedString containing the same information as the input
      */
-    private TranslatedString deBuffer(GtfsRealtime.TranslatedString buffered) {
+    private TranslatedString deBuffer(GtfsRealtime.TranslatedString input) {
         TranslatedString result = new TranslatedString();
-        for (Translation translation : buffered.getTranslationList()) {
+        for (GtfsRealtime.TranslatedString.Translation translation : input.getTranslationList()) {
             String language = translation.getLanguage();
             String string = translation.getText();
             result.addTranslation(language, string);

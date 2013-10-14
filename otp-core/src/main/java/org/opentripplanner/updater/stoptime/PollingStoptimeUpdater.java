@@ -95,7 +95,7 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
         if (sourceType != null) {
             if (sourceType.equals("gtfs-http")) {
                 updateSource = new GtfsRealtimeHttpTripUpdateSource();
-            } else if (sourceType.equals("gtfs-zmq")) {
+            } else if (sourceType.equals("gtfs-file")) {
                 updateSource = new GtfsRealtimeFileTripUpdateSource();
             }
         }

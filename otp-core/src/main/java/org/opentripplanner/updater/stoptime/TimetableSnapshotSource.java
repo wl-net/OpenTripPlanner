@@ -119,6 +119,11 @@ public class TimetableSnapshotSource {
         LOG.debug("message contains {} trip update blocks", updates.size());
         int uIndex = 0;
         for (TripUpdate tripUpdate : updates) {
+            if (!tripUpdate.hasTrip()) {
+                LOG.warn("Missing TripDescriptor in gtfs-rt trip update: \n{}", tripUpdate);
+                continue;
+            }
+
             ServiceDate serviceDate = new ServiceDate();
             TripDescriptor tripDescriptor = tripUpdate.getTrip();
 
@@ -134,24 +139,26 @@ public class TimetableSnapshotSource {
             uIndex += 1;
             LOG.debug("trip update block #{} ({} updates) :", uIndex, tripUpdate.getStopTimeUpdateCount());
             LOG.trace("{}", tripUpdate);
-            
+
             boolean applied = false;
-            switch(tripDescriptor.getScheduleRelationship()) {
-            case SCHEDULED:
-                applied = handleScheduledTrip(tripUpdate, agencyId, serviceDate);
-                break;
-            case ADDED:
-                applied = handleAddedTrip(tripUpdate, agencyId, serviceDate);
-                break;
-            case UNSCHEDULED:
-                applied = handleUnscheduledTrip(tripUpdate, agencyId, serviceDate);
-                break;
-            case CANCELED:
-                applied = handleCanceledTrip(tripUpdate, agencyId, serviceDate);
-                break;
-            case REPLACEMENT:
-                applied = handleReplacementTrip(tripUpdate, agencyId, serviceDate);
-                break;
+            if (tripDescriptor.hasScheduleRelationship()) {
+                switch(tripDescriptor.getScheduleRelationship()) {
+                    case SCHEDULED:
+                        applied = handleScheduledTrip(tripUpdate, agencyId, serviceDate);
+                        break;
+                    case ADDED:
+                        applied = handleAddedTrip(tripUpdate, agencyId, serviceDate);
+                        break;
+                    case UNSCHEDULED:
+                        applied = handleUnscheduledTrip(tripUpdate, agencyId, serviceDate);
+                        break;
+                    case CANCELED:
+                        applied = handleCanceledTrip(tripUpdate, agencyId, serviceDate);
+                        break;
+                    case REPLACEMENT:
+                        applied = handleReplacementTrip(tripUpdate, agencyId, serviceDate);
+                        break;
+                }
             }
 
             if(applied) {
