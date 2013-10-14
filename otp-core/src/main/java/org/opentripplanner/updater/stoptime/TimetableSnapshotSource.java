@@ -159,6 +159,9 @@ public class TimetableSnapshotSource {
                         applied = handleReplacementTrip(tripUpdate, agencyId, serviceDate);
                         break;
                 }
+            } else {
+                // Default
+                applied = handleScheduledTrip(tripUpdate, agencyId, serviceDate);
             }
 
             if(applied) {
