@@ -27,7 +27,6 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 @AllArgsConstructor
 public class TripUpdateGraphWriterRunnable implements GraphWriterRunnable {
-
     private static Logger LOG = LoggerFactory.getLogger(TripUpdateGraphWriterRunnable.class);
 
     /**

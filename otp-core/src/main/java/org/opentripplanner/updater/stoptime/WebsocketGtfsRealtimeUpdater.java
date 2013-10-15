@@ -40,29 +40,28 @@ import com.ning.http.client.websocket.WebSocketUpgradeHandler;
  * This class starts an HTTP client which opens a websocket connection to a GTFS-RT data source. A
  * callback is registered which handles incoming GTFS-RT messages as they stream in by placing a
  * GTFS-RT decoder Runnable task in the single-threaded executor for handling.
- * 
+ *
  * Usage example ('websocket' name is an example) in the file 'Graph.properties':
- * 
+ *
  * <pre>
  * websocket.type = websocket-stop-time-updater
  * websocket.defaultAgencyId = agency
  * websocket.url = ws://localhost:8088/tripUpdates
  * </pre>
- * 
+ *
  */
 public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
-
     /**
      * Number of seconds to wait before checking again whether we are still connected
      */
     private static final int CHECK_CONNECTION_PERIOD_SEC = 1;
-    
+
     private static final int DEFAULT_RECONNECT_PERIOD_SEC = 300; // Five minutes
 
     private static Logger LOG = LoggerFactory.getLogger(WebsocketGtfsRealtimeUpdater.class);
 
     /**
-     * Parent update manager. Is used to execute graph writer runnables. 
+     * Parent update manager. Is used to execute graph writer runnables.
      */
     private GraphUpdaterManager updaterManager;
 
@@ -139,12 +138,12 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
                 LOG.error("Unknown exception when trying to connect to {}:", url, e);
                 connectionSuccessful = false;
             }
-            
+
             // If connection was unsuccessful, wait some time before trying again
             if (!connectionSuccessful) {
                 Thread.sleep(reconnectPeriodSec * 1000);
             }
-            
+
             // Keep checking whether connection is still open
             while (true) {
                 if (socket == null || !socket.isOpen()) {
@@ -156,6 +155,8 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
                 }
                 Thread.sleep(CHECK_CONNECTION_PERIOD_SEC * 1000);
             }
+
+            client.close();
         }
     }
 
@@ -182,7 +183,8 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
                 }
 
                 // Handle trip updates via graph writer runnable
-                TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(updates, agencyId);
+                TripUpdateGraphWriterRunnable runnable =
+                        new TripUpdateGraphWriterRunnable(updates, agencyId);
                 updaterManager.execute(runnable);
             } catch (InvalidProtocolBufferException e) {
                 LOG.error("Could not decode gtfs-rt message:", e);

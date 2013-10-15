@@ -79,7 +79,8 @@ public class TimetableSnapshotSourceTest {
 
     @Before
     public void setUp() {
-        graph.putService(CalendarServiceData.class, GtfsLibrary.createCalendarServiceData(context.getDao()));
+        graph.putService(CalendarServiceData.class,
+                GtfsLibrary.createCalendarServiceData(context.getDao()));
         updater = new TimetableSnapshotSource(graph);
     }
 
@@ -99,9 +100,9 @@ public class TimetableSnapshotSourceTest {
         assertNotNull(newResolver);
         assertNotSame(resolver, newResolver);
     }
-    
+
     @Test
-    public void testHandleCanceledTrip() throws InvalidProtocolBufferException { 
+    public void testHandleCanceledTrip() throws InvalidProtocolBufferException {
         AgencyAndId tripId = new AgencyAndId("agency", "1.1");
         AgencyAndId tripId2 = new AgencyAndId("agency", "1.2");
         TableTripPattern pattern = transitIndexService.getTripPatternForTrip(tripId);
@@ -125,7 +126,7 @@ public class TimetableSnapshotSourceTest {
     }
 
     @Test
-    public void testHandleModifiedTrip() { 
+    public void testHandleModifiedTrip() {
         AgencyAndId tripId = new AgencyAndId("agency", "1.1");
         AgencyAndId tripId2 = new AgencyAndId("agency", "1.2");
         TableTripPattern pattern = transitIndexService.getTripPatternForTrip(tripId);
@@ -135,7 +136,8 @@ public class TimetableSnapshotSourceTest {
         TripDescriptor.Builder tripDescriptorBuilder = TripDescriptor.newBuilder();
 
         tripDescriptorBuilder.setTripId("1.1");
-        tripDescriptorBuilder.setScheduleRelationship(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        tripDescriptorBuilder.setScheduleRelationship(
+               TripDescriptor.ScheduleRelationship.SCHEDULED);
 
         TripUpdate.Builder tripUpdateBuilder = TripUpdate.newBuilder();
 
@@ -143,7 +145,8 @@ public class TimetableSnapshotSourceTest {
 
         StopTimeUpdate.Builder stopTimeUpdateBuilder = tripUpdateBuilder.addStopTimeUpdateBuilder();
 
-        stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        stopTimeUpdateBuilder.setScheduleRelationship(
+                StopTimeUpdate.ScheduleRelationship.SCHEDULED);
         stopTimeUpdateBuilder.setStopSequence(2);
 
         StopTimeEvent.Builder arrivalBuilder = stopTimeUpdateBuilder.getArrivalBuilder();
@@ -198,7 +201,8 @@ public class TimetableSnapshotSourceTest {
         assertNotSame(resolverA, resolverB);
 
         assertSame   (resolverA.resolve(pattern, null ), resolverB.resolve(pattern, null ));
-        assertSame   (resolverA.resolve(pattern, serviceDate), resolverB.resolve(pattern, serviceDate));
+        assertSame   (resolverA.resolve(pattern, serviceDate),
+                resolverB.resolve(pattern, serviceDate));
         assertNotSame(resolverA.resolve(pattern, null ), resolverA.resolve(pattern, serviceDate));
         assertSame   (resolverB.resolve(pattern, null ), resolverB.resolve(pattern, previously));
 

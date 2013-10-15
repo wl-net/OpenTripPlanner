@@ -37,49 +37,49 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate;
  * a specific point in time.
  */
 public class TimetableSnapshotSource {
-
     private static final Logger LOG = LoggerFactory.getLogger(TimetableSnapshotSource.class);
 
-    @Setter    private int logFrequency = 2000;
-    
+    @Setter
+    private int logFrequency = 2000;
+
     private int appliedBlockCount = 0;
 
-    /** 
-     * If a timetable snapshot is requested less than this number of milliseconds after the previous 
-     * snapshot, just return the same one. Throttles the potentially resource-consuming task of 
+    /**
+     * If a timetable snapshot is requested less than this number of milliseconds after the previous
+     * snapshot, just return the same one. Throttles the potentially resource-consuming task of
      * duplicating a TripPattern -> Timetable map and indexing the new Timetables.
      */
-    @Setter private int maxSnapshotFrequency = 1000; // msec    
+    @Setter private int maxSnapshotFrequency = 1000; // msec
 
-    /** 
+    /**
      * The last committed snapshot that was handed off to a routing thread. This snapshot may be
-     * given to more than one routing thread if the maximum snapshot frequency is exceeded. 
+     * given to more than one routing thread if the maximum snapshot frequency is exceeded.
      */
     private TimetableResolver snapshot = null;
-    
+
     /** The working copy of the timetable resolver. Should not be visible to routing threads. */
     private TimetableResolver buffer = new TimetableResolver();
-    
+
     /** Should expired realtime data be purged from the graph. */
     @Setter private boolean purgeExpiredData = true;
-    
+
     /** The TransitIndexService */
     private TransitIndexService transitIndexService;
-    
+
     protected ServiceDate lastPurgeDate = null;
-    
+
     protected long lastSnapshotTime = -1;
 
     private final TimeZone timeZone;
-    
+
     public TimetableSnapshotSource(Graph graph) {
         timeZone = graph.getTimeZone();
         transitIndexService = graph.getService(TransitIndexService.class);
         if (transitIndexService == null)
-            throw new RuntimeException(
-                    "Real-time update need a TransitIndexService. Please setup one during graph building.");
+            throw new RuntimeException("Real-time updates need a TransitIndexService. " +
+                    "Please setup one during graph building.");
     }
-    
+
     /**
      * @return an up-to-date snapshot mapping TripPatterns to Timetables. This snapshot and the
      *         timetable objects it references are guaranteed to never change, so the requesting
@@ -89,7 +89,7 @@ public class TimetableSnapshotSource {
     public TimetableResolver getTimetableSnapshot() {
         return getTimetableSnapshot(false);
     }
-    
+
     protected synchronized TimetableResolver getTimetableSnapshot(boolean force) {
         long now = System.currentTimeMillis();
         if (force || now - lastSnapshotTime > maxSnapshotFrequency) {
@@ -105,7 +105,6 @@ public class TimetableSnapshotSource {
         }
         return snapshot;
     }
-    
 
     /**
      * Method to apply a trip update list to the most recent version of the timetable snapshot.
@@ -137,7 +136,8 @@ public class TimetableSnapshotSource {
             }
 
             uIndex += 1;
-            LOG.debug("trip update block #{} ({} updates) :", uIndex, tripUpdate.getStopTimeUpdateCount());
+            LOG.debug("trip update block #{} ({} updates) :",
+                    uIndex, tripUpdate.getStopTimeUpdateCount());
             LOG.trace("{}", tripUpdate);
 
             boolean applied = false;
@@ -175,26 +175,25 @@ public class TimetableSnapshotSource {
              }
         }
         LOG.debug("end of update message");
-        
+
         // Make a snapshot after each message in anticipation of incoming requests
         // Purge data if necessary (and force new snapshot if anything was purged)
         if(purgeExpiredData) {
-            boolean modified = purgeExpiredData(); 
+            boolean modified = purgeExpiredData();
             getTimetableSnapshot(modified);
+        } else {
+            getTimetableSnapshot();
         }
-        else {
-            getTimetableSnapshot(); 
-        }
-
     }
 
-    protected boolean handleScheduledTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+    protected boolean handleScheduledTrip(TripUpdate tripUpdate, String agencyId,
+            ServiceDate serviceDate) {
         TripDescriptor tripDescriptor = tripUpdate.getTrip();
         AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
         TableTripPattern pattern = getPatternForTrip(tripId);
 
         if (pattern == null) {
-            LOG.debug("No pattern found for tripId {}, skipping UpdateBlock.", tripId);
+            LOG.debug("No pattern found for tripId {}, skipping TripUpdate.", tripId);
             return false;
         }
 
@@ -207,50 +206,54 @@ public class TimetableSnapshotSource {
         return buffer.update(pattern, tripUpdate, agencyId, timeZone, serviceDate);
     }
 
-    protected boolean handleAddedTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+    protected boolean handleAddedTrip(TripUpdate tripUpdate, String agencyId,
+            ServiceDate serviceDate) {
         // TODO: Handle added trip
-        
+
         return false;
     }
 
-    protected boolean handleUnscheduledTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+    protected boolean handleUnscheduledTrip(TripUpdate tripUpdate, String agencyId,
+            ServiceDate serviceDate) {
         // TODO: Handle unscheduled trip
-        
+
         return false;
     }
 
-    protected boolean handleCanceledTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+    protected boolean handleCanceledTrip(TripUpdate tripUpdate, String agencyId,
+            ServiceDate serviceDate) {
         TripDescriptor tripDescriptor = tripUpdate.getTrip();
         AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
         TableTripPattern pattern = getPatternForTrip(tripId);
 
         if (pattern == null) {
-            LOG.debug("No pattern found for tripId {}, skipping UpdateBlock.", tripId);
+            LOG.debug("No pattern found for tripId {}, skipping TripUpdate.", tripId);
             return false;
         }
 
         return buffer.update(pattern, tripUpdate, agencyId, timeZone, serviceDate);
     }
 
-    protected boolean handleReplacementTrip(TripUpdate tripUpdate, String agencyId, ServiceDate serviceDate) {
+    protected boolean handleReplacementTrip(TripUpdate tripUpdate, String agencyId,
+            ServiceDate serviceDate) {
         // TODO: Handle replacement trip
-        
+
         return false;
     }
 
     protected boolean purgeExpiredData() {
         ServiceDate today = new ServiceDate();
-        ServiceDate previously = today.previous().previous(); // Just to be safe... 
-        
+        ServiceDate previously = today.previous().previous(); // Just to be safe...
+
         if(lastPurgeDate != null && lastPurgeDate.compareTo(previously) > 0) {
             return false;
         }
-        
+
         LOG.debug("purging expired realtime data");
         // TODO: purge expired realtime data
-        
+
         lastPurgeDate = previously;
-        
+
         return buffer.purgeExpiredData(previously);
     }
 
@@ -258,5 +261,4 @@ public class TimetableSnapshotSource {
         TableTripPattern pattern = transitIndexService.getTripPatternForTrip(tripId);
         return pattern;
     }
-
 }

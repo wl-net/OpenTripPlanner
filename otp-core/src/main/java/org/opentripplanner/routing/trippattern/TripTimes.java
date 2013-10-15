@@ -37,12 +37,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A TripTimes represents the arrival and departure times for a single trip in an Timetable. It
- * is carried along by States when routing to ensure that they have a consistent, fast view of the 
- * trip when realtime updates are being applied. 
- * All times are expressed as seconds since midnight (as in GTFS). The indexes into a StopTimes are 
- * not stop indexes, but inter-stop segment ("hop") indexes, so hop 0 refers to the hop between 
- * stops 0 and 1, and arrival 0 is actually an arrival at stop 1. The main reason for this is that 
- * it saves two extra array elements in every stopTimes. It might be worth it to just use stop 
+ * is carried along by States when routing to ensure that they have a consistent, fast view of the
+ * trip when realtime updates are being applied.
+ * All times are expressed as seconds since midnight (as in GTFS). The indexes into a StopTimes are
+ * not stop indexes, but inter-stop segment ("hop") indexes, so hop 0 refers to the hop between
+ * stops 0 and 1, and arrival 0 is actually an arrival at stop 1. The main reason for this is that
+ * it saves two extra array elements in every stopTimes. It might be worth it to just use stop
  * indexes everywhere for simplicity.
  */
 public class TripTimes implements Serializable {
@@ -94,7 +94,9 @@ public class TripTimes implements Serializable {
 
     private int[] stopSequences;
 
-    /** The provided stopTimes are assumed to be pre-filtered, valid, and monotonically increasing. */
+    /**
+     * The provided stopTimes are assumed to be pre-filtered, valid, and monotonically increasing.
+     */
     public TripTimes(Trip trip, List<StopTime> stopTimes) {
         this.trip = trip;
         int nStops = stopTimes.size();
@@ -245,10 +247,10 @@ public class TripTimes implements Serializable {
         int departureTime = getDepartureTime(hop);
         return departureTime - arrivalTime;
     }
-    
-    /** 
-     * @return the length of time time in seconds that it takes for the vehicle to traverse each 
-     * inter-stop segment ("hop"). 
+
+    /**
+     * @return the length of time time in seconds that it takes for the vehicle to traverse each
+     * inter-stop segment ("hop").
      */
     public int getRunningTime(int hop) {
         int arrivalTime   = getArrivalTime(hop);
@@ -278,15 +280,15 @@ public class TripTimes implements Serializable {
     public int getArrivalDelay(int hop) {
         return getArrivalTime(hop) - getScheduledArrivalTime(hop);
     }
-    
-    /** 
-     * @return true if this TripTimes represents an unmodified, scheduled trip from a published 
+
+    /**
+     * @return true if this TripTimes represents an unmodified, scheduled trip from a published
      * timetable or false if it is a updated, cancelled, or otherwise modified one.
      */
     public boolean isScheduled() {
         return departureTimes == null;
     }
-    
+
     private String formatSeconds(int s) {
         int m = s / 60;
         s = s % 60;
@@ -302,17 +304,17 @@ public class TripTimes implements Serializable {
         // compaction is multi-layered now
         //sb.append(arrivalTimes == null ? "C " : "U ");
         for (int hop=0; hop < nHops; hop++) {
-            String s = String.format("(%d)%8s__%8s", hop, formatSeconds(this.getDepartureTime(hop)), 
+            String s = String.format("(%d)%8s__%8s", hop, formatSeconds(this.getDepartureTime(hop)),
                     formatSeconds(this.getArrivalTime(hop)));
             sb.append(s);
         }
         return sb.toString();
     }
 
-    /** 
+    /**
      * Request that this TripTimes be analyzed and its memory usage reduced if possible. Replaces
      * the arrivals array with null if all dwell times are zero.
-     * @return whether or not compaction occurred. 
+     * @return whether or not compaction occurred.
      */
     public boolean compact() {
         return compactScheduledArrivalsAndDepartures() || compactArrivalsAndDepartures();
@@ -366,7 +368,7 @@ public class TripTimes implements Serializable {
 
     /**
      * When creating a scheduled TripTimes or wrapping it in updates, we could potentially imply
-     * negative hop or dwell times. We really don't want those being used in routing. 
+     * negative hop or dwell times. We really don't want those being used in routing.
      * This method check that all times are increasing, and issues warnings if this is not the case.
      * @return whether the times were found to be increasing.
      */
@@ -393,15 +395,15 @@ public class TripTimes implements Serializable {
         }
         return true;
     }
-    
+
     /* STATIC METHODS TAKING TRIPTIMES AS ARGUMENTS */
 
     /**
-     * Binary search method adapted from GNU Classpath Arrays.java (GPL). 
+     * Binary search method adapted from GNU Classpath Arrays.java (GPL).
      * Range parameters and range checking removed.
      * Search across an array of TripTimes, looking only at a specific hop number.
-     * 
-     * @return the index at which the key was found, or the index of the first value higher than 
+     *
+     * @return the index at which the key was found, or the index of the first value higher than
      * key if it was not found, or a.length if there is no such value. Note that this has been
      * changed from Arrays.binarysearch.
      */
@@ -412,26 +414,27 @@ public class TripTimes implements Serializable {
         while (low <= hi) {
             mid = (low + hi) >>> 1;
             final int d = a[mid].getDepartureTime(hop);
-            if (d == key)
+            if (d == key) {
                 return mid;
-            else if (d > key)
+            } else if (d > key) {
                 hi = mid - 1;
-            else
+            } else {
                 // This gets the insertion point right on the last loop.
                 low = ++mid;
+            }
         }
         return mid;
     }
 
     /**
-     * Binary search method adapted from GNU Classpath Arrays.java (GPL). 
+     * Binary search method adapted from GNU Classpath Arrays.java (GPL).
      * Range parameters and range checking removed.
      * Search across an array of TripTimes, looking only at a specific hop number.
-     * 
+     *
      * @return the index at which the key was found, or the index of the first value *lower* than
      * key if it was not found, or -1 if there is no such value. Note that this has been changed
      * from Arrays.binarysearch: this is a mirror-image of the departure search algorithm.
-     * 
+     *
      * TODO: I have worked through corner cases but should reverify with some critical distance.
      */
     public static int binarySearchArrivals(TripTimes[] a, int hop, int key) {
@@ -441,32 +444,34 @@ public class TripTimes implements Serializable {
         while (low <= hi) {
             mid = (low + hi) >>> 1;
             final int d = a[mid].getArrivalTime(hop);
-            if (d == key)
+            if (d == key) {
                 return mid;
-            else if (d < key)
+            } else if (d < key) {
                 low = mid + 1;
-            else
+            } else {
                 // This gets the insertion point right on the last loop.
                 hi = --mid;
+            }
         }
         return mid;
     }
 
     /**
-     * Once a trip has been found departing or arriving at an appropriate time, check whether that 
+     * Once a trip has been found departing or arriving at an appropriate time, check whether that
      * trip fits other restrictive search criteria such as bicycle and wheelchair accessibility
      * and transfers with minimum time or forbidden transfers.
-     * 
-     * GTFS bike extensions based on mailing list message at: 
+     *
+     * GTFS bike extensions based on mailing list message at:
      * https://groups.google.com/d/msg/gtfs-changes/QqaGOuNmG7o/xyqORy-T4y0J
      * 2: bikes allowed
      * 1: no bikes allowed
      * 0: no information (same as field omitted)
-     * 
+     *
      * If route OR trip explicitly allows bikes, bikes are allowed.
-     * @param stopIndex 
+     * @param stopIndex
      */
-    public boolean tripAcceptable(State state0, Stop currentStop, ServiceDay sd, boolean bicycle, int stopIndex, boolean boarding) {
+    public boolean tripAcceptable(State state0, Stop currentStop, ServiceDay sd, boolean bicycle,
+            int stopIndex, boolean boarding) {
         RoutingRequest options = state0.getOptions();
         Trip trip = this.getTrip();
         BannedStopSet banned = options.bannedTrips.get(trip.getId());
@@ -475,14 +480,17 @@ public class TripTimes implements Serializable {
                 return false;
             }
         }
-        if (options.wheelchairAccessible && trip.getWheelchairAccessible() != 1)
+        if (options.wheelchairAccessible && trip.getWheelchairAccessible() != 1) {
             return false;
-        if (bicycle)
+        }
+        if (bicycle) {
             if ((trip.getTripBikesAllowed() != 2) &&    // trip does not explicitly allow bikes and
-                (trip.getRoute().getBikesAllowed() != 2 // route does not explicitly allow bikes or  
-                || trip.getTripBikesAllowed() == 1))    // trip explicitly forbids bikes
+                (trip.getRoute().getBikesAllowed() != 2 // route does not explicitly allow bikes or
+                || trip.getTripBikesAllowed() == 1)) {  // trip explicitly forbids bikes
                 return false;
-        
+            }
+        }
+
         // Check transfer table rules
         if (state0.getNumBoardings() > 0) {
             // This is not the first boarding, thus a transfer
@@ -495,12 +503,13 @@ public class TripTimes implements Serializable {
                 // There is a minimum transfer time to make this transfer
                 int hopIndex = stopIndex - (boarding ? 0 : 1);
                 if (boarding) {
-                    if (sd.secondsSinceMidnight(state0.getLastAlightedTimeSeconds()) + transferTime > getDepartureTime(hopIndex)) {
+                    if (sd.secondsSinceMidnight(state0.getLastAlightedTimeSeconds())
+                            + transferTime > getDepartureTime(hopIndex)) {
                         return false;
                     }
-                }
-                else {
-                    if (sd.secondsSinceMidnight(state0.getLastAlightedTimeSeconds()) - transferTime < getArrivalTime(hopIndex)) {
+                } else {
+                    if (sd.secondsSinceMidnight(state0.getLastAlightedTimeSeconds())
+                            - transferTime < getArrivalTime(hopIndex)) {
                         return false;
                     }
                 }
@@ -508,7 +517,7 @@ public class TripTimes implements Serializable {
                 // This transfer is forbidden
                 return false;
             }
-            
+
             // Check whether back edge is TimedTransferEdge
             if (state0.getBackEdge() instanceof TimedTransferEdge) {
                 // Transfer must be of type TIMED_TRANSFER
@@ -517,7 +526,7 @@ public class TripTimes implements Serializable {
                 }
             }
         }
-        
+
         return true;
     }
 
@@ -564,23 +573,22 @@ public class TripTimes implements Serializable {
     }
 
     /* NESTED STATIC CLASSES */
-    
+
     /** Used for sorting an array of StopTimes based on arrivals for a specific hop. */
     @AllArgsConstructor
     public static class ArrivalsComparator implements Comparator<TripTimes> {
-        final int hop; 
+        final int hop;
         @Override public int compare(TripTimes tt1, TripTimes tt2) {
             return tt1.getArrivalTime(hop) - tt2.getArrivalTime(hop);
         }
     }
-        
+
     /** Used for sorting an array of StopTimes based on departures for a specific hop. */
     @AllArgsConstructor
     public static class DeparturesComparator implements Comparator<TripTimes> {
-        final int hop; 
+        final int hop;
         @Override public int compare(TripTimes tt1, TripTimes tt2) {
             return tt1.getDepartureTime(hop) - tt2.getDepartureTime(hop);
         }
     }
-
 }

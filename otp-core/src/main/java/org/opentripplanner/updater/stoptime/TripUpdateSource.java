@@ -18,7 +18,6 @@ import java.util.List;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 public interface TripUpdateSource {
-
     /**
      * Wait for one message to arrive, and decode it into a List of TripUpdates. Blocking call.
      * @return a List<TripUpdate> potentially containing TripUpdates for several different trips,

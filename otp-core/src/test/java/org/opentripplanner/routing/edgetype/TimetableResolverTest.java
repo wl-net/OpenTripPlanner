@@ -49,22 +49,21 @@ public class TimetableResolverTest {
     private static GtfsContext context;
     private static Map<AgencyAndId, TableTripPattern> patternIndex;
     private static TimeZone timeZone = TimeZone.getTimeZone("GMT");
-    
+
     @BeforeClass
     public static void setUp() throws Exception {
-
         context = GtfsLibrary.readGtfs(new File(ConstantsForTests.FAKE_GTFS));
         graph = new Graph();
 
         GTFSPatternHopFactory factory = new GTFSPatternHopFactory(context);
         factory.run(graph);
-        graph.putService(CalendarServiceData.class, GtfsLibrary.createCalendarServiceData(context.getDao()));
-        
+        graph.putService(CalendarServiceData.class,
+                GtfsLibrary.createCalendarServiceData(context.getDao()));
+
         patternIndex = new HashMap<AgencyAndId, TableTripPattern>();
         for (TransitStopDepart tsd : filter(graph.getVertices(), TransitStopDepart.class)) {
             for (TransitBoardAlight tba : filter(tsd.getOutgoing(), TransitBoardAlight.class)) {
-                if (!tba.isBoarding())
-                    continue;
+                if (!tba.isBoarding()) continue;
                 TableTripPattern pattern = tba.getPattern();
                 for (Trip trip : pattern.getTrips()) {
                     patternIndex.put(trip.getId(), pattern);
@@ -72,15 +71,15 @@ public class TimetableResolverTest {
             }
         }
     }
-    
+
     @Test
     public void testCompare() {
         Timetable orig = new Timetable(null);
-        Timetable a = orig.copy(new ServiceDate().previous());
-        Timetable b = orig.copy(new ServiceDate());
+        Timetable a = new Timetable(orig, new ServiceDate().previous());
+        Timetable b = new Timetable(orig, new ServiceDate());
         assertEquals(-1, (new TimetableResolver.SortedTimetableComparator()).compare(a, b));
     }
-    
+
     @Test
     public void testResolve() {
         ServiceDate today = new ServiceDate();
@@ -88,7 +87,7 @@ public class TimetableResolverTest {
         ServiceDate tomorrow = today.next();
         TableTripPattern pattern = patternIndex.get(new AgencyAndId("agency", "1.1"));
         TimetableResolver resolver = new TimetableResolver();
-        
+
         Timetable scheduled = resolver.resolve(pattern, today);
         assertEquals(scheduled, resolver.resolve(pattern, null));
 
@@ -110,7 +109,7 @@ public class TimetableResolverTest {
         assertNotSame(scheduled, forNow);
         assertEquals(scheduled, resolver.resolve(pattern, tomorrow));
         assertEquals(scheduled, resolver.resolve(pattern, null));
-        
+
         // add a new timetable for yesterday
         resolver.update(pattern, tripUpdate, "agency", timeZone, yesterday);
         Timetable forYesterday = resolver.resolve(pattern, yesterday);
@@ -119,16 +118,16 @@ public class TimetableResolverTest {
         assertEquals(scheduled, resolver.resolve(pattern, tomorrow));
         assertEquals(scheduled, resolver.resolve(pattern, null));
     }
-    
+
     @Test(expected=ConcurrentModificationException.class)
     public void testUpdate() {
         ServiceDate today = new ServiceDate();
         ServiceDate yesterday = today.previous();
         TableTripPattern pattern = patternIndex.get(new AgencyAndId("agency", "1.1"));
-        
+
         TimetableResolver resolver = new TimetableResolver();
         Timetable origNow = resolver.resolve(pattern, today);
-        
+
         TripDescriptor.Builder tripDescriptorBuilder = TripDescriptor.newBuilder();
 
         tripDescriptorBuilder.setTripId("1.1");
@@ -148,12 +147,12 @@ public class TimetableResolverTest {
         // reuse timetable for today
         resolver.update(pattern, tripUpdate, "agency", timeZone, today);
         assertEquals(updatedNow, resolver.resolve(pattern, today));
-        
+
         // create new timetable for tomorrow
         resolver.update(pattern, tripUpdate, "agency", timeZone, yesterday);
         assertNotSame(origNow, resolver.resolve(pattern, yesterday));
         assertNotSame(updatedNow, resolver.resolve(pattern, yesterday));
-        
+
         // exception if we try to modify a snapshot
         TimetableResolver snapshot = resolver.commit();
         snapshot.update(pattern, tripUpdate, "agency", timeZone, yesterday);
@@ -166,11 +165,11 @@ public class TimetableResolverTest {
         TableTripPattern pattern = patternIndex.get(new AgencyAndId("agency", "1.1"));
 
         TimetableResolver resolver = new TimetableResolver();
-        
+
         // only return a new snapshot if there are changes
         TimetableResolver snapshot = resolver.commit();
         assertNull(snapshot);
-                
+
         TripDescriptor.Builder tripDescriptorBuilder = TripDescriptor.newBuilder();
 
         tripDescriptorBuilder.setTripId("1.1");
@@ -187,12 +186,12 @@ public class TimetableResolverTest {
         snapshot = resolver.commit();
         assertEquals(snapshot.resolve(pattern, today), resolver.resolve(pattern, today));
         assertEquals(snapshot.resolve(pattern, yesterday), resolver.resolve(pattern, yesterday));
-        
+
         // add a new timetable for today, don't commit, and everything should not match
         assertTrue(resolver.update(pattern, tripUpdate, "agency", timeZone, today));
         assertNotSame(snapshot.resolve(pattern, today), resolver.resolve(pattern, today));
         assertEquals(snapshot.resolve(pattern, yesterday), resolver.resolve(pattern, yesterday));
-        
+
         // add a new timetable for today, on another day, and things should still not match
         assertTrue(resolver.update(pattern, tripUpdate, "agency", timeZone, yesterday));
         assertNotSame(snapshot.resolve(pattern, yesterday), resolver.resolve(pattern, yesterday));
@@ -201,7 +200,7 @@ public class TimetableResolverTest {
         snapshot = resolver.commit();
         assertEquals(snapshot.resolve(pattern, today), resolver.resolve(pattern, today));
         assertEquals(snapshot.resolve(pattern, yesterday), resolver.resolve(pattern, yesterday));
-        
+
         // exception if we try to commit to a snapshot
         snapshot.commit();
     }
@@ -226,19 +225,19 @@ public class TimetableResolverTest {
         TimetableResolver resolver = new TimetableResolver();
         resolver.update(pattern, tripUpdate, "agency", timeZone, today);
         resolver.update(pattern, tripUpdate, "agency", timeZone, yesterday);
-        
+
         assertNotSame(resolver.resolve(pattern, yesterday), resolver.resolve(pattern, null));
         assertNotSame(resolver.resolve(pattern, today), resolver.resolve(pattern, null));
-        
+
         assertNotNull(resolver.commit());
         assertFalse(resolver.isDirty());
-        
+
         assertTrue(resolver.purgeExpiredData(yesterday));
         assertFalse(resolver.purgeExpiredData(yesterday));
-        
+
         assertEquals(resolver.resolve(pattern, yesterday), resolver.resolve(pattern, null));
         assertNotSame(resolver.resolve(pattern, today), resolver.resolve(pattern, null));
-        
+
         assertNull(resolver.commit());
         assertFalse(resolver.isDirty());
     }

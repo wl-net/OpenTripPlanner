@@ -100,6 +100,7 @@ import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeEvent;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
@@ -643,11 +644,11 @@ public class PlanGeneratorTest {
         ferryStopDepartUpdateBuilder.setStopSequence(-1);
         ferryStopDepartUpdateBuilder.setDeparture(ferryStopDepartTimeEventBuilder);
         ferryStopDepartUpdateBuilder.setArrival(ferryStopDepartTimeEventBuilder);
-        ferryStopDepartUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        ferryStopDepartUpdateBuilder.setScheduleRelationship(ScheduleRelationship.SCHEDULED);
         ferryStopArriveUpdateBuilder.setStopSequence(0);
         ferryStopArriveUpdateBuilder.setDeparture(ferryStopArriveTimeEventBuilder);
         ferryStopArriveUpdateBuilder.setArrival(ferryStopArriveTimeEventBuilder);
-        ferryStopArriveUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+        ferryStopArriveUpdateBuilder.setScheduleRelationship(ScheduleRelationship.SCHEDULED);
 
         TripUpdate.Builder tripUpdateBuilder = TripUpdate.newBuilder();
 
@@ -665,7 +666,8 @@ public class PlanGeneratorTest {
 
         when(timetableSnapshotSource.getTimetableSnapshot()).thenReturn(resolver);
 
-        timetableSnapshotSource.getTimetableSnapshot().update(thirdTripPattern, tripUpdate, "Ferry", timeZone, serviceDate);
+        timetableSnapshotSource.getTimetableSnapshot().update(
+                thirdTripPattern, tripUpdate, "Ferry", timeZone, serviceDate);
 
         // Further graph initialization
         graph.putService(ServiceIdToNumberService.class, serviceIdToNumberService);

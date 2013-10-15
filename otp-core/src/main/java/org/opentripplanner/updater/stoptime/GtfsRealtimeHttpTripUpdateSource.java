@@ -27,13 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.transit.realtime.GtfsRealtime.FeedEntity;
-import com.google.transit.realtime.GtfsRealtime.FeedHeader;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 
 public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, PreferencesConfigurable {
-    
-    private static final Logger LOG = LoggerFactory.getLogger(GtfsRealtimeHttpTripUpdateSource.class);
+    private static final Logger LOG =
+            LoggerFactory.getLogger(GtfsRealtimeHttpTripUpdateSource.class);
 
     /**
      * Default agency id that is used for the trip ids in the TripUpdates
@@ -46,8 +45,9 @@ public class GtfsRealtimeHttpTripUpdateSource implements TripUpdateSource, Prefe
     @Override
     public void configure(Graph graph, Preferences preferences) throws Exception {
         String url = preferences.get("url", null);
-        if (url == null)
+        if (url == null) {
             throw new IllegalArgumentException("Missing mandatory 'url' parameter");
+        }
         this.url = url;
         this.agencyId = preferences.get("defaultAgencyId", null);
     }

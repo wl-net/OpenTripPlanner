@@ -40,14 +40,12 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 
 
 /**
- * Timetables provide most of the TripPattern functionality. Each TripPattern may possess more
- * than one Timetable when stop time updates are being applied: one for the scheduled stop times,
- * one for each snapshot of updated stop times, another for a working buffer of updated stop
- * times, etc. Timetable is a non-static nested (inner) class, so each Timetable belongs to a
- * specific TripPattern, whose fields it can access.
+ * Timetables provide most of the TripPattern functionality. Each TripPattern may possess more than
+ * one Timetable when stop time updates are being applied: one for the scheduled stop times, one for
+ * each snapshot of updated stop times, another for a working buffer of updated stop times, etc.
  */
 public class Timetable implements Serializable {
-    
+
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(Timetable.class);
 
@@ -60,13 +58,13 @@ public class Timetable implements Serializable {
     private static final int INDEX_THRESHOLD = 16;
 
     private final TableTripPattern pattern;
-    
+
     /**
      * Contains one TripTimes object for each scheduled trip (even cancelled ones) and possibly
      * additional TripTimes objects for unscheduled trips.
      */
     private final ArrayList<TripTimes> tripTimes;
-    
+
     /**
      * The ServiceDate for which this (updated) timetables is valid.
      * If null, then it is valid for all dates.
@@ -87,7 +85,7 @@ public class Timetable implements Serializable {
      * For each hop, the best running time. This serves to provide lower bounds on traversal time.
      */
     private transient int bestRunningTimes[];
-    
+
     /**
      * For each stop, the best dwell time. This serves to provide lower bounds on traversal time.
      */
@@ -99,30 +97,21 @@ public class Timetable implements Serializable {
         this.pattern = pattern;
         this.serviceDate = null;
     }
-    
-    /** 
-     * Copy constructor: create an un-indexed Timetable with the same TripTimes as the 
-     * specified timetable. 
+
+    /**
+     * Copy constructor: create an un-indexed Timetable with the same TripTimes as the
+     * specified timetable.
      */
-    private Timetable (Timetable tt, ServiceDate serviceDate) {
+    Timetable (Timetable tt, ServiceDate serviceDate) {
         tripTimes = new ArrayList<TripTimes>(tt.tripTimes);
         this.serviceDate = serviceDate;
         this.pattern = tt.pattern;
-    }
-    
-    /** 
-     * This copy instance method can see the enclosing TripPattern instance, while the copy
-     * constructor does not. The only publicly visible way to make a timetable, and it should
-     * probably be protected.
-     */
-    public Timetable copy(ServiceDate serviceDate) {
-        return new Timetable(this, serviceDate);
     }
 
     public int getStopSequence(int stopIndex, int tripIndex) {
         return tripTimes.get(tripIndex).getStopSequence(stopIndex);
     }
-    
+
     /**
      * Produces 2D index arrays that are stop-major and sorted, allowing binary search at any
      * given stop. It is of course inefficient to call this after updating only one or two
@@ -144,15 +133,17 @@ public class Timetable implements Serializable {
             Arrays.sort(arrivalsIndex[hop], new TripTimes.ArrivalsComparator(hop));
             Arrays.sort(departuresIndex[hop], new TripTimes.DeparturesComparator(hop));
             if (hop > 0) {
-                if (Arrays.equals(departuresIndex[hop], departuresIndex[hop - 1]))
+                if (Arrays.equals(departuresIndex[hop], departuresIndex[hop - 1])) {
                     departuresIndex[hop] = departuresIndex[hop - 1];
-                else
+                } else {
                     departuresFifo = false;
+                }
             }
-            if (Arrays.equals(departuresIndex[hop], arrivalsIndex[hop]))
+            if (Arrays.equals(departuresIndex[hop], arrivalsIndex[hop])) {
                 arrivalsIndex[hop] = departuresIndex[hop];
-            else
+            } else {
                 arrivalsMatchDepartures = false;
+            }
         }
         if (departuresFifo) {
             //LOG.debug("Compressing FIFO Timetable index.");
@@ -163,17 +154,16 @@ public class Timetable implements Serializable {
             arrivalsIndex = departuresIndex;
         }
     }
-    
+
     /**
-     * Get the next (previous) trip that departs (arrives) from the specified stop
-     * at or after (before) the specified time. The haveBicycle parameter must be passed in
-     * because we cannot determine whether the user is in possession of a rented bicycle from
-     * the options alone. If a pre-allocated array is passed in via
-     * the optional adjacentTimes parameter, that array will be filled with the main result plus
-     * a suitable number of TripTimes roughly temporally adjacent to the main result. If the main
-     * result is null, the contents of the adjacentTimes array are undefined. Note that no
-     * guarantees of exhaustiveness, contiguity, etc. are made about the additional TripTimes
-     * objects.
+     * Get the next (previous) trip that departs (arrives) from the specified stop at or after
+     * (before) the specified time. The haveBicycle parameter must be passed in because we cannot
+     * determine whether the user is in possession of a rented bicycle from the options alone. If a
+     * pre-allocated array is passed in via the optional adjacentTimes parameter, that array will be
+     * filled with the main result plus a suitable number of TripTimes roughly temporally adjacent
+     * to the main result. If the main result is null, the contents of the adjacentTimes array are
+     * undefined. Note that no guarantees of exhaustiveness, contiguity, etc. are made about the
+     * additional TripTimes objects.
      *
      * @return the TripTimes object representing the (possibly updated) best trip, or null if no
      * trip matches both the time and other criteria.
@@ -187,10 +177,11 @@ public class Timetable implements Serializable {
         if (tableIndex != null) {
             TripTimes[] sorted;
             // this timetable has been indexed, use binary search
-            if (tableIndex.length == 1) // for optimized FIFO patterns
-                sorted = tableIndex[0]; 
-            else
+            if (tableIndex.length == 1) { // for optimized FIFO patterns
+                sorted = tableIndex[0];
+            } else {
                 sorted = tableIndex[boarding ? stopIndex : stopIndex - 1];
+            }
             // an alternative to conditional increment/decrement would be to sort the arrivals
             // index in decreasing order, but that would require changing the search algorithm
             if (boarding) {
@@ -214,11 +205,11 @@ public class Timetable implements Serializable {
                     }
                 }
             }
-        } else { 
+        } else {
             // no index present on this timetable. use a linear search:
             // because trips may change with stoptime updates, we cannot count on them being sorted
             int bestTime = boarding ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-            for (TripTimes tt : tripTimes) { 
+            for (TripTimes tt : tripTimes) {
                 // hoping JVM JIT will distribute the loop over the if clauses as needed
                 if (boarding) {
                     int depTime = tt.getDepartureTime(stopIndex);
@@ -239,7 +230,7 @@ public class Timetable implements Serializable {
         }
         return bestTrip;
     }
-    
+
     /** Gets the departure time for a given hop on a given trip */
     public int getDepartureTime(int hop, int trip) {
         return tripTimes.get(trip).getDepartureTime(hop);
@@ -276,7 +267,7 @@ public class Timetable implements Serializable {
             for (int h = 1; h < nHops; ++h) { // dwell time is undefined on first hop
                 bestDwellTimes[h] = Integer.MAX_VALUE;
                 for (int t = 0; t < nTrips; ++t) {
-                    int dt = this.getDwellTime(h,  t);
+                    int dt = this.getDwellTime(h, t);
                     if (bestDwellTimes[h] > dt) {
                         bestDwellTimes[h] = dt;
                     }
@@ -284,10 +275,11 @@ public class Timetable implements Serializable {
             }
         }
         // Q: Why is incoming running times 1 shorter than departures?
-        // A: Because when there are no arrivals array, the last departure is actually used for an arrival. 
+        // A: Because when there is no arrivals array, the last departure is actually used for an
+        // arrival.
         for (int h = 0; h < nHops; ++h) {
             bestRunningTimes[h] = Integer.MAX_VALUE;
-            for (int t = 0; t < nTrips; ++t) { 
+            for (int t = 0; t < nTrips; ++t) {
                 int rt = this.getRunningTime(h, t);
                 if (bestRunningTimes[h] > rt) {
                     bestRunningTimes[h] = rt;
@@ -296,13 +288,13 @@ public class Timetable implements Serializable {
         }
         if (nTrips > INDEX_THRESHOLD) {
             //LOG.debug("indexing pattern with {} trips", nTrips);
-            index(); 
+            index();
         } else {
             arrivalsIndex = null;
             departuresIndex = null;
         }
     }
-    
+
     public class DeparturesIterator implements Iterator<Integer> {
 
         int nextPosition = 0;
@@ -329,7 +321,7 @@ public class Timetable implements Serializable {
         }
 
     }
-    
+
     /** Gets all the departure times at a given stop (not used in routing) */
     public Iterator<Integer> getDepartureTimes(int stopIndex) {
         return new DeparturesIterator(stopIndex);
@@ -341,16 +333,15 @@ public class Timetable implements Serializable {
         for (TripTimes tt : tripTimes) {
             // could replace linear search with indexing in stoptime updater, but not necessary
             // at this point since the updater thread is far from pegged.
-            if (tt.getTrip().getId().equals(tripId)) 
-                return ret;
+            if (tt.getTrip().getId().equals(tripId)) return ret;
             ret += 1;
         }
         return -1;
     }
-    
-    /** 
+
+    /**
      * Not private because it's used when traversing interline dwells, which refer to order
-     * in the scheduled trip pattern. 
+     * in the scheduled trip pattern.
      */
     public TripTimes getTripTimes(int tripIndex) {
         return tripTimes.get(tripIndex);
@@ -368,7 +359,7 @@ public class Timetable implements Serializable {
      */
     public boolean update(TripUpdate tripUpdate, String agencyId, TimeZone timeZone,
             ServiceDate updateServiceDate) {
-        if (!tripUpdate.hasTrip()) return false;
+        if (tripUpdate == null || !tripUpdate.hasTrip()) return false;
         else try {
              // Though all timetables have the same trip ordering, some may have extra trips due to
              // the dynamic addition of unscheduled trips.
@@ -383,16 +374,16 @@ public class Timetable implements Serializable {
                 LOG.info("tripId {} not found in pattern.", tripId);
                 return false;
             } else {
-                LOG.trace("tripId {} found at index {} (in scheduled timetable)", tripId, tripIndex);
+                LOG.trace("tripId {} found at index {} in scheduled timetable.", tripId, tripIndex);
             }
 
-            TripTimes existingTimes = getTripTimes(tripIndex);
-            TripTimes newTimes = new TripTimes(existingTimes);
+            TripTimes newTimes = new TripTimes(getTripTimes(tripIndex));
 
             if (tripDescriptor.hasScheduleRelationship() && tripDescriptor.getScheduleRelationship()
                     == TripDescriptor.ScheduleRelationship.CANCELED) {
                 newTimes.cancel();
             } else {
+                // The GTFS-RT reference specifies that StopTimeUpdates are sorted by stop_sequence.
                 Iterator<StopTimeUpdate> updates = tripUpdate.getStopTimeUpdateList().iterator();
                 if (!updates.hasNext()) {
                     LOG.warn("Won't apply zero-length update block to trip {}.", tripId);
@@ -402,6 +393,7 @@ public class Timetable implements Serializable {
 
                 int numHops = newTimes.getNumHops();
                 Integer delay = null;
+
                 for (int i = 0; i <= numHops; i++) {
                     boolean match = false;
                     if (update != null) {
@@ -500,7 +492,7 @@ public class Timetable implements Serializable {
             }
 
             // Update succeeded, save the new TripTimes back into this Timetable.
-            this.tripTimes.set(tripIndex, newTimes);
+            tripTimes.set(tripIndex, newTimes);
         } catch (Exception e) { // prevent server from dying while debugging
             e.printStackTrace();
             return false;
@@ -536,7 +528,7 @@ public class Timetable implements Serializable {
         }
         return true;
     }
-    
+
     /** Returns the shortest possible running time for this stop */
     public int getBestRunningTime(int stopIndex) {
         return bestRunningTimes[stopIndex];
@@ -553,5 +545,4 @@ public class Timetable implements Serializable {
     public boolean isValidFor(ServiceDate serviceDate) {
         return this.serviceDate == null || this.serviceDate.equals(serviceDate);
     }
-} 
-
+}
