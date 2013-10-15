@@ -103,6 +103,7 @@ public class LongDistancePathService implements PathService {
          * to see. Because people may use either the traditional path services or the 
          * LongDistancePathService, we do not change the global default but override it here. */
         options.setMaxTransfers(10);
+        if (options.getMaxWalkDistance() > 65536) options.setMaxWalkDistance(65536);
         long searchBeginTime = System.currentTimeMillis();
         LOG.debug("BEGIN SEARCH");
         ShortestPathTree spt = sptService.getShortestPathTree(options, timeout);
