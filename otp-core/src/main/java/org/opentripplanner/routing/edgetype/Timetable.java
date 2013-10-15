@@ -359,14 +359,24 @@ public class Timetable implements Serializable {
      */
     public boolean update(TripUpdate tripUpdate, String agencyId, TimeZone timeZone,
             ServiceDate updateServiceDate) {
-        if (tripUpdate == null || !tripUpdate.hasTrip()) return false;
-        else try {
+        if (tripUpdate == null) {
+            LOG.error("A null TripUpdate pointer was passed to the Timetable class update method.");
+            return false;
+        } else try {
              // Though all timetables have the same trip ordering, some may have extra trips due to
              // the dynamic addition of unscheduled trips.
              // However, we want to apply trip update blocks on top of *scheduled* times
+            if (!tripUpdate.hasTrip()) {
+                LOG.error("TripUpdate object has no TripDescriptor field.");
+                return false;
+            }
+
             TripDescriptor tripDescriptor = tripUpdate.getTrip();
 
-            if (!tripDescriptor.hasTripId()) return false;
+            if (!tripDescriptor.hasTripId()) {
+                LOG.error("TripDescriptor object has no TripId field");
+                return false;
+            }
             AgencyAndId tripId = new AgencyAndId(agencyId, tripDescriptor.getTripId());
 
             int tripIndex = getTripIndex(tripId);
@@ -484,7 +494,10 @@ public class Timetable implements Serializable {
                 }
 
                 newTimes.compactArrivalsAndDepartures();
-                if (update != null) return false;       // Done iff all updates applied successfully
+                if (update != null) {
+                    LOG.error("Part of a TripUpdate object could not be applied successfully.");
+                    return false;
+                }
             }
             if (!newTimes.timesIncreasing()) {
                 LOG.error("TripTimes are non-increasing after applying GTFS-RT delay propagation.");
@@ -498,6 +511,7 @@ public class Timetable implements Serializable {
             return false;
         }
 
+        LOG.trace("A valid TripUpdate object was applied using the Timetable class update method.");
         return true;
     }
 
