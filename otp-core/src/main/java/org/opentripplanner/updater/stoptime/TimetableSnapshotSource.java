@@ -115,7 +115,7 @@ public class TimetableSnapshotSource {
             return;
         }
 
-        LOG.debug("message contains {} trip update blocks", updates.size());
+        LOG.debug("message contains {} trip updates", updates.size());
         int uIndex = 0;
         for (TripUpdate tripUpdate : updates) {
             if (!tripUpdate.hasTrip()) {
@@ -136,7 +136,7 @@ public class TimetableSnapshotSource {
             }
 
             uIndex += 1;
-            LOG.debug("trip update block #{} ({} updates) :",
+            LOG.debug("trip update #{} ({} updates) :",
                     uIndex, tripUpdate.getStopTimeUpdateCount());
             LOG.trace("{}", tripUpdate);
 
@@ -171,7 +171,7 @@ public class TimetableSnapshotSource {
              }
 
              if (appliedBlockCount % logFrequency == 0) {
-                 LOG.info("Applied {} stoptime update blocks.", appliedBlockCount);
+                 LOG.info("Applied {} trip updates.", appliedBlockCount);
              }
         }
         LOG.debug("end of update message");

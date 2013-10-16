@@ -365,7 +365,7 @@ public class Timetable implements Serializable {
         } else try {
              // Though all timetables have the same trip ordering, some may have extra trips due to
              // the dynamic addition of unscheduled trips.
-             // However, we want to apply trip update blocks on top of *scheduled* times
+             // However, we want to apply trip updates on top of *scheduled* times
             if (!tripUpdate.hasTrip()) {
                 LOG.error("TripUpdate object has no TripDescriptor field.");
                 return false;
@@ -396,7 +396,7 @@ public class Timetable implements Serializable {
                 // The GTFS-RT reference specifies that StopTimeUpdates are sorted by stop_sequence.
                 Iterator<StopTimeUpdate> updates = tripUpdate.getStopTimeUpdateList().iterator();
                 if (!updates.hasNext()) {
-                    LOG.warn("Won't apply zero-length update block to trip {}.", tripId);
+                    LOG.warn("Won't apply zero-length trip update to trip {}.", tripId);
                     return false;
                 }
                 StopTimeUpdate update = updates.next();
