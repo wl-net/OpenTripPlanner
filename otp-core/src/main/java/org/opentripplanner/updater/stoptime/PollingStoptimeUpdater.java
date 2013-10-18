@@ -13,21 +13,12 @@
 
 package org.opentripplanner.updater.stoptime;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.prefs.Preferences;
-import org.onebusaway.gtfs.model.AgencyAndId;
 
 import org.opentripplanner.updater.PreferencesConfigurable;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.updater.GraphUpdaterManager;
 import org.opentripplanner.updater.GraphWriterRunnable;
 import org.opentripplanner.updater.PollingGraphUpdater;
@@ -35,11 +26,13 @@ import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
+
 /**
  * Update OTP stop time tables from some (realtime) source
- * 
+ *
  * Usage example ('rt' name is an example) in file 'Graph.properties':
- * 
+ *
  * <pre>
  * rt.type = stop-time-updater
  * rt.frequencySec = 60
@@ -47,14 +40,13 @@ import org.slf4j.LoggerFactory;
  * rt.url = http://host.tld/path
  * rt.defaultAgencyId = TA
  * </pre>
- * 
+ *
  */
 public class PollingStoptimeUpdater extends PollingGraphUpdater {
-
     private static final Logger LOG = LoggerFactory.getLogger(PollingStoptimeUpdater.class);
-    
+
     /**
-     * Parent update manager. Is used to execute graph writer runnables. 
+     * Parent update manager. Is used to execute graph writer runnables.
      */
     private GraphUpdaterManager updaterManager;
 
@@ -62,12 +54,12 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
      * Update streamer
      */
     private TripUpdateSource updateSource;
-    
+
     /**
      * Property to set on the RealtimeDataSnapshotSource
      */
     private Integer logFrequency;
-    
+
     /**
      * Property to set on the RealtimeDataSnapshotSource
      */
@@ -77,8 +69,11 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
      * Property to set on the RealtimeDataSnapshotSource
      */
     private Boolean purgeExpiredData;
-    
-    private Map<AgencyAndId, Long> seenUpdates = new HashMap<AgencyAndId, Long>();
+
+    /**
+     * Default agency id that is used for the trip ids in the TripUpdates
+     */
+    private String agencyId;
 
     @Override
     public void setGraphUpdaterManager(GraphUpdaterManager updaterManager) {
@@ -87,29 +82,36 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
 
     @Override
     public void configurePolling(Graph graph, Preferences preferences) throws Exception {
+        // If zero-time dwell edges have been deleted, stop time updates can't be applied to them anymore,
+        // so we don't want to run a stop time updater.
+        if (graph.isDwellsDeleted()) {
+            throw new IllegalStateException("Can't apply stop time updates to absent dwell edges.");
+        }
+
         // Create update streamer from preferences
+        agencyId = preferences.get("defaultAgencyId", "");
         String sourceType = preferences.get("sourceType", null);
         if (sourceType != null) {
             if (sourceType.equals("gtfs-http")) {
                 updateSource = new GtfsRealtimeHttpTripUpdateSource();
-            } else if (sourceType.equals("gtfs-zmq")) {
-                updateSource = new GtfsRealtimeZmqTripUpdateSource();
-            } else if (sourceType.equals("kv8-zmq")) {
-                updateSource = new Kv8ZmqTripUpdateSource();
+            } else if (sourceType.equals("gtfs-file")) {
+                updateSource = new GtfsRealtimeFileTripUpdateSource();
             }
         }
 
         // Configure update source
         if (updateSource == null) {
-            throw new IllegalArgumentException("Unknown update streamer source type: " + sourceType);
+            throw new IllegalArgumentException(
+                    "Unknown update streamer source type: " + sourceType);
         } else if (updateSource instanceof PreferencesConfigurable) {
             ((PreferencesConfigurable) updateSource).configure(graph, preferences);
         }
 
         // Configure updater
         int logFrequency = preferences.getInt("logFrequency", -1);
-        if (logFrequency >= 0)
+        if (logFrequency >= 0) {
             this.logFrequency = logFrequency;
+        }
         int maxSnapshotFrequency = preferences.getInt("maxSnapshotFrequencyMs", -1);
         if (maxSnapshotFrequency >= 0)
             this.maxSnapshotFrequency = maxSnapshotFrequency;
@@ -118,7 +120,8 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
             this.purgeExpiredData = preferences.getBoolean("purgeExpiredData", true);
         }
 
-        LOG.info("Creating stop time updater running every {} seconds : {}", getFrequencySec(), updateSource);
+        LOG.info("Creating stop time updater running every {} seconds : {}",
+                getFrequencySec(), updateSource);
     }
 
     @Override
@@ -128,13 +131,13 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
             @Override
             public void run(Graph graph) {
                 // Only create a realtime data snapshot source if none exists already
-                TimetableSnapshotSource snapshotSource = graph.getTimetableSnapshotSource(); 
+                TimetableSnapshotSource snapshotSource = graph.getTimetableSnapshotSource();
                 if (snapshotSource == null) {
                     snapshotSource = new TimetableSnapshotSource(graph);
                     // Add snapshot source to graph
                     graph.setTimetableSnapshotSource(snapshotSource);
                 }
-                
+
                 // Set properties of realtime data snapshot source
                 if (logFrequency != null) {
                     snapshotSource.setLogFrequency(logFrequency);
@@ -156,15 +159,11 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
     @Override
     public void runPolling() throws Exception {
         // Get update lists from update source
-        List<TripUpdateList> updates = updateSource.getUpdates();
-        if(updates == null)
-            return;
-        
-        // Filter seen updates based on the tripId + timestamp
-        Iterable<TripUpdateList> filteredUpdates = Iterables.filter(updates, TRIP_UPDATE_FILTER);
+        List<TripUpdate> updates = updateSource.getUpdates();
 
         // Handle trip updates via graph writer runnable
-        TripUpdateGraphWriterRunnable runnable = new TripUpdateGraphWriterRunnable(Lists.newArrayList(filteredUpdates));
+        TripUpdateGraphWriterRunnable runnable =
+                new TripUpdateGraphWriterRunnable(updates, agencyId);
         updaterManager.execute(runnable);
     }
 
@@ -176,15 +175,4 @@ public class PollingStoptimeUpdater extends PollingGraphUpdater {
         String s = (updateSource == null) ? "NONE" : updateSource.toString();
         return "Streaming stoptime updater with update source = " + s;
     }
-    
-    protected Predicate<TripUpdateList> TRIP_UPDATE_FILTER = new Predicate<TripUpdateList>() {
-        @Override
-        public boolean apply(TripUpdateList update) {
-            if (seenUpdates.containsKey(update.getTripId()) && seenUpdates.get(update.getTripId()) >= update.getTimestamp()) {
-                return false;
-            }
-            seenUpdates.put(update.getTripId(), update.getTimestamp());
-            return true;
-        }
-    };
 }
