@@ -93,11 +93,11 @@ public class OTPConfigurator {
         // Choose a PathService to wrap the SPTService, depending on expected maximum path lengths
         if (params.longDistance) {
             LongDistancePathService pathService = new LongDistancePathService();
-            pathService.setTimeout(4);
+            pathService.setTimeout(10);
             cpf.bind(PathService.class, pathService);
         } else {
             RetryingPathServiceImpl pathService = new RetryingPathServiceImpl();
-            pathService.setFirstPathTimeout(4.0);
+            pathService.setFirstPathTimeout(10.0);
             pathService.setMultiPathTimeout(1.0);
             cpf.bind(PathService.class, pathService);
             cpf.bind(RemainingWeightHeuristicFactory.class, 
