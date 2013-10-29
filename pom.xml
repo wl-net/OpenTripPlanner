@@ -16,25 +16,15 @@
   </scm>
 
   <modules>
-    <module>openstreetmap</module>
-    <module>opentripplanner-admin-webapp</module>
-    <module>opentripplanner-api-thrift</module>
-    <module>opentripplanner-api-webapp</module>
-    <module>opentripplanner-geocoder</module>
-    <module>opentripplanner-graph-builder</module>
-    <module>opentripplanner-gui</module>
-    <module>opentripplanner-integration</module>
-    <module>opentripplanner-routing</module>
-    <module>opentripplanner-updater</module>
-    <module>opentripplanner-utils</module>
-    <module>opentripplanner-webapp</module>
-    <module>opentripplanner-web-utils</module>
-    <module>opentripplanner-analyst</module>
-    <module>opentripplanner-analyst-client</module>
-    <module>opentripplanner-leaflet-client</module>
-    <module>opentripplanner-municoder</module>
-    <module>otp-standalone</module>
-    <module>otp-rest-api</module>
+    <module>otp-core</module>
+    <module>otp-rest-servlet</module>
+    <module>otp-thrift-api</module>    
+    <module>otp-leaflet-client</module>
+    <module>otp-openlayers-client</module>
+    <module>otp-analyst-client</module>
+    <module>otp-admin-client</module>
+    <module>otp-geocoder</module>
+    <module>otp-municoder</module>
   </modules>
 
   <build>
@@ -44,6 +34,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
+          <!-- Target Java versions -->
           <source>1.6</source>
           <target>1.6</target>
         </configuration>
@@ -60,11 +51,13 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <argLine>-Xmx2G</argLine>
-          <disableXmlReport>false</disableXmlReport>
+          <!-- Jenkins needs XML test reports to determine whether the build is stable. -->
+          <disableXmlReport>false</disableXmlReport> 
         </configuration>
       </plugin>
     </plugins>
     
+    <!-- Necessary for uploading/deploying artifacts to Maven repos via WebDAV. -->
     <extensions>
       <extension>
         <groupId>org.apache.maven.wagon</groupId>
@@ -73,7 +66,8 @@
       </extension>
     </extensions>
     
-    <pluginManagement>
+    <!-- Set default versions of plugins used by submodules -->
+    <pluginManagement> 
       <plugins>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -83,22 +77,21 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>1.7.1</version>
+          <version>2.1</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-javadoc-plugin</artifactId>
-          <version>2.8.1</version>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.4</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-release-plugin</artifactId>
           <version>2.2.2</version>
           <configuration>
-            <!-- by default, release:prepare runs goals 'clean' and 'verify'.
-            Javadoc generation in release:perform requires the new release
-            versions of our artifacts to already be installed in the local 
-            repository. -->
+            <!-- by default, release:prepare runs goals 'clean' and 'verify'. Javadoc generation 
+            in release:perform requires the new release versions of our artifacts to already be 
+            installed in the local repository. -->
             <preparationGoals>clean install</preparationGoals>
             <!-- The site generation step can fail. Run it in release:prepare to make sure it
             works before tagging the release. Enunciate model validation is currently failing,
@@ -112,9 +105,12 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.12</version>
         </plugin>
+        <!-- m2eclipse lifecycle mapping configuration. This controls which Maven build goals should
+        be performed during incremental builds within the Eclipse IDE. There are sensible defaults
+        for most plugins, but some others require manual configuration with <action><ignore /> or 
+        <action><execute /> filters. This section only affects incremental builds within Eclipse,
+        not command-line Maven builds. -->
         <plugin>
-          <!-- m2eclipse lifecycle mapping configuration -->
-          <!-- should not affect builds outside IDE -->
           <groupId>org.eclipse.m2e</groupId>
           <artifactId>lifecycle-mapping</artifactId>
           <version>1.0.0</version>
@@ -175,10 +171,15 @@
   </distributionManagement>
 
   <reporting>
+    <!-- 
+    Reporting plugin versions cannot be managed with entries in <build><plugins><pluginmanagement> 
+    but would need a separate <reporting><plugins><pluginmanagement> section. 
+    -->
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>2.7</version>
         <reportSets>
           <reportSet>
             <reports>
@@ -190,6 +191,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9.1</version>
         <configuration>
           <links>
             <link>http://developer.onebusaway.org/apidocs/modules/onebusaway-gtfs/1.3.2/</link>
@@ -207,24 +209,6 @@
     </plugins>
   </reporting>
 
-  <!-- 
-    CI Server profile
-    Hudson by default defines a property BUILD_NUMBER which is used to enable this profile. 
-  -->
-  <profiles>
-    <profile>
-      <id>hudson</id>
-      <activation>
-        <property>
-          <name>BUILD_NUMBER</name>
-        </property>
-      </activation>
-      <!-- CI Server profile currently unused -->
-      <distributionManagement>
-      </distributionManagement>
-    </profile>
-  </profiles>
-
   <repositories>
     <!-- Hack to force maven to check central first. Maven central is inherited from the superpom,
       but ends up at the end of the list. Though most of the time the artifact is in central, 
@@ -236,20 +220,15 @@
       <url>http://repo1.maven.org/maven2</url>
     </repository>    
     <repository>
-        <id>download.java.net</id>
-        <name>Java.net Repository for Maven</name>
-        <url>http://download.java.net/maven/2/</url>
-        <layout>default</layout>
+      <id>download.java.net</id>
+      <name>Java.net Repository for Maven</name>
+      <url>http://download.java.net/maven/2/</url>
     </repository>
     <repository>
       <id>releases.developer.onebusaway.org</id>
       <url>http://developer.onebusaway.org/maven/repository/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>false</enabled></snapshots>
     </repository>
     <repository>
       <id>osgeo</id>
@@ -265,6 +244,9 @@
       <id>opengeo</id>
       <name>OpenGeo Maven Repository</name>
       <url>http://repo.opengeo.org/</url>
+      <!-- Avoid downloading OTP snapshots from repo -->
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>false</enabled></snapshots>
     </repository>
   </repositories>
 

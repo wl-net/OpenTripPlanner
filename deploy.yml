@@ -1,0 +1,43 @@
+---
+- hosts: opentripplanner:graphbuilder
+  user: root
+
+  tasks:
+
+  - name: Install OpenTripPlanner
+    copy: src=otp-core/target/otp.jar dest=/usr/local/share/java/otp.jar
+
+
+- hosts: opentripplanner
+  user: root
+
+  tasks:
+
+  - set_fact:
+      graphbuilder_host: '{{ ansible_local.otp.graphbuilder.hostname }}'
+
+  - name: Configure OTP graph
+    template: src=conf/graph.properties.j2 dest=/var/otp/graphs/Graph.properties
+              mode=0644
+    notify:
+    - Restart OTP
+
+  - name: Distribute graph
+    command: scp '/var/otp/data/Graph.obj' 'root@{{ inventory_hostname }}:/var/otp/graphs/Graph.obj'
+    delegate_to: "{{ graphbuilder_host }}"
+    ignore_errors: yes
+
+  - name: Install Upstart script
+    template: src=conf/upstart.conf.j2 dest=/etc/init/otp.conf
+    notify:
+    - Restart OTP
+
+  - name: Start service
+    service: name=otp state=started
+    register: otp_service
+
+  handlers:
+
+  - name: Restart OTP
+    service: name=otp state=restarted
+    when: otp_service is not defined or not otp_service.changed

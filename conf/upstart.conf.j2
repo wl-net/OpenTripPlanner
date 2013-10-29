@@ -1,0 +1,14 @@
+# (( ansible_managed ))
+
+description "Start OpenTripPlanner"
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+respawn limit 5 10
+
+setuid nobody
+
+env JAVA_OPTS="-Xmx22G"
+
+exec java -jar /usr/local/share/java/otp.jar --server --longDistance --transitIndex --useTransfersTxt
