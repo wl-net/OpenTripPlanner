@@ -44,7 +44,7 @@ import com.ning.http.client.websocket.WebSocketUpgradeHandler;
  * Usage example ('websocket' name is an example) in the file 'Graph.properties':
  *
  * <pre>
- * websocket.type = websocket-stop-time-updater
+ * websocket.type = websocket-gtfs-rt-updater
  * websocket.defaultAgencyId = agency
  * websocket.url = ws://localhost:8088/tripUpdates
  * </pre>
@@ -179,7 +179,7 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
                 feedEntityList = feedMessage.getEntityList();
                 updates = new ArrayList<TripUpdate>(feedEntityList.size());
                 for (FeedEntity feedEntity : feedEntityList) {
-                    updates.add(feedEntity.getTripUpdate());
+                    if (feedEntity.hasTripUpdate()) updates.add(feedEntity.getTripUpdate());
                 }
 
                 // Handle trip updates via graph writer runnable
