@@ -884,6 +884,7 @@ public class TransitIndex {
             @QueryParam("tripId") String tripId, @QueryParam("date") String date,
             @QueryParam("routerId") String routerId)
             throws JSONException {
+        TripTimesPair result = new TripTimesPair();
         if (tripAgency == null || tripId == null) {
             return new TransitError("Not all required parameters were specified.");
         }
@@ -909,9 +910,8 @@ public class TransitIndex {
         int tripIndex = pattern.getTripIndex(trip);
         TripTimes tripTimes = pattern.getTripTimes(tripIndex);
         TimetableSnapshotSource timetableSnapshotSource = graph.getTimetableSnapshotSource();
-        Place[] resolved = null;
-        Place[] scheduled = new Place[tripTimes.getNumHops() + 1];
         ServiceDate serviceDate = new ServiceDate(makeCalendar(timeZone, date, 0));
+        result.scheduled = new Place[tripTimes.getNumHops() + 1];
 
         if (timetableSnapshotSource != null) {
             TimetableResolver timetableResolver = timetableSnapshotSource.getTimetableSnapshot();
@@ -920,14 +920,14 @@ public class TransitIndex {
                 if (timetable != null) {
                     tripTimes = timetable.getTripTimes(tripIndex);
                     if (!tripTimes.isScheduled()) {
-                        resolved = new Place[tripTimes.getNumHops() + 1];
+                        result.resolved = new Place[tripTimes.getNumHops() + 1];
                     }
                 }
             }
         }
 
-        for (int i = 0; i < scheduled.length; i++) {
-            boolean invalid = (resolved == null);
+        for (int i = 0; i < result.scheduled.length; i++) {
+            boolean invalid = (result.resolved == null);
             Calendar arrival = null, departure = null;
             Calendar scheduledArrival = null, scheduledDeparture = null;
             Stop stop = pattern.getStop(i);
@@ -947,27 +947,27 @@ public class TransitIndex {
             }
 
             if (!invalid) {         // Fill out the resolved fields iff they are valid at this stop.
-                resolved[i] = new Place(stop.getLon(), stop.getLat(), stop.getName(),
+                result.resolved[i] = new Place(stop.getLon(), stop.getLat(), stop.getName(),
                         arrival, departure);
-                resolved[i].stopIndex = i;
-                resolved[i].stopId = stop.getId();
-                resolved[i].stopCode = stop.getCode();
-                resolved[i].platformCode = stop.getPlatformCode();
-                resolved[i].zoneId = stop.getZoneId();
-                resolved[i].stopSequence = tripTimes.getStopSequence(i);
+                result.resolved[i].stopIndex = i;
+                result.resolved[i].stopId = stop.getId();
+                result.resolved[i].stopCode = stop.getCode();
+                result.resolved[i].platformCode = stop.getPlatformCode();
+                result.resolved[i].zoneId = stop.getZoneId();
+                result.resolved[i].stopSequence = tripTimes.getStopSequence(i);
             }
 
-            scheduled[i] = new Place(stop.getLon(), stop.getLat(), stop.getName(),
+            result.scheduled[i] = new Place(stop.getLon(), stop.getLat(), stop.getName(),
                     scheduledArrival, scheduledDeparture);
-            scheduled[i].stopIndex = i;
-            scheduled[i].stopId = stop.getId();
-            scheduled[i].stopCode = stop.getCode();
-            scheduled[i].platformCode = stop.getPlatformCode();
-            scheduled[i].zoneId = stop.getZoneId();
-            scheduled[i].stopSequence = tripTimes.getStopSequence(i);
+            result.scheduled[i].stopIndex = i;
+            result.scheduled[i].stopId = stop.getId();
+            result.scheduled[i].stopCode = stop.getCode();
+            result.scheduled[i].platformCode = stop.getPlatformCode();
+            result.scheduled[i].zoneId = stop.getZoneId();
+            result.scheduled[i].stopSequence = tripTimes.getStopSequence(i);
       }
 
-        return new TripTimesPair(resolved, scheduled);
+        return result;
     }
 
     private List<TripMatch> matchTripsForVariant(RouteVariant variant, Coordinate position,

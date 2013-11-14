@@ -14,18 +14,18 @@
 package org.opentripplanner.api.model.transit;
 
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlElementWrapper;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.opentripplanner.api.model.Place;
 
-import lombok.AllArgsConstructor;
-
-@AllArgsConstructor
 @XmlRootElement(name = "TripTimesPair")
 public class TripTimesPair {
-    @XmlElement
-    final public Place[] resolved;
+    @XmlElementWrapper(name = "Resolved")
+    @XmlElement(name = "Stop")
+    public Place[] resolved;
 
-    @XmlElement
-    final public Place[] scheduled;
+    @XmlElementWrapper(name = "Scheduled")
+    @XmlElement(name = "Stop")
+    public Place[] scheduled;
 }
