@@ -253,7 +253,7 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
             store.flush();
             if (entityClass == Agency.class) {
                 if (reader.getDefaultAgencyId() == null) {
-                    reader.setDefaultAgencyId(reader.getAgencies().get(0).getId());
+                    reader.setDefaultAgencyId("ARR");
                 }
                 for (Agency agency : reader.getAgencies()) {
                     GtfsBundle existing = agenciesSeen.get(agency);
