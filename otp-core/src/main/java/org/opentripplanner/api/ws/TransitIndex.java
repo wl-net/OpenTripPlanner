@@ -13,14 +13,17 @@
 package org.opentripplanner.api.ws;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -38,6 +41,8 @@ import org.onebusaway.gtfs.model.ServiceCalendar;
 import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
+import org.onebusaway.gtfs.model.calendar.ServiceDate;
+import org.opentripplanner.api.model.Place;
 import org.opentripplanner.api.model.error.TransitError;
 import org.opentripplanner.api.model.transit.AgencyList;
 import org.opentripplanner.api.model.transit.CalendarData;
@@ -51,6 +56,7 @@ import org.opentripplanner.api.model.transit.StopTime;
 import org.opentripplanner.api.model.transit.StopTimeList;
 import org.opentripplanner.api.model.transit.TripList;
 import org.opentripplanner.api.model.transit.TripMatch;
+import org.opentripplanner.api.model.transit.TripTimesPair;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
@@ -62,6 +68,8 @@ import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.TableTripPattern;
+import org.opentripplanner.routing.edgetype.Timetable;
+import org.opentripplanner.routing.edgetype.TimetableResolver;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -79,6 +87,8 @@ import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.routing.vertextype.TransitStopArrive;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
+import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
+import org.opentripplanner.util.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -864,6 +874,102 @@ public class TransitIndex {
         return response;
     }
 
+    /**
+     * Return subsequent stop times for a trip; time is in milliseconds since epoch
+     */
+    @GET
+    @Path("/tripTimes")
+    @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
+    public Object getTripTimes(@QueryParam("tripAgency") String tripAgency,
+            @QueryParam("tripId") String tripId, @QueryParam("date") String date,
+            @QueryParam("routerId") String routerId)
+            throws JSONException {
+        if (tripAgency == null || tripId == null) {
+            return new TransitError("Not all required parameters were specified.");
+        }
+
+        AgencyAndId trip = new AgencyAndId(tripAgency, tripId);
+
+        Graph graph = getGraph(routerId);
+        TimeZone timeZone = graph.getTimeZone();
+        TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
+
+        if (transitIndexService == null) {
+            return new TransitError(
+                    "No transit index found. Add TransitIndexBuilder to your graph builder " +
+                    "configuration and rebuild your graph.");
+        }
+
+        TableTripPattern pattern = transitIndexService.getTripPatternForTrip(trip);
+
+        if (pattern == null) {
+            return new TransitError("Could not find trip pattern.");
+        }
+
+        int tripIndex = pattern.getTripIndex(trip);
+        TripTimes tripTimes = pattern.getTripTimes(tripIndex);
+        TimetableSnapshotSource timetableSnapshotSource = graph.getTimetableSnapshotSource();
+        Place[] resolved = null;
+        Place[] scheduled = new Place[tripTimes.getNumHops() + 1];
+        ServiceDate serviceDate = new ServiceDate(makeCalendar(timeZone, date, 0));
+
+        if (timetableSnapshotSource != null) {
+            TimetableResolver timetableResolver = timetableSnapshotSource.getTimetableSnapshot();
+            if (timetableResolver != null) {
+                Timetable timetable = timetableResolver.resolve(pattern, serviceDate);
+                if (timetable != null) {
+                    tripTimes = timetable.getTripTimes(tripIndex);
+                    if (!tripTimes.isScheduled()) {
+                        resolved = new Place[tripTimes.getNumHops() + 1];
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < scheduled.length; i++) {
+            boolean invalid = (resolved == null);
+            Calendar arrival = null, departure = null;
+            Calendar scheduledArrival = null, scheduledDeparture = null;
+            Stop stop = pattern.getStop(i);
+
+            if (i > 0) {
+                arrival = makeCalendar(timeZone, date, tripTimes.getArrivalTime(i - 1));
+                invalid |= tripTimes.getArrivalTime(i - 1) < 0;
+                scheduledArrival =
+                        makeCalendar(timeZone, date, tripTimes.getScheduledArrivalTime(i - 1));
+            }
+
+            if (i < tripTimes.getNumHops()) {
+                departure = makeCalendar(timeZone, date, tripTimes.getDepartureTime(i));
+                invalid |= tripTimes.getDepartureTime(i) < 0;
+                scheduledDeparture =
+                        makeCalendar(timeZone, date, tripTimes.getScheduledDepartureTime(i));
+            }
+
+            if (!invalid) {         // Fill out the resolved fields iff they are valid at this stop.
+                resolved[i] = new Place(stop.getLon(), stop.getLat(), stop.getName(),
+                        arrival, departure);
+                resolved[i].stopIndex = i;
+                resolved[i].stopId = stop.getId();
+                resolved[i].stopCode = stop.getCode();
+                resolved[i].platformCode = stop.getPlatformCode();
+                resolved[i].zoneId = stop.getZoneId();
+                resolved[i].stopSequence = tripTimes.getStopSequence(i);
+            }
+
+            scheduled[i] = new Place(stop.getLon(), stop.getLat(), stop.getName(),
+                    scheduledArrival, scheduledDeparture);
+            scheduled[i].stopIndex = i;
+            scheduled[i].stopId = stop.getId();
+            scheduled[i].stopCode = stop.getCode();
+            scheduled[i].platformCode = stop.getPlatformCode();
+            scheduled[i].zoneId = stop.getZoneId();
+            scheduled[i].stopSequence = tripTimes.getStopSequence(i);
+      }
+
+        return new TripTimesPair(resolved, scheduled);
+    }
+
     private List<TripMatch> matchTripsForVariant(RouteVariant variant, Coordinate position,
             long timeSec, List<ServiceDay> serviceDays, boolean extended) {
         List<TripMatch> matches = new ArrayList<TripMatch>();
@@ -972,5 +1078,12 @@ public class TransitIndex {
                 agencyId));
         return serviceDays;
     }
-    
+
+    private Calendar makeCalendar(TimeZone timeZone, String dateString, int seconds) {
+        Calendar calendar = Calendar.getInstance(timeZone);
+        Date date = DateUtils.toDate(dateString, "00:00", timeZone);
+        long time = date.getTime() + seconds * 1000L;
+        calendar.setTimeInMillis(time);
+        return calendar;
+    }
 }
