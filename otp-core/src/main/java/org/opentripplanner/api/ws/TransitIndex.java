@@ -235,25 +235,25 @@ public class TransitIndex {
     public Object getStopData(@QueryParam("agency") String agency, @QueryParam("id") String id,
             @QueryParam("extended") Boolean extended, @QueryParam("routerId") String routerId)
             throws JSONException {
-    	
-        Graph graph = getGraph(routerId);
-    	TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
 
-    	StopList response = new StopList();
-    	
-    	AgencyAndId stopId = new AgencyAndId(agency, id);
+        Graph graph = getGraph(routerId);
+        TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
+
+        StopList response = new StopList();
+
+        AgencyAndId stopId = new AgencyAndId(agency, id);
         
-    	Edge preBoardEdge = transitIndexService.getPreBoardEdge(stopId);
+        Edge preBoardEdge = transitIndexService.getPreBoardEdge(stopId);
         if(preBoardEdge != null) {
-        	TransitStopDepart transitStop = (TransitStopDepart) preBoardEdge.getToVertex();
-        	response.stops.add(new StopType(transitStop.getStop(), extended));
+            TransitStopDepart transitStop = (TransitStopDepart) preBoardEdge.getToVertex();
+            response.stops.add(new StopType(transitStop.getStop(), extended));
         }
-        else { // check if stop is alight-only        	
-	    	Edge preAlightEdge = transitIndexService.getPreAlightEdge(stopId);
-	        if(preAlightEdge != null) {
-	        	TransitStopArrive transitStop = (TransitStopArrive) preAlightEdge.getFromVertex();
-	        	response.stops.add(new StopType(transitStop.getStop(), extended));
-	        }
+        else { // check if stop is alight-only
+            Edge preAlightEdge = transitIndexService.getPreAlightEdge(stopId);
+            if(preAlightEdge != null) {
+                TransitStopArrive transitStop = (TransitStopArrive) preAlightEdge.getFromVertex();
+                response.stops.add(new StopType(transitStop.getStop(), extended));
+            }
         }
         return response;
     }
