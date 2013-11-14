@@ -59,6 +59,7 @@ public class DateUtils implements DateConstants {
                     cal.set(Calendar.HOUR_OF_DAY, hms[0]);
                     cal.set(Calendar.MINUTE, hms[1]);
                     cal.set(Calendar.SECOND, hms[2]);
+                    cal.set(Calendar.MILLISECOND, 0);
                     timed = true;
                 }
             }
@@ -68,6 +69,7 @@ public class DateUtils implements DateConstants {
                 cal.set(Calendar.HOUR_OF_DAY, today.get(Calendar.HOUR_OF_DAY));
                 cal.set(Calendar.MINUTE, today.get(Calendar.MINUTE));
                 cal.set(Calendar.SECOND, today.get(Calendar.SECOND));
+                cal.set(Calendar.MILLISECOND, today.get(Calendar.MILLISECOND));
             }
             retVal = cal.getTime();
         } else if (time != null) {
@@ -78,6 +80,7 @@ public class DateUtils implements DateConstants {
                 cal.set(Calendar.HOUR_OF_DAY, hms[0]);
                 cal.set(Calendar.MINUTE, hms[1]);
                 cal.set(Calendar.SECOND, hms[2]);
+                cal.set(Calendar.MILLISECOND, 0);
                 retVal = cal.getTime();
             }
         }
