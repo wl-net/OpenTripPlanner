@@ -875,21 +875,19 @@ public class TransitIndex {
     }
 
     /**
-     * Return subsequent stop times for a trip; time is in milliseconds since epoch
+     * Return all stop times for a trip on a given service date; time is in milliseconds since epoch
      */
     @GET
     @Path("/tripTimes")
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
-    public Object getTripTimes(@QueryParam("tripAgency") String tripAgency,
-            @QueryParam("tripId") String tripId, @QueryParam("date") String date,
-            @QueryParam("routerId") String routerId)
-            throws JSONException {
+    public Object getTripTimes(@QueryParam("agency") String agency, @QueryParam("id") String id,
+            @QueryParam("date") String date, @QueryParam("routerId") String routerId) {
         TripTimesPair result = new TripTimesPair();
-        if (tripAgency == null || tripId == null) {
+        if (agency == null || id == null) {
             return new TransitError("Not all required parameters were specified.");
         }
 
-        AgencyAndId trip = new AgencyAndId(tripAgency, tripId);
+        AgencyAndId trip = new AgencyAndId(agency, id);
 
         Graph graph = getGraph(routerId);
         TimeZone timeZone = graph.getTimeZone();
@@ -918,9 +916,12 @@ public class TransitIndex {
             if (timetableResolver != null) {
                 Timetable timetable = timetableResolver.resolve(pattern, serviceDate);
                 if (timetable != null) {
-                    tripTimes = timetable.getTripTimes(tripIndex);
-                    if (!tripTimes.isScheduled()) {
-                        result.resolved = new Place[tripTimes.getNumHops() + 1];
+                    TripTimes resolvedTripTimes = timetable.getTripTimes(tripIndex);
+                    if (resolvedTripTimes != null) {
+                        tripTimes = resolvedTripTimes;
+                        if (!tripTimes.isScheduled()) {
+                            result.resolved = new Place[tripTimes.getNumHops() + 1];
+                        }
                     }
                 }
             }
@@ -965,7 +966,7 @@ public class TransitIndex {
             result.scheduled[i].platformCode = stop.getPlatformCode();
             result.scheduled[i].zoneId = stop.getZoneId();
             result.scheduled[i].stopSequence = tripTimes.getStopSequence(i);
-      }
+        }
 
         return result;
     }
