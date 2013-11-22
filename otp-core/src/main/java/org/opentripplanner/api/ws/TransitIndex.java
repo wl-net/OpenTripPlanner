@@ -42,6 +42,7 @@ import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
+import org.onebusaway.gtfs.services.calendar.CalendarService;
 import org.opentripplanner.api.model.Place;
 import org.opentripplanner.api.model.error.TransitError;
 import org.opentripplanner.api.model.transit.AgencyList;
@@ -892,11 +893,16 @@ public class TransitIndex {
         Graph graph = getGraph(routerId);
         TimeZone timeZone = graph.getTimeZone();
         TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
+        CalendarService calendarService = graph.getCalendarService();
 
         if (transitIndexService == null) {
             return new TransitError(
                     "No transit index found. Add TransitIndexBuilder to your graph builder " +
                     "configuration and rebuild your graph.");
+        }
+
+        if (calendarService == null) {
+            return new TransitError("No calendar service found.");
         }
 
         TableTripPattern pattern = transitIndexService.getTripPatternForTrip(trip);
@@ -909,7 +915,12 @@ public class TransitIndex {
         TripTimes tripTimes = pattern.getTripTimes(tripIndex);
         TimetableSnapshotSource timetableSnapshotSource = graph.getTimetableSnapshotSource();
         ServiceDate serviceDate = new ServiceDate(makeCalendar(timeZone, date, 0));
+        AgencyAndId serviceId = pattern.getTrip(tripIndex).getServiceId();
         result.scheduled = new Place[tripTimes.getNumHops() + 1];
+
+        if (!(calendarService.getServiceIdsOnDate(serviceDate).contains(serviceId))) {
+            return new TransitError("Trip does not run on the specified service date.");
+        }
 
         if (timetableSnapshotSource != null) {
             TimetableResolver timetableResolver = timetableSnapshotSource.getTimetableSnapshot();
