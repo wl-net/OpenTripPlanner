@@ -46,6 +46,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class TransitIndexServiceImpl implements TransitIndexService, Serializable {
     private static final long serialVersionUID = -8147894489513820239L;
 
+    private HashMap<AgencyAndId, List<Stop>> stopsByStation;
+
     private HashMap<String, List<RouteVariant>> variantsByAgency;
 
     private HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute;
@@ -78,7 +80,8 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
 
     private int overnightBreak;
 
-    public TransitIndexServiceImpl(HashMap<String, List<RouteVariant>> variantsByAgency,
+    public TransitIndexServiceImpl(HashMap<AgencyAndId, List<Stop>> stopsByStation,
+            HashMap<String, List<RouteVariant>> variantsByAgency,
             HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute,
             HashMap<AgencyAndId, RouteVariant> variantsByTrip,
             HashMap<AgencyAndId, PreBoardEdge> preBoardEdges,
@@ -89,6 +92,7 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
             HashMap<AgencyAndId, Route> routes,
             HashMap<AgencyAndId, Stop> stops,
             List<TraverseMode> modes) {
+        this.stopsByStation = stopsByStation;
         this.variantsByAgency = variantsByAgency;
         this.variantsByRoute = variantsByRoute;
         this.variantsByTrip = variantsByTrip;
@@ -102,7 +106,8 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
         this.modes = modes;
     }
 
-    public void merge(HashMap<String, List<RouteVariant>> variantsByAgency,
+    public void merge(HashMap<AgencyAndId, List<Stop>> stopsByStation,
+            HashMap<String, List<RouteVariant>> variantsByAgency,
             HashMap<AgencyAndId, List<RouteVariant>> variantsByRoute,
             HashMap<AgencyAndId, RouteVariant> variantsByTrip,
             HashMap<AgencyAndId, PreBoardEdge> preBoardEdges,
@@ -113,7 +118,7 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
             HashMap<AgencyAndId, Route> routes,
             HashMap<AgencyAndId, Stop> stops,
             List<TraverseMode> modes) {
-
+        MapUtils.mergeInUnique(this.stopsByStation, stopsByStation);
         MapUtils.mergeInUnique(this.variantsByAgency, variantsByAgency);
         MapUtils.mergeInUnique(this.variantsByRoute, variantsByRoute);
         this.variantsByTrip.putAll(variantsByTrip);
@@ -133,17 +138,9 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
 
     @Override
     public List<Stop> getStopsForStation(AgencyAndId stop) {
-        Stop station = stops.get(stop);
-        if (station == null) return Collections.emptyList();
-        if (station.getLocationType() != 1) return Collections.singletonList(station);  // Station?!
-
-        ArrayList<Stop> list = new ArrayList<Stop>();
-        for (Stop element : stops.values()) {
-            if (stop.getAgencyId().equals(element.getId().getAgencyId())) {
-                if (stop.getId().equals(element.getParentStation())) {
-                    list.add(element);
-                }
-            }
+        List<Stop> list = stopsByStation.get(stop);
+        if (list == null) {
+            return Collections.emptyList();
         }
 
         return list;
