@@ -33,6 +33,8 @@ public class DateUtils implements DateConstants {
 
     private static final Logger LOG = LoggerFactory.getLogger(DateUtils.class);
 
+    private static final int SANITY_CHECK_CUTOFF_YEAR = 1000;
+
     /**
      * Returns a Date object based on input date & time parameters Defaults to today / now (when
      * date / time are null)
@@ -167,8 +169,9 @@ public class DateUtils implements DateConstants {
                         Calendar cal = new GregorianCalendar(tz);
                         cal.setTime(retVal);
                         int year = cal.get(Calendar.YEAR);
-                        if (year >= 2000)
+                        if (year >= SANITY_CHECK_CUTOFF_YEAR) {
                             break;
+                        }
                     }
                 }
             }

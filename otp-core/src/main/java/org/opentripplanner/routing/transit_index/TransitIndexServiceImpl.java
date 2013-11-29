@@ -44,7 +44,7 @@ import org.opentripplanner.util.MapUtils;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class TransitIndexServiceImpl implements TransitIndexService, Serializable {
-    private static final long serialVersionUID = -8147894489513820239L;
+    private static final long serialVersionUID = 20131127L;
 
     private HashMap<AgencyAndId, List<Stop>> stopsByStation;
 
