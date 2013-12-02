@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -68,6 +69,7 @@ import org.opentripplanner.routing.core.ServiceDay;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.TableTripPattern;
 import org.opentripplanner.routing.edgetype.Timetable;
@@ -87,8 +89,6 @@ import org.opentripplanner.routing.transit_index.adapters.StopType;
 import org.opentripplanner.routing.transit_index.adapters.TripType;
 import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.vertextype.TransitStop;
-import org.opentripplanner.routing.vertextype.TransitStopArrive;
-import org.opentripplanner.routing.vertextype.TransitStopDepart;
 import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.opentripplanner.util.DateUtils;
 import org.slf4j.Logger;
@@ -251,22 +251,56 @@ public class TransitIndex {
         Graph graph = getGraph(routerId);
         TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
 
+        if (transitIndexService == null) {
+            return new TransitError(
+                    "No transit index found. Add TransitIndexBuilder to your graph builder " +
+                    "configuration and rebuild your graph.");
+        }
+
         StopList response = new StopList();
 
         AgencyAndId stopId = new AgencyAndId(agency, id);
-        
-        Edge preBoardEdge = transitIndexService.getPreBoardEdge(stopId);
-        if(preBoardEdge != null) {
-            TransitStopDepart transitStop = (TransitStopDepart) preBoardEdge.getToVertex();
-            response.stops.add(new StopType(transitStop.getStop(), extended));
-        }
-        else { // check if stop is alight-only
-            Edge preAlightEdge = transitIndexService.getPreAlightEdge(stopId);
-            if(preAlightEdge != null) {
-                TransitStopArrive transitStop = (TransitStopArrive) preAlightEdge.getFromVertex();
-                response.stops.add(new StopType(transitStop.getStop(), extended));
+
+        Map<AgencyAndId, Stop> allStops = transitIndexService.getAllStops();
+        for(Map.Entry<AgencyAndId, Stop> entry : allStops.entrySet()) {
+            //Stop stop = entry.getValue();
+            if(entry.getKey().equals(stopId)) {
+                response.stops.add(new StopType(entry.getValue(), extended));
             }
         }
+
+        return response;
+    }
+
+    
+    /**
+     * Returns data for stops matching a fragment of a name
+     */
+
+    @GET
+    @Path("/stopsByName")
+    @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML, MediaType.TEXT_XML })
+    public Object getStopsByName(@QueryParam("agency") String agency, @QueryParam("name") String name,
+            @QueryParam("extended") Boolean extended, @QueryParam("routerId") String routerId)
+            throws JSONException {
+
+        TransitIndexService transitIndexService = getGraph(routerId).getService(
+                TransitIndexService.class);
+        if (transitIndexService == null) {
+            return new TransitError(
+                    "No transit index found.  Add TransitIndexBuilder to your graph builder configuration and rebuild your graph.");
+        }
+
+        StopList response = new StopList();
+
+        Map<AgencyAndId, Stop> allStops = transitIndexService.getAllStops();
+        for(Map.Entry<AgencyAndId, Stop> entry : allStops.entrySet()) {
+            Stop stop = entry.getValue();
+            if(entry.getKey().getAgencyId().equals(agency) && stop.getName().toLowerCase().contains(name.toLowerCase())) {
+                response.stops.add(new StopType(stop, extended));
+            }
+        }
+
         return response;
     }
 
@@ -671,6 +705,15 @@ public class TransitIndex {
             if (time > endTime)
                 break;
             StopTime stopTime = new StopTime();
+            TripTimes tripTimes = result.getTripTimes();
+            Edge backEdge = result.getBackEdge();
+
+            if (tripTimes != null && !tripTimes.isScheduled() && backEdge instanceof OnboardEdge) {
+                OnboardEdge onboardEdge = (OnboardEdge) backEdge;
+                stopTime.realTime = true;
+                stopTime.delay = tripTimes.getDepartureDelay(onboardEdge.getStopIndex());
+            }
+
             stopTime.time = time;
             stopTime.trip = new TripType(result.getBackTrip(), extended);
             out.add(stopTime);
@@ -696,6 +739,15 @@ public class TransitIndex {
             if (time < startTime)
                 break;
             StopTime stopTime = new StopTime();
+            TripTimes tripTimes = result.getTripTimes();
+            Edge backEdge = result.getBackEdge();
+
+            if (tripTimes != null && !tripTimes.isScheduled() && backEdge instanceof OnboardEdge) {
+                OnboardEdge onboardEdge = (OnboardEdge) backEdge;
+                stopTime.realTime = true;
+                stopTime.delay = tripTimes.getArrivalDelay(onboardEdge.getStopIndex() - 1);
+            }
+
             stopTime.time = time;
             stopTime.trip = new TripType(result.getBackTrip(), extended);
             out.add(stopTime);
