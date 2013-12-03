@@ -44,7 +44,7 @@ import com.ning.http.client.websocket.WebSocketUpgradeHandler;
  * Usage example ('websocket' name is an example) in the file 'Graph.properties':
  *
  * <pre>
- * websocket.type = websocket-stop-time-updater
+ * websocket.type = websocket-gtfs-rt-updater
  * websocket.defaultAgencyId = agency
  * websocket.url = ws://localhost:8088/tripUpdates
  * </pre>
@@ -119,12 +119,12 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
         // AsyncHttpClient client = new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config),
         // config);
         // Using Netty by default:
-        AsyncHttpClient client = new AsyncHttpClient();
-        WebSocketListener listener = new Listener();
-        WebSocketUpgradeHandler handler = new WebSocketUpgradeHandler.Builder()
-                .addWebSocketListener(listener).build();
 
         while (true) {
+            AsyncHttpClient client = new AsyncHttpClient();
+            WebSocketListener listener = new Listener();
+            WebSocketUpgradeHandler handler = new WebSocketUpgradeHandler.Builder()
+                    .addWebSocketListener(listener).build();
             WebSocket socket = null;
             boolean connectionSuccessful = true;
             // Try to create a websocket connection
@@ -179,15 +179,17 @@ public class WebsocketGtfsRealtimeUpdater implements GraphUpdater {
                 feedEntityList = feedMessage.getEntityList();
                 updates = new ArrayList<TripUpdate>(feedEntityList.size());
                 for (FeedEntity feedEntity : feedEntityList) {
-                    updates.add(feedEntity.getTripUpdate());
+                    if (feedEntity.hasTripUpdate()) updates.add(feedEntity.getTripUpdate());
                 }
+            } catch (InvalidProtocolBufferException e) {
+                LOG.error("Could not decode gtfs-rt message:", e);
+            }
 
+            if (updates != null && updates.size() > 0) {
                 // Handle trip updates via graph writer runnable
                 TripUpdateGraphWriterRunnable runnable =
                         new TripUpdateGraphWriterRunnable(updates, agencyId);
                 updaterManager.execute(runnable);
-            } catch (InvalidProtocolBufferException e) {
-                LOG.error("Could not decode gtfs-rt message:", e);
             }
         }
     }
