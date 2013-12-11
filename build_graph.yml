@@ -1,5 +1,5 @@
 ---
-- hosts: opentripplanner
+- hosts: opentripplanner:geocoder
   user: root
 
   # Gather facts only
@@ -8,57 +8,55 @@
 - hosts: graphbuilder
   user: root
 
+  vars:
+    osm_url: http://download.geofabrik.de/openstreetmap/europe/netherlands.osm.pbf
+    gtfs_url: http://gtfs.ovapi.nl/new/gtfs-nl.zip
+    gtfs_url: http://gtfs.ovapi.nl/new/gtfs-.zip
+    data_expiry: 86400  # 86300s = 1d
+
   tasks:
 
-  - name: Stat OSM data
-    stat: path={{ osm_file }}
-    register: osm_stat
+  - name: Create data directory
+    file: path=/srv/otp/data state=directory mode=0755
 
-  - name: Download OSM data if stale
-    get_url: url={{ osm_url }} dest={{ osm_file }} force=yes
-    when: not osm_stat.stat.exists or
-          ansible_date_time.epoch|float - osm_stat.stat.mtime > data_expiry
+  - name: Download OSM data
+    get_url: url={{ osm_url }} dest=/srv/otp/data/osm.pbf force=yes
+    when: "/srv/otp/data/osm.pbf"|file_age > data_expiry
+    register: osm_download
 
-  - name: Stat GTFS data
-    stat: path={{ gtfs_file }}
-    register: gtfs_stat
+  - name: Download GTFS data
+    get_url: url={{ gtfs_url }} dest=/srv/otp/data/gtfs.zip force=yes
+    when: "/srv/otp/data/gtfs.zip"|file_age > data_expiry
+    register: gtfs_download
 
-  - name: Download GTFS data if stale
-    get_url: url={{ gtfs_url }} dest={{ gtfs_file }}
-    when: not gtfs_stat.stat.exists or
-          ansible_date_time.epoch|float - gtfs_stat.stat.mtime > data_expiry
-
-  - name: Stat graph
-    stat: path=/var/otp/data/Graph.obj
-    register: graph_stat
+  - name: Download RET GTFS data
+    get_url: url={{ gtfs_ret_url }} dest=/srv/otp/data/gtfs_ret.zip force=yes
+    when: "/srv/otp/data/gtfs_ret.zip"|file_age > data_expiry
+    register: gtfs2_download
 
   - name: Build graph
-    command: java -Xmx10G -jar /usr/local/share/java/otp.jar
-             --build /var/otp/data --longDistance --transitIndex
-    when: not graph_stat.stat.exists or
-          ansible_date_time.epoch|float - graph_stat.stat.mtime > data_expiry
-    register: build
+    command: java -Xmx20G -jar /usr/local/share/java/otp.jar
+             --build /srv/otp/data --longDistance --transitIndex
+    when: osm_download.changed or gtfs_download.changed
+    register: build_graph
 
   - name: Distribute graph
     command: rsync -rl -i --delete
-                  /var/otp/data/Graph.obj
-                  root@{{ hostvars[item].inventory_hostname }}:/var/otp/graphs/Graph.obj
+             /srv/otp/data/Graph.obj
+             {{ hostvars[item].inventory_hostname }}:/srv/otp/graphs/Graph.obj
     with_items: ${groups.opentripplanner}
     register: distribute_res
+    when: build_graph.changed
     changed_when: distribute_res.stdout != ""
-
-  vars:
-    osm_url: http://download.geofabrik.de/openstreetmap/europe/netherlands.osm.pbf
-    osm_file: '/var/otp/data/netherlands.osm.pdf'
-    gtfs_url: http://gtfs.ovapi.nl/new/gtfs-nl.zip
-    gtfs_file: '/var/otp/data/gtfs-nl.zip'
-
 
 
 - hosts: opentripplanner
   user: root
 
   tasks:
+
   - name: Restart OTP
-    service: name=otp state=restarted
-    when: build is defined and build.changed
+    service:
+      name: otp
+      state: restarted
+    when: distribute_res.changed
