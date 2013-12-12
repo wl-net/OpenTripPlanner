@@ -11,17 +11,36 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.graph_builder.services.shapefile;
+package org.opentripplanner.analyst.core;
 
-import org.geotools.data.FeatureSource;
-import org.opengis.feature.simple.SimpleFeature;
-import org.opengis.feature.simple.SimpleFeatureType;
+import lombok.Getter;
+import lombok.Setter;
 
-public interface FeatureSourceFactory {
-    public FeatureSource<SimpleFeatureType, SimpleFeature> getFeatureSource();
+import com.vividsolutions.jts.geom.Geometry;
 
-    public void cleanup();
-    
-    /** @see GraphBuilder.checkInputs() */
-    public void checkInputs();
+/**
+ * A conveyor for an isochrone.
+ * 
+ * @author laurent
+ */
+public class IsochroneData {
+
+    @Getter
+    private int cutoffSec;
+
+    @Getter
+    private Geometry geometry;
+
+    @Getter
+    @Setter
+    private Geometry debugGeometry;
+
+    public IsochroneData(int cutoffSec, Geometry geometry) {
+        this.cutoffSec = cutoffSec;
+        this.geometry = geometry;
+    }
+
+    public String toString() {
+        return String.format("<isochrone %s sec>", cutoffSec);
+    }
 }
