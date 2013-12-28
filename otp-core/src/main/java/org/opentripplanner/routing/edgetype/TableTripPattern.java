@@ -24,7 +24,9 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlTransient;
 
 import lombok.Delegate;
+import lombok.Getter;
 
+import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
@@ -65,8 +67,12 @@ public class TableTripPattern implements TripPattern, Serializable {
      */
 //    public final int patternIndex;
     
-    /** An arbitrary trip that uses this pattern. Maybe we should just store route, etc. directly. */
-    public final Trip exemplar;
+    /** 
+     * The GTFS Route of all trips in this pattern. GTFS allows the same pattern to appear in more than one route, 
+     * but we make the assumption that all trips with the same pattern belong to the same Route.  
+     */
+    @Getter 
+    public Route route;
 
     /** 
      * This timetable holds the 'official' stop times from GTFS. If realtime stoptime updates are 
@@ -105,8 +111,7 @@ public class TableTripPattern implements TripPattern, Serializable {
     /** Optimized serviceId code. All trips in a pattern are by definition on the same service. */
     int serviceId; 
     
-    public TableTripPattern(Trip exemplar, ScheduledStopPattern stopPattern, int serviceId) {
-        this.exemplar = exemplar;
+    public TableTripPattern(ScheduledStopPattern stopPattern, int serviceId) {
         this.serviceId = serviceId;
         setStopsFromStopPattern(stopPattern);
     }
@@ -193,11 +198,6 @@ public class TableTripPattern implements TripPattern, Serializable {
     /** Returns the zone of a given stop */
     public String getZone(int stopIndex) {
         return getStop(stopIndex).getZoneId();
-    }
-
-    /** Returns an arbitrary trip that uses this pattern */
-    public Trip getExemplar() {
-        return exemplar;
     }
 
     @Override
