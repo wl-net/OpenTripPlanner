@@ -1,7 +1,7 @@
 /* This program is free software: you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public License
  as published by the Free Software Foundation, either version 3 of
- the License, or (props, at your option) any later version.
+ the License, or (at your option) any later version.
 
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -11,23 +11,22 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.routing.edgetype;
+package org.opentripplanner.util;
 
-import org.onebusaway.gtfs.model.Stop;
+import static org.junit.Assert.assertEquals;
 
-import com.vividsolutions.jts.geom.LineString;
+import java.util.Date;
+import java.util.TimeZone;
 
-/**
- * FrequencyHops and PatternHops have start/stop Stops
- * @author novalis
- *
- */
-public interface HopEdge {
+import org.junit.Test;
 
-    Stop getEndStop();
+public class DateUtilsTest {
+    @Test
+    public final void testToDate() {
+        Date date = DateUtils.toDate("1970-01-01", "00:00", TimeZone.getTimeZone("UTC"));
+        assertEquals(0, date.getTime());
 
-    Stop getBeginStop();
-
-    void setGeometry(LineString geometry);
-
+        date = DateUtils.toDate(null, "00:00", TimeZone.getTimeZone("UTC"));
+        assertEquals(0, date.getTime() % DateUtils.ONE_DAY_MILLI);
+    }
 }

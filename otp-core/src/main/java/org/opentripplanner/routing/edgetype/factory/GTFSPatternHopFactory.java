@@ -89,6 +89,8 @@ import org.opentripplanner.routing.services.FareServiceFactory;
 import org.opentripplanner.routing.services.OnBoardDepartService;
 import org.opentripplanner.routing.vertextype.PatternArriveVertex;
 import org.opentripplanner.routing.vertextype.PatternDepartVertex;
+import org.opentripplanner.routing.vertextype.TransitStation;
+import org.opentripplanner.routing.vertextype.TransitStationStop;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.routing.vertextype.TransitStopArrive;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
@@ -506,13 +508,6 @@ public class GTFSPatternHopFactory {
                 StopTime st1 = toInterlineTrip.firstStopTime;
                 Stop s0 = st0.getStop();
                 Stop s1 = st1.getStop();
-
-                if (st0.getPickupType() == 1) {
-                    /* do not create an interline dwell when the last stop on the arriving trip does
-                     * not allow pickups, since this probably means that, while two trips share a
-                     * block, riders cannot stay on the vehicle during the deadhead */
-                    continue;
-                }
 
                 Trip fromExemplar = fromInterlineTrip.tripPattern.exemplar;
                 Trip toExemplar = toInterlineTrip.tripPattern.exemplar;
@@ -977,8 +972,8 @@ public class GTFSPatternHopFactory {
 
     private void loadPathways(Graph graph) {
         for (Pathway pathway : _dao.getAllPathways()) {
-            Vertex fromVertex = context.stopNodes.get(pathway.getFromStop());
-            Vertex toVertex = context.stopNodes.get(pathway.getToStop());
+            Vertex fromVertex = context.stationStopNodes.get(pathway.getFromStop());
+            Vertex toVertex = context.stationStopNodes.get(pathway.getToStop());
             if (pathway.isWheelchairTraversalTimeSet()) {
                 new PathwayEdge(fromVertex, toVertex, pathway.getTraversalTime(), pathway.getWheelchairTraversalTime());
             } else {
@@ -993,23 +988,30 @@ public class GTFSPatternHopFactory {
                 continue;
             }
             context.stops.add(stop.getId());
+
+            int locationType = stop.getLocationType();
+
             //add a vertex representing the stop
-            TransitStop stopVertex = new TransitStop(graph, stop);
-            stopVertex.setStreetToStopTime(defaultStreetToStopTime);
-            context.stopNodes.put(stop, stopVertex);
-            
-            if (stop.getLocationType() != 2) {
-                //add a vertex representing arriving at the stop
-                TransitStopArrive arrive = new TransitStopArrive(graph, stop, stopVertex);
-                context.stopArriveNodes.put(stop, arrive);
+            if (locationType == 1) {
+                context.stationStopNodes.put(stop, new TransitStation(graph, stop));
+            } else {
+                TransitStop stopVertex = new TransitStop(graph, stop);
+                stopVertex.setStreetToStopTime(defaultStreetToStopTime);
+                context.stationStopNodes.put(stop, stopVertex);
 
-                //add a vertex representing departing from the stop
-                TransitStopDepart depart = new TransitStopDepart(graph, stop, stopVertex);
-                context.stopDepartNodes.put(stop, depart);
+                if (locationType != 2) {
+                    //add a vertex representing arriving at the stop
+                    TransitStopArrive arrive = new TransitStopArrive(graph, stop, stopVertex);
+                    context.stopArriveNodes.put(stop, arrive);
 
-                //add edges from arrive to stop and stop to depart
-                new PreAlightEdge(arrive, stopVertex);
-                new PreBoardEdge(stopVertex, depart);
+                    //add a vertex representing departing from the stop
+                    TransitStopDepart depart = new TransitStopDepart(graph, stop, stopVertex);
+                    context.stopDepartNodes.put(stop, depart);
+
+                    //add edges from arrive to stop and stop to depart
+                    new PreAlightEdge(arrive, stopVertex);
+                    new PreBoardEdge(stopVertex, depart);
+                }
             }
         }
     }
@@ -1027,6 +1029,7 @@ public class GTFSPatternHopFactory {
         }
         LOG.debug("deleted {} dwell edges / {} candidates, merging arrival and departure vertices.", 
            nDeleted, nDwells);
+        if (nDeleted > 0) graph.setDwellsDeleted(true);
     }
 
     private void addTripToInterliningMap(Trip trip, List<StopTime> stopTimes, TableTripPattern tripPattern) {
@@ -1551,13 +1554,13 @@ public class GTFSPatternHopFactory {
         for (Stop stop : _dao.getAllStops()) {
             String parentStation = stop.getParentStation();
             if (parentStation != null) {
-                Vertex stopVertex = context.stopNodes.get(stop);
+                Vertex stopVertex = context.stationStopNodes.get(stop);
 
                 String agencyId = stop.getId().getAgencyId();
                 AgencyAndId parentStationId = new AgencyAndId(agencyId, parentStation);
 
                 Stop parentStop = _dao.getStopForId(parentStationId);
-                Vertex parentStopVertex = context.stopNodes.get(parentStop);
+                Vertex parentStopVertex = context.stationStopNodes.get(parentStop);
 
                 new FreeEdge(parentStopVertex, stopVertex);
                 new FreeEdge(stopVertex, parentStopVertex);
@@ -1597,11 +1600,12 @@ public class GTFSPatternHopFactory {
         for (Stop stop : _dao.getAllStops()) {
             String parentStation = stop.getParentStation();
             if (parentStation != null) {
-                TransitStop stopVertex = context.stopNodes.get(stop);
+                TransitStop stopVertex = (TransitStop) context.stationStopNodes.get(stop);
                 String agencyId = stop.getId().getAgencyId();
                 AgencyAndId parentStationId = new AgencyAndId(agencyId, parentStation);
                 Stop parentStop = _dao.getStopForId(parentStationId);
-                TransitStop parentStopVertex = context.stopNodes.get(parentStop);
+                TransitStation parentStopVertex = (TransitStation)
+                        context.stationStopNodes.get(parentStop);
                 new StationStopEdge(parentStopVertex, stopVertex);
                 new StationStopEdge(stopVertex, parentStopVertex);
             }
@@ -1625,8 +1629,8 @@ public class GTFSPatternHopFactory {
             if (transfer.getFromStop().equals(transfer.getToStop())) {
                 continue;
             }
-            TransitStop fromv = context.stopNodes.get(transfer.getFromStop());
-            TransitStop tov = context.stopNodes.get(transfer.getToStop());
+            TransitStationStop fromv = context.stationStopNodes.get(transfer.getFromStop());
+            TransitStationStop tov = context.stationStopNodes.get(transfer.getToStop());
 
             double distance = distanceLibrary.distance(fromv.getCoordinate(), tov.getCoordinate());
             int time;

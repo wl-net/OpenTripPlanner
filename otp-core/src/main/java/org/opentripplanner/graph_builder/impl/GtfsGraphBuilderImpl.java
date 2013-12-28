@@ -30,8 +30,14 @@ import org.onebusaway.csv_entities.EntityHandler;
 import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
 import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
 import org.onebusaway.gtfs.model.Agency;
+import org.onebusaway.gtfs.model.FareAttribute;
 import org.onebusaway.gtfs.model.IdentityBean;
+import org.onebusaway.gtfs.model.Pathway;
+import org.onebusaway.gtfs.model.Route;
+import org.onebusaway.gtfs.model.ServiceCalendar;
+import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.ShapePoint;
+import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.serialization.GtfsReader;
@@ -91,6 +97,12 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
     Map<Agency, GtfsBundle> agenciesSeen = new HashMap<Agency, GtfsBundle>();
 
     private boolean generateFeedIds = false;
+
+    /**
+     * Delete dwell edges for trip patterns that have all-zero dwell times.
+     * Do not use with real-time updates.
+     */
+    @Setter private boolean deleteUselessDwells;
 
     /** 
      * Construct and set bundles all at once. 
@@ -162,6 +174,7 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
                 hf.setStopContext(stopContext);
                 hf.setFareServiceFactory(_fareServiceFactory);
                 hf.setMaxStopToShapeSnapDistance(gtfsBundle.getMaxStopToShapeSnapDistance());
+                hf.setDeleteUselessDwells(deleteUselessDwells);
 
                 if (generateFeedIds && gtfsBundle.getDefaultAgencyId() == null) {
                     gtfsBundle.setDefaultAgencyId("FEED#" + bundleIndex);
@@ -240,6 +253,9 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
             reader.readEntities(entityClass);
             store.flush();
             if (entityClass == Agency.class) {
+                if (reader.getDefaultAgencyId() == null) {
+                    reader.setDefaultAgencyId(reader.getAgencies().get(0).getId());
+                }
                 for (Agency agency : reader.getAgencies()) {
                     GtfsBundle existing = agenciesSeen.get(agency);
                     if (existing != null) {
@@ -249,6 +265,31 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
+        }
+
+        for (ShapePoint shapePoint : store.getAllEntitiesForType(ShapePoint.class)) {
+            shapePoint.getShapeId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (Route route : store.getAllEntitiesForType(Route.class)) {
+            route.getId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (Stop stop : store.getAllEntitiesForType(Stop.class)) {
+            stop.getId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (Trip trip : store.getAllEntitiesForType(Trip.class)) {
+            trip.getId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (ServiceCalendar serviceCalendar : store.getAllEntitiesForType(ServiceCalendar.class)) {
+            serviceCalendar.getServiceId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (ServiceCalendarDate serviceCalendarDate : store.getAllEntitiesForType(ServiceCalendarDate.class)) {
+            serviceCalendarDate.getServiceId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (FareAttribute fareAttribute : store.getAllEntitiesForType(FareAttribute.class)) {
+            fareAttribute.getId().setAgencyId(reader.getDefaultAgencyId());
+        }
+        for (Pathway pathway : store.getAllEntitiesForType(Pathway.class)) {
+            pathway.getId().setAgencyId(reader.getDefaultAgencyId());
         }
 
         store.close();
@@ -321,7 +362,7 @@ public class GtfsGraphBuilderImpl implements GraphBuilder {
 
         @Override
         public <T> Collection<T> getAllEntitiesForType(Class<T> type) {
-            throw new UnsupportedOperationException();
+            return dao.getAllEntitiesForType(type);
         }
 
         @Override

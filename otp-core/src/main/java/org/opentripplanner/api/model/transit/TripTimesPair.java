@@ -11,24 +11,21 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.routing.trippattern;
+package org.opentripplanner.api.model.transit;
 
-/**
- * A CanceledTripTimes represents the cancellation of an entire trip by reporting that the vehicle
- * has already passed all stops.
- */
-public class CanceledTripTimes extends DelegatingTripTimes {
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlElementWrapper;
+import javax.xml.bind.annotation.XmlRootElement;
 
-    public CanceledTripTimes(ScheduledTripTimes sched) {
-        super(sched);
-    }
+import org.opentripplanner.api.model.Place;
 
-    @Override public int getDepartureTime(int hop) {
-        return TripTimes.CANCELED;
-    }
-    
-    @Override public int getArrivalTime(int hop) {
-        return TripTimes.CANCELED;
-    }
-        
+@XmlRootElement(name = "TripTimesPair")
+public class TripTimesPair {
+    @XmlElementWrapper(name = "Resolved")
+    @XmlElement(name = "Stop")
+    public Place[] resolved;
+
+    @XmlElementWrapper(name = "Scheduled")
+    @XmlElement(name = "Stop")
+    public Place[] scheduled;
 }

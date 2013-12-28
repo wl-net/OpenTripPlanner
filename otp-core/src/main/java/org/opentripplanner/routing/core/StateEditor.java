@@ -64,7 +64,6 @@ public class StateEditor {
     
     public StateEditor(RoutingRequest options, Vertex v) {
         child = new State(v, options);
-        child.stateData = new StateData(options);
     }
 
     public StateEditor(State parent, Edge e) {
@@ -148,9 +147,10 @@ public class StateEditor {
                 return null;
             }
         }
-        if ( ! parsePath(this.child))
-        	return null;
-        
+        if (!parsePath(this.child)) {
+            return null;
+        }
+
         // copy the notes if need be, keeping in mind they may both be null
         if (this.notes != child.stateData.notes) {
             cloneStateDataAsNeeded();
@@ -497,20 +497,20 @@ public class StateEditor {
 
         if (patches != null) {
             for (Patch patch : patches) {
-                active  = false;
-                display = patch.displayDuring(child.stateData.opt, child.getStartTimeSeconds(),
-                                              child.getTimeSeconds());
+                display = false;
+                active = patch.activeDuring(child.stateData.opt, child.getStartTimeSeconds(),
+                                            child.getTimeSeconds());
 
-                if(!display) {
-                    active = patch.activeDuring(child.stateData.opt, child.getStartTimeSeconds(),
-                                                child.getTimeSeconds());
+                if(!active) {
+                    display = patch.displayDuring(child.stateData.opt, child.getStartTimeSeconds(),
+                                                  child.getTimeSeconds());
                 }
 
                 if(display || active) {
                     if(!patch.filterTraverseResult(this, display))
                         return false;
+                }
             }
-        }
         }
 
         return true;

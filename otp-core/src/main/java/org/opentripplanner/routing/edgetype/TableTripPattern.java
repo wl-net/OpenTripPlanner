@@ -18,7 +18,6 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlElement;
@@ -28,6 +27,7 @@ import lombok.Delegate;
 
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
+import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.ServiceDay;
@@ -134,10 +134,11 @@ public class TableTripPattern implements TripPattern, Serializable {
     }
     
     public Stop getStop(int stopIndex) {
-    	if (stopIndex == patternHops.length)
-    		return patternHops[stopIndex - 1].getEndStop();
-    	else
-    		return patternHops[stopIndex].getStartStop();
+        if (stopIndex == patternHops.length) {
+            return patternHops[stopIndex - 1].getEndStop();
+        } else {
+            return patternHops[stopIndex].getBeginStop();
+        }
     }
 
     public List<Stop> getStops() {
@@ -152,7 +153,7 @@ public class TableTripPattern implements TripPattern, Serializable {
     }
     
     public List<PatternHop> getPatternHops() {
-    	return Arrays.asList(patternHops);
+        return Arrays.asList(patternHops);
     }
 
     /* package private */
@@ -171,7 +172,7 @@ public class TableTripPattern implements TripPattern, Serializable {
     
     @XmlTransient
     public List<Trip> getTrips() {
-    	return trips;
+        return trips;
     }
 
     public int getTripIndex(Trip trip) {
@@ -251,9 +252,15 @@ public class TableTripPattern implements TripPattern, Serializable {
         // so far so good, delegate to the timetable
         return timetable.getNextTrip(stopIndex, time, state0, sd, haveBicycle, boarding);
     }
-    
-    public Iterator<Integer> getScheduledDepartureTimes(int stopIndex) {
-        return scheduledTimetable.getDepartureTimes(stopIndex);
+
+    public TripTimes getResolvedTripTimes(int tripIndex, State state0) {
+        ServiceDate serviceDate = state0.getServiceDay().getServiceDate();
+        RoutingRequest options = state0.getOptions();
+        Timetable timetable = scheduledTimetable;
+        TimetableResolver snapshot = options.rctx.timetableSnapshot;
+        if (snapshot != null) {
+            timetable = snapshot.resolve(this, serviceDate);
+        }
+        return timetable.getTripTimes(tripIndex);
     }
-    
 }

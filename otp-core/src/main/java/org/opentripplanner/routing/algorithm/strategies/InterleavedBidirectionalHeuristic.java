@@ -31,7 +31,7 @@ import org.opentripplanner.routing.services.RemainingWeightHeuristicFactory;
 import org.opentripplanner.routing.spt.BasicShortestPathTree;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.routing.vertextype.TransitStop;
+import org.opentripplanner.routing.vertextype.TransitStationStop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +95,7 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
      */
     
     @Override
-    public void initialize(State s, Vertex target) {
+    public void initialize(State s, Vertex target, long abortTime) {
         if (target == this.target) {
             LOG.debug("reusing existing heuristic");
             return;
@@ -110,12 +110,15 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
         // make sure distance table is initialized before starting thread
         LOG.debug("initializing heuristic computation thread");
         // forward street search first, sets values around origin to 0
-        streetSearch(options, false); // ~30 msec
+        List<State> search = streetSearch(options, false, abortTime); // ~30 msec
+        if (search == null) return; // Search timed out
         LOG.info("end foreward street search {}", System.currentTimeMillis());
         // create a new priority queue
         q = new BinHeap<Vertex>();
         // enqueue states for each stop within walking distance of the destination
-        for (State stopState : streetSearch(options, true)) { // backward street search
+        search = streetSearch(options, true, abortTime);
+        if (search == null) return; // Search timed out
+        for (State stopState : search) { // backward street search
             q.insert(stopState.getVertex(), stopState.getWeight());
         }
         LOG.info("end backward street search {}", System.currentTimeMillis());
@@ -139,6 +142,7 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
             }
             double uw = q.peek_min_key();
             Vertex u = q.extract_min();
+            //LOG.info("dequeued weight {} at {}", uw, u);
 //            // Ignore vertices that could be rekeyed (but are not rekeyed in this implementation).
 //            if (uw > weights.get(u)) continue;
             // The weight of the queue head is uniformly increasing. This is the highest ever seen.
@@ -153,6 +157,11 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
                 if (e instanceof StreetTransitLink) continue;
                 Vertex v = options.isArriveBy() ? e.getToVertex() : e.getFromVertex();
                 double ew = e.weightLowerBound(options);
+                // INF heuristic value indicates unreachable (e.g. non-running transit service)
+                // this saves time by not reverse-exploring those routes and avoids maxFound of INF.
+                if (Double.isInfinite(ew)) {
+                    continue;  
+                }
                 double vw = uw + ew;
                 Double old_vw = weights.get(v);
                 if (old_vw == null || vw < old_vw) {
@@ -236,7 +245,7 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
     
     */
 
-    private List<State> streetSearch (RoutingRequest rr, boolean fromTarget) {
+    private List<State> streetSearch (RoutingRequest rr, boolean fromTarget, long abortTime) {
         rr = rr.clone();
         if (fromTarget)
             rr.setArriveBy( ! rr.isArriveBy());
@@ -247,12 +256,19 @@ public class InterleavedBidirectionalHeuristic implements RemainingWeightHeurist
         State initState = new State(initVertex, rr);
         pq.insert(initState, 0);
         while ( ! pq.empty()) {
+            /**
+             * Terminate the search prematurely if we've hit our computation wall.
+             */
+            if (abortTime < Long.MAX_VALUE  && System.currentTimeMillis() > abortTime) {
+                return null;
+            }
+
             State s = pq.extract_min();
             Double w = s.getWeight();
             Vertex v = s.getVertex();
-            if (v instanceof TransitStop) {
+            if (v instanceof TransitStationStop) {
                 stopStates.add(s);
-                // Prune street search upon reaching TransitStops.
+                // Prune street search upon reaching TransitStationStops.
                 // Do not save weights at transit stops. Since they may be reached by 
                 // SimpleTransfer their weights will be recorded during the main heuristic search.
                 continue;
