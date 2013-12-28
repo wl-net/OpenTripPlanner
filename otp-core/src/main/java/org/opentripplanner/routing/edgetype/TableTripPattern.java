@@ -26,6 +26,7 @@ import javax.xml.bind.annotation.XmlTransient;
 import lombok.Delegate;
 import lombok.Getter;
 
+import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.StopTime;
@@ -90,7 +91,6 @@ public class TableTripPattern implements TripPattern, Serializable {
      * expires. Via Lombok Delegate, calling timetable methods on a TableTripPattern will call 
      * them on its scheduled timetable.
      */
-    @Delegate
     protected final Timetable scheduledTimetable = new Timetable(this);
 
     // redundant since tripTimes have a trip
@@ -277,6 +277,11 @@ public class TableTripPattern implements TripPattern, Serializable {
         return timetable.getTripTimes(tripIndex);
     }
 
+    /* METHODS THAT DELEGATE TO THE SCHEDULED TIMETABLE */
+
+    // These should probably be deprecated. That would require grabbing the scheduled timetable,
+    // and would avoid mistakes where real-time updates are accidentally not taken into account.
+    
     public void addTrip(Trip trip, List<StopTime> stopTimes) {
         // Only scheduled trips (added via the pattern rather than directly to the timetable) are in the trips list.
         this.trips.add(trip);
@@ -286,6 +291,18 @@ public class TableTripPattern implements TripPattern, Serializable {
             // Identity equality is valid on GTFS entity objects
             LOG.warn("The trip {} is on a different route than its stop pattern, which is on {}.", trip, route);
         }
+    }
+
+    public TripTimes getTripTimes(int tripIndex) {
+        return scheduledTimetable.getTripTimes(tripIndex);
+    }
+    
+    public int getTripIndex(AgencyAndId tripId) {
+        return scheduledTimetable.getTripIndex(tripId);
+    }
+    
+    public int getDepartureTime(int hop, int trip) {
+        return scheduledTimetable.getDepartureTime(hop, trip);
     }
     
 }
