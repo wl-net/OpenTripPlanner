@@ -91,6 +91,7 @@ public class TableTripPattern implements TripPattern, Serializable {
      * expires. Via Lombok Delegate, calling timetable methods on a TableTripPattern will call 
      * them on its scheduled timetable.
      */
+    @Getter
     protected final Timetable scheduledTimetable = new Timetable(this);
 
     // redundant since tripTimes have a trip
