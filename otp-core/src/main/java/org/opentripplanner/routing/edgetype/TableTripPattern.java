@@ -88,8 +88,7 @@ public class TableTripPattern implements TripPattern, Serializable {
      * This timetable holds the 'official' stop times from GTFS. If realtime stoptime updates are 
      * applied, trips searches will be conducted using another timetable and this one will serve to 
      * find early/late offsets, or as a fallback if the other timetable becomes corrupted or
-     * expires. Via Lombok Delegate, calling timetable methods on a TableTripPattern will call 
-     * them on its scheduled timetable.
+     * expires.
      */
     @Getter
     protected final Timetable scheduledTimetable = new Timetable(this);
