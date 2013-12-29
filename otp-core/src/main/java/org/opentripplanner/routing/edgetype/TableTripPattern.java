@@ -304,5 +304,21 @@ public class TableTripPattern implements TripPattern, Serializable {
     public int getDepartureTime(int hop, int trip) {
         return scheduledTimetable.getDepartureTime(hop, trip);
     }
+
+    public int getBestRunningTime(int stopIndex) {
+        return scheduledTimetable.getBestRunningTime(stopIndex);
+    }
+
+    public int getBestDwellTime(int stopIndex) {
+        return scheduledTimetable.getBestDwellTime(stopIndex);
+    }
+
+    /**
+     * Rather than the scheduled timetable, get the one that has been updated with real-time updates.
+     * The view is consistent across a single request, and depends on the routing context in the request.
+     */
+    public Timetable getUpdatedTimetable (RoutingRequest req) {
+        return null;
+    }
     
 }
