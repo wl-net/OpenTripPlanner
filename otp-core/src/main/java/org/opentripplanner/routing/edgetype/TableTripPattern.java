@@ -18,7 +18,9 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlTransient;
@@ -40,6 +42,8 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.trippattern.TripTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.internal.Sets;
 
 /**
  * Represents a class of trips distinguished by service id and list of stops. For each stop, there
@@ -89,7 +93,7 @@ public class TableTripPattern implements TripPattern, Serializable {
     // however it's nice to have for order reference, since all timetables must have tripTimes
     // in this order, e.g. for interlining. 
     // potential optimization: trip fields can be removed from TripTimes?
-    // another potential optimization: this field can be removed, and interlining can be done differently?
+    // TODO: this field can be removed, and interlining can be done differently?
     /**
      * This pattern may have multiple Timetable objects, but they should all contain TripTimes
      * for the same trips, in the same order (that of the scheduled Timetable). An exception to 
@@ -103,6 +107,8 @@ public class TableTripPattern implements TripPattern, Serializable {
      * PatternHop apply to all those trips, so this array apply to every trip in every timetable in
      * this pattern. Please note that the array size is the number of stops minus 1. This also allow
      * to access the ordered list of stops.
+     * 
+     * This appears to only be used for on-board departure. TODO: stops can now be grabbed from stopPattern.
      */
     private PatternHop[] patternHops;
 
@@ -271,7 +277,7 @@ public class TableTripPattern implements TripPattern, Serializable {
 
     /* METHODS THAT DELEGATE TO THE SCHEDULED TIMETABLE */
 
-    // These should probably be deprecated. That would require grabbing the scheduled timetable,
+    // TODO: These should probably be deprecated. That would require grabbing the scheduled timetable,
     // and would avoid mistakes where real-time updates are accidentally not taken into account.
     
     public void addTrip(Trip trip, List<StopTime> stopTimes) {
@@ -305,6 +311,8 @@ public class TableTripPattern implements TripPattern, Serializable {
         return scheduledTimetable.getBestDwellTime(stopIndex);
     }
 
+    /* OTHER METHODS */
+    
     /**
      * Rather than the scheduled timetable, get the one that has been updated with real-time updates.
      * The view is consistent across a single request, and depends on the routing context in the request.
@@ -312,5 +320,17 @@ public class TableTripPattern implements TripPattern, Serializable {
     public Timetable getUpdatedTimetable (RoutingRequest req) {
         return null;
     }
-    
+
+    /**
+     * Static method that creates unique human-readable names for a collection of TableTripPatterns.
+     * Perhaps this should be in TripPattern, and apply to Frequency patterns as well.
+     * TODO: resove this question: can a frequency and table pattern have the same stoppattern? If so should they have
+     * the same "unique" name?  
+     */
+    public static void generateUniqueNames (Collection<TableTripPattern> tableTripPatterns) {
+        Set<String> names = Sets.newHashSet();
+        
+        
+    }
+
 }
