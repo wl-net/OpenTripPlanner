@@ -45,6 +45,7 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.factory.GtfsStopContext;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.vertextype.PatternArriveVertex;
 import org.opentripplanner.routing.vertextype.PatternDepartVertex;
@@ -113,7 +114,7 @@ public class TableTripPattern implements TripPattern, Serializable {
     private String code = Integer.toHexString(System.identityHashCode(this));
     
     /* The vertices in the Graph that correspond to each Stop in this pattern. */
-    public final TransitStop[] stopVertices;
+    public final TransitStop[] stopVertices; // these are not unique to this pattern, can be shared. are they even used?
     public final PatternDepartVertex[] departVertices;
     public final PatternArriveVertex[] arriveVertices;
     
@@ -504,8 +505,8 @@ public class TableTripPattern implements TripPattern, Serializable {
             } // END foreach PATTERN
         } // END foreach ROUTE
 
-        LOG.info("Done generating unique names for stop patterns on each route.");
         if (LOG.isDebugEnabled()) {
+            LOG.debug("Done generating unique names for stop patterns on each route.");
             for (Route route : patternsByRoute.keySet()) {
                 Collection<TableTripPattern> routeTripPatterns = patternsByRoute.get(route);             
                 LOG.debug("Named {} patterns in route {}", routeTripPatterns.size(), uniqueRouteNames.get(route));
@@ -556,21 +557,20 @@ public class TableTripPattern implements TripPattern, Serializable {
             departVertices[hop] = pdv0;
             if (hop > 0) {
                 pav0 = pav1;
-                new PatternDwell(pav0, pdv0, hop, this);
+                dwellEdges[hop] = new PatternDwell(pav0, pdv0, hop, this);
             }
             pav1 = new PatternArriveVertex(graph, this, hop + 1);
             arriveVertices[hop + 1] = pav1;
-            new PatternHop(pdv0, pav1, s0, s1, hop);
+            hopEdges[hop] = new PatternHop(pdv0, pav1, s0, s1, hop);
 
             /* Get the arrive and depart vertices for the current stop (not pattern stop). */
             TransitStopDepart stopDepart = getStopOrParent(context.stopDepartNodes, s0, graph);
             TransitStopArrive stopArrive = getStopOrParent(context.stopArriveNodes, s1, graph);
             TraverseMode mode = GtfsLibrary.getTraverseMode(this.route);
             stopArrive.getStopVertex().addMode(mode);
-            new TransitBoardAlight(stopDepart, pdv0, hop, mode);
-            new TransitBoardAlight(pav1, stopArrive, hop + 1, mode);
+            boardEdges[hop] = new TransitBoardAlight(stopDepart, pdv0, hop, mode);
+            alightEdges[hop +1] = new TransitBoardAlight(pav1, stopArrive, hop + 1, mode);
         }        
-        //dumpServices();
     }
 
     public void dumpServices() {
@@ -579,6 +579,16 @@ public class TableTripPattern implements TripPattern, Serializable {
             services.add(trip.getServiceId());
         }
         LOG.info("route {} : {}", route, services);
+    }
+
+    public void dumpVertices() {
+        for (int i = 0; i < this.stopPattern.size; ++i) {
+            Vertex arrive = arriveVertices[i];
+            Vertex depart = departVertices[i];
+            System.out.format("%s %02d %s %s\n", this.getCode(), i, 
+                    arrive == null ? "NULL" : arrive.getLabel(),
+                    depart == null ? "NULL" : depart.getLabel());
+        }
     }
 
     /**
