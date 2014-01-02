@@ -601,6 +601,7 @@ public class TableTripPattern implements TripPattern, Serializable {
         for (Trip trip : trips) {
             services.set(serviceCodes.get(trip.getServiceId()));
         }
+        scheduledTimetable.setServiceCodes (serviceCodes);
     }
 
 }
