@@ -1362,8 +1362,9 @@ public class GTFSPatternHopFactory {
             StopTime st = it.next();
             if (prev != null) {
                 if (prev.getStop().equals(st.getStop())) {
-                    prev.setDepartureTime(st.getDepartureTime());
-                    it.remove();
+// OBA is giving us unmodifiable lists. copying is necessary.
+//                    prev.setDepartureTime(st.getDepartureTime());
+//                    it.remove();
                     filtered = true;
                 }
             }
