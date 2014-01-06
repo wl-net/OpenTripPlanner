@@ -513,71 +513,6 @@ public class TestRequest extends TestCase {
         assertTrue(otherRouter.polygon.getArea() > 0);
     }
 
-    public void testTransitIndex() throws JSONException {
-        TransitIndex index = new TransitIndex();
-        index.setGraphService(Context.getInstance().graphService);
-        String routerId = "portland";
-        AgencyList agencyIds = index.getAgencyIds(routerId);
-        assertEquals(agencyIds.agencies.toArray(new Agency[0])[0].getId(), ("TriMet"));
-        assertEquals(1, agencyIds.agencies.size());
-
-        RouteDataList routeDataList = (RouteDataList) index.getRouteData(
-                "TriMet", "100", false, false, routerId);
-        assertEquals(new AgencyAndId("TriMet", "100"),
-                routeDataList.routeData.toArray(new RouteData[0])[0].id);
-        assertTrue(routeDataList.routeData.toArray(new RouteData[0])[0].variants.size() >= 2);
-
-        RouteList routes = (RouteList) index.getRoutes("TriMet", false, routerId);
-        assertTrue(routes.routes.size() > 50);
-
-        //without agencyId
-        routes = (RouteList) index.getRoutes(null, true, routerId);
-        assertTrue(routes.routes.size() > 50);
-
-        //without agencyId
-        routes = (RouteList) index.getRoutes(null, true, routerId);
-        assertTrue(routes.routes.size() > 50);
-
-        ModeList modes = (ModeList) index.getModes(routerId);
-        assertTrue(modes.modes.contains(TraverseMode.TRAM));
-        assertFalse(modes.modes.contains(TraverseMode.FUNICULAR));
-
-        RouteList routesForStop = (RouteList) index.getRoutesForStop("TriMet", "10579", false,
-                routerId);
-        assertEquals(1, routesForStop.routes.size());
-
-        routesForStop = (RouteList) index.getRoutesForStop(null, "10579", false,
-                routerId);
-        assertEquals(1, routesForStop.routes.size());
-        // assertEquals("MAX Red Line", routesForStop.routes.get(0).routeLongName);
-
-        StopList stopsNearPoint = (StopList) index.getStopsNearPoint("TriMet", 45.464783,
-                -122.578918, false, routerId, null);
-        assertTrue(stopsNearPoint.stops.size() > 0);
-
-        long startTime =
-                TestUtils.dateInSeconds("America/Los_Angeles", 2009, 9, 1, 7, 50, 0) * 1000L;
-        long endTime = startTime + 60 * 60 * 1000;
-        StopTimeList stopTimesForStop = (StopTimeList) index.getStopTimesForStop("TriMet", "10579",
-                startTime, endTime, false, false, null, routerId);
-        assertTrue(stopTimesForStop.stopTimes.size() > 0);
-
-        stopTimesForStop = (StopTimeList) index.getStopTimesForStop(null, "10579",
-                startTime, endTime, false, false, null, routerId);
-        assertTrue(stopTimesForStop.stopTimes.size() > 0);
-
-        stopTimesForStop = (StopTimeList) index.getStopTimesForStop(null, "10579",
-                startTime, endTime, false, false, null, routerId);
-        assertTrue(stopTimesForStop.stopTimes.size() > 0);
-
-        stopTimesForStop = (StopTimeList) index.getStopTimesForStop(null, "10579",
-                startTime, endTime, false, false, null, routerId);
-        assertTrue(stopTimesForStop.stopTimes.size() > 0);
-
-        // StopTimeList stopTimesForTrip = (StopTimeList) index.getStopTimesForTrip(
-        // "TriMet", "1254", "TriMet", "10W1040", startTime, routerId);
-        // assertTrue(stopTimesForTrip.stopTimes.size() > 0);
-    }
 
     public void testComponents() {
         Components components = new Components();
@@ -1152,7 +1087,6 @@ public class TestRequest extends TestCase {
 
         TripUpdate tripUpdate = tripUpdateBuilder.build();
 
-        assertTrue(pattern.update(tripUpdate, "TriMet", timeZone, serviceDate));
     }
 
     /**

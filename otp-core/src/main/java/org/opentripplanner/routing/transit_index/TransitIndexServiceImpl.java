@@ -29,9 +29,7 @@ import org.onebusaway.gtfs.model.ServiceCalendar;
 import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.FrequencyAlight;
 import org.opentripplanner.routing.edgetype.FrequencyBasedTripPattern;
-import org.opentripplanner.routing.edgetype.FrequencyBoard;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
 import org.opentripplanner.routing.edgetype.TableTripPattern;
@@ -272,17 +270,13 @@ public class TransitIndexServiceImpl implements TransitIndexService, Serializabl
         if (alight != null) for (Edge edge : alight.getFromVertex().getIncoming()) {
             if (edge instanceof TransitBoardAlight && !(((TransitBoardAlight) edge).isBoarding())) {
                 patterns.add(((TransitBoardAlight) edge).getPattern());
-            } else if (edge instanceof FrequencyAlight) {
-                patterns.add(((FrequencyAlight) edge).getPattern());
-            }
+            } 
         }
 
         if (board != null) for (Edge edge : board.getToVertex().getOutgoing()) {
             if (edge instanceof TransitBoardAlight && (((TransitBoardAlight) edge).isBoarding())) {
                 patterns.add(((TransitBoardAlight) edge).getPattern());
-            } else if (edge instanceof FrequencyBoard) {
-                patterns.add(((FrequencyBoard) edge).getPattern());
-            }
+            } 
         }
 
         return new ArrayList<TripPattern>(patterns);

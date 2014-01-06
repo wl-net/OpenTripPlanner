@@ -31,7 +31,6 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.FrequencyBoard;
 import org.opentripplanner.routing.edgetype.PatternEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.edgetype.TripPattern;
@@ -91,10 +90,6 @@ public class LocalStopFinder {
                 if (e instanceof TransitBoardAlight && ((TransitBoardAlight) e).isBoarding()) {
                         TripPattern pattern = ((TransitBoardAlight) e).getPattern();
                         patterns.add(pattern);
-                }
-                if (e instanceof FrequencyBoard) {
-                    TripPattern pattern = ((FrequencyBoard) e).getPattern();
-                    patterns.add(pattern);
                 }
             }
         }
@@ -254,7 +249,7 @@ public class LocalStopFinder {
                     departureVertex = e.getToVertex();
                     for (Edge e2 : departureVertex.getOutgoing()) {
                         if ((e2 instanceof TransitBoardAlight
-                                && ((TransitBoardAlight) e2).isBoarding()) || e2 instanceof FrequencyBoard) {
+                                && ((TransitBoardAlight) e2).isBoarding())) {
                             /* finally, a boarding edge */
                             TripPattern pattern = ((PatternEdge) e2).getPattern();
                             if (nearbyPatterns.contains(pattern)) {
@@ -332,8 +327,6 @@ public class LocalStopFinder {
                     for (Edge e2 : e.getToVertex().getOutgoing()) {
                         if (e2 instanceof TransitBoardAlight && ((TransitBoardAlight) e2).isBoarding()) {
                             neighborhood.add(((TransitBoardAlight) e2).getPattern());
-                        } else if (e2 instanceof FrequencyBoard) {
-                            neighborhood.add(((FrequencyBoard) e2).getPattern());
                         }
                     }
                 }
