@@ -100,8 +100,7 @@ public class ProfileData {
             Collection<TableTripPattern> ps0 = patternsForStop.get(s0);
             for (StopAtDistance sd : findTransitStops(s0.getLon(), s0.getLat(), WALK_RADIUS)) {
                 Stop s1 = sd.stop;
-                if (s0 == s1)
-                    continue;
+                /* Do not filter out transfers from/to the same stop -- some systems are represented this way. */
                 Collection<TableTripPattern> ps1 = patternsForStop.get(s1);
                 for (TableTripPattern p0 : ps0) {
                     for (TableTripPattern p1 : ps1) {
