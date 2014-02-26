@@ -1,14 +1,20 @@
 package org.opentripplanner.profile;
 
 import javax.inject.Singleton;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import lombok.Setter;
 
+import org.opentripplanner.api.param.HourMinuteSecond;
+import org.opentripplanner.api.param.LatLon;
+import org.opentripplanner.api.param.YearMonthDay;
 import org.opentripplanner.routing.services.GraphService;
 
 import com.sun.jersey.api.core.InjectParam;
@@ -22,22 +28,16 @@ public class ProfileEndpoint {
     
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    public Response profileRoute(@QueryParam("from") String from, 
-                               @QueryParam("to")   String to,
-                               @QueryParam("startTime") String startTime, 
-                               @QueryParam("endTime")   String endTime) {
-        String[] fromCoords = from.split(",");
-        String[] toCoords = to.split(",");
-        double fromLat = Double.parseDouble(fromCoords[0]);
-        double fromLon = Double.parseDouble(fromCoords[1]);
-        double toLat   = Double.parseDouble(toCoords[0]);
-        double toLon   = Double.parseDouble(toCoords[1]);
-
-        if (data == null) 
-            data = new ProfileData(graphService.getGraph());
+    public Response profileRoute(
+            @QueryParam("from") LatLon from, 
+            @QueryParam("to")   LatLon to,
+            @QueryParam("date")      @DefaultValue("today") YearMonthDay date,
+            @QueryParam("startTime") @DefaultValue("07:00") HourMinuteSecond fromTime, 
+            @QueryParam("endTime")   @DefaultValue("09:00") HourMinuteSecond toTime) {
+        if (data == null) data = new ProfileData(graphService.getGraph());
         ProfileRouter router = new ProfileRouter (data);
-        Response response = new Response (router.route(fromLat, fromLon, toLat, toLon));
-        return response;
+        ProfileResponse pr = router.route(from, to, fromTime.toSeconds(), toTime.toSeconds(), date.toJoda());
+        return Response.status(Status.OK).entity(pr).build();
     }
     
 }
