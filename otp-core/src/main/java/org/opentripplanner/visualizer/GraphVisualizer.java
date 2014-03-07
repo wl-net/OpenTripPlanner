@@ -259,7 +259,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
     private JLabel serviceIdLabel;
     
-    private RetryingPathServiceImpl pathservice = new RetryingPathServiceImpl();
+    private RetryingPathServiceImpl pathService = new RetryingPathServiceImpl();
     
     private ShortestPathTreeFactory sptFactory = new DefaultShortestPathTreeFactory();
     
@@ -320,8 +320,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
         this.graphService = graphService;
         this.graph = graphService.getGraph();
         sptService.setShortestPathTreeFactory(sptFactory);
-        pathservice.setGraphService(graphService);
-        pathservice.setSptService(sptService);
+        pathService.setGraphService(graphService);
+        pathService.setSptService(sptService);
         setTitle("GraphVisualizer");
         
         init();
@@ -945,7 +945,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
 
 
-        // row: launch and clear path search
+        // row: launch, continue, and clear path search
         JButton routeButton = new JButton("path search");
         routeButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -955,6 +955,13 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
             }
         });
         routingPanel.add(routeButton);
+        JButton continueButton = new JButton("continue");
+        continueButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                //TODO continue search
+            }
+        });
+        routingPanel.add(continueButton);
         JButton clearRouteButton = new JButton("clear path");
         clearRouteButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -1115,7 +1122,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
         
         long t0 = System.currentTimeMillis();
         // TODO: check options properly intialized (AMB)
-        List<GraphPath> paths = pathservice.getPaths(options);
+        List<GraphPath> paths = pathService.getPaths(options);
         long dt = System.currentTimeMillis() - t0;
         searchTimeElapsedLabel.setText( "search time elapsed: "+dt+"ms" );
         
