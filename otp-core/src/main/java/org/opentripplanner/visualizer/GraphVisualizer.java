@@ -315,6 +315,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
 	private JList pathsList;
 
+	private JList pathStates;
+
     public GraphVisualizer(GraphService graphService) {
         super();
         LOG.info("Starting up graph visualizer...");
@@ -531,6 +533,12 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
         departurePattern = new JList();
         JScrollPane dpScrollPane = new JScrollPane(departurePattern);
         rightPanelTabs.addTab("trip pattern", dpScrollPane);
+        
+        // a place to print out the details of a path
+        pathStates = new JList();
+        JScrollPane stScrollPane = new JScrollPane(pathStates);
+        stScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
+        rightPanelTabs.addTab("path states", stScrollPane);
 
         metadataList = new JList();
         metadataModel = new DefaultListModel();
@@ -561,6 +569,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
         amScrollPane.setMaximumSize(size);
         amScrollPane.setPreferredSize(size);
+        stScrollPane.setMaximumSize(size);
+        stScrollPane.setPreferredSize(size);
         mdScrollPane.setMaximumSize(size);
         mdScrollPane.setPreferredSize(size);
         rightPanelTabs.setMaximumSize(size);
@@ -906,6 +916,13 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 			@Override
 			public void valueChanged(ListSelectionEvent ev) {
 				GraphPath path = (GraphPath) pathsList.getSelectedValue();
+				
+				DefaultListModel pathModel = new DefaultListModel();
+				for( State st : path.states ){
+					pathModel.addElement( st.toString() );
+				}
+				pathStates.setModel( pathModel );
+				
 				showGraph.highlightGraphPath(path);		
 			}
         	
