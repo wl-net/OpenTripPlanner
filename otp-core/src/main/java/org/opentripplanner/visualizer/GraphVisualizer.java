@@ -20,6 +20,8 @@ import java.awt.GridLayout;
 import java.awt.MenuItem;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -62,6 +64,8 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.ListModel;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -330,6 +334,12 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
 	private JList pathStates;
 
+	private JCheckBox showTransitCheckbox;
+
+	private JCheckBox showStreetsCheckbox;
+
+	private JCheckBox showHighlightedCheckbox;
+
     public GraphVisualizer(GraphService graphService) {
         super();
         LOG.info("Starting up graph visualizer...");
@@ -501,6 +511,29 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
         pane.add(nPathsLabel);
         nPaths = new JTextField("1");
         pane.add(nPaths);
+        
+        //viz preferences
+        ItemListener onChangeVizPrefs = new ItemListener(){
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				showGraph.setShowTransit( showTransitCheckbox.isSelected() );
+				showGraph.setShowStreets( showStreetsCheckbox.isSelected() );
+				showGraph.setShowHightlights( showHighlightedCheckbox.isSelected() );
+				showGraph.redraw();
+			}
+        };
+        showTransitCheckbox = new JCheckBox("show transit");
+        showTransitCheckbox.setSelected(true);
+        showTransitCheckbox.addItemListener( onChangeVizPrefs );
+        pane.add(showTransitCheckbox);
+        showStreetsCheckbox = new JCheckBox("show streets");
+        showStreetsCheckbox.setSelected(true);
+        showStreetsCheckbox.addItemListener( onChangeVizPrefs );
+        pane.add(showStreetsCheckbox);
+        showHighlightedCheckbox = new JCheckBox("show highlighted");
+        showHighlightedCheckbox.setSelected(true);
+        showHighlightedCheckbox.addItemListener( onChangeVizPrefs );
+        pane.add(showHighlightedCheckbox);
         
 		return pane;
 	}
