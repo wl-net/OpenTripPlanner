@@ -51,7 +51,7 @@ public class VisualTraverseVisitor implements TraverseVisitor {
             }
         }
         
-        gui.updateTrunkiness( state );
+        gui.enqueueTrunkiness( state );
     }
 
     @Override
