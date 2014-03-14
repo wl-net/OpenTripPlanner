@@ -983,7 +983,11 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
 			@Override
 			public void valueChanged(ListSelectionEvent ev) {
-				GraphPath path = ((PathPrinter) pathsList.getSelectedValue()).gp;
+				PathPrinter pp = ((PathPrinter) pathsList.getSelectedValue());
+				if(pp==null){
+					return;
+				}
+				GraphPath path = pp.gp;
 				
 				DefaultListModel pathModel = new DefaultListModel();
 				for( State st : path.states ){
@@ -1222,6 +1226,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
         } else {
         	sptService.setTraverseVisitor(new VisualTraverseVisitor(showGraph));
         }
+        
+        showGraph.resetSPT();
                 
         long t0 = System.currentTimeMillis();
         // TODO: check options properly intialized (AMB)

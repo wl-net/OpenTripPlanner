@@ -157,7 +157,7 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 
     private int drawOffset = 0;
 	private boolean drawHighlighted = true;
-	private HashMap<State, SPTNode> simpleSPT = new HashMap<State,SPTNode>();
+	public SimpleSPT simpleSPT;
 	private LinkedBlockingQueue<State> newSPTEdges = new LinkedBlockingQueue<State>();
 	private boolean drawEdges = true;
 	
@@ -168,6 +168,25 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 		Trunk(Edge edge, Double trunkiness){
 			this.edge = edge;
 			this.trunkiness = trunkiness;
+		}
+	}
+	
+	class SimpleSPT{
+		private HashMap<State, SPTNode> nodes;
+		
+		SimpleSPT(){
+			nodes = new HashMap<State,SPTNode>();
+		}
+
+		public void add(State state) {
+			// create simpleSPT entry
+			SPTNode curNode = new SPTNode(state);
+			SPTNode parentNode = this.nodes.get(state.getBackState());
+			if(parentNode!=null){
+				parentNode.children.add(curNode);
+			}
+			curNode.parent = parentNode;
+			this.nodes.put(state, curNode);
 		}
 	}
 	
@@ -902,15 +921,13 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 
 	public void addNewSPTEdge(State state) {
 		this.newSPTEdges.add( state );
+		this.simpleSPT.add( state );
 		
-		// create simpleSPT entry
-		SPTNode curNode = new SPTNode(state);
-		SPTNode parentNode = simpleSPT.get(state.getBackState());
-		if(parentNode!=null){
-			parentNode.children.add(curNode);
-		}
-		curNode.parent = parentNode;
-		this.simpleSPT.put(state, curNode);
+
+	}
+
+	public void resetSPT() {
+		this.simpleSPT = new SimpleSPT();
 	}
 
 }
