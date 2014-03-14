@@ -173,6 +173,7 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 	
 	class SimpleSPT{
 		private HashMap<State, SPTNode> nodes;
+		SPTNode root;
 		
 		SimpleSPT(){
 			nodes = new HashMap<State,SPTNode>();
@@ -184,9 +185,15 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 			SPTNode parentNode = this.nodes.get(state.getBackState());
 			if(parentNode!=null){
 				parentNode.children.add(curNode);
+			} else {
+				root = curNode;
 			}
 			curNode.parent = parentNode;
 			this.nodes.put(state, curNode);
+		}
+		
+		void setWeights(){
+			root.setWeight();
 		}
 	}
 	
@@ -198,12 +205,21 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 		State state;
 		SPTNode parent;
 		List<SPTNode> children;
+		double weight=0.0;
 		
 		SPTNode(State state){
 			this.state = state;
 			this.children = new ArrayList<SPTNode>();
 		}
 		
+		public void setWeight() {
+			weight = state.getWeight();
+			for( SPTNode child : children ){
+				child.setWeight();
+				weight += child.weight;
+			}
+		}
+
 		void addChild(SPTNode child){
 			this.children.add( child );
 		}

@@ -1241,6 +1241,11 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
             return;
         }
         
+        t0 = System.currentTimeMillis();
+        showGraph.simpleSPT.setWeights();
+        dt = System.currentTimeMillis() - t0;
+        System.out.println( "weight "+showGraph.simpleSPT.root.weight+" set in "+dt+" ms" );
+        
         
         // show paths in a list panel
         DefaultListModel data = new DefaultListModel();
