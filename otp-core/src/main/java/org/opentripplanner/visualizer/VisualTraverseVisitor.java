@@ -51,7 +51,7 @@ public class VisualTraverseVisitor implements TraverseVisitor {
             }
         }
         
-        gui.enqueueTrunkiness( state );
+        gui.addNewSPTEdge( state );
     }
 
     @Override
