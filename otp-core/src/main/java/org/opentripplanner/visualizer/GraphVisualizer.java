@@ -1241,16 +1241,16 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
             return;
         }
         
+        // show shortest path tree
         t0 = System.currentTimeMillis();
         showGraph.simpleSPT.setWeights();
         dt = System.currentTimeMillis() - t0;
         System.out.println( "weight "+showGraph.simpleSPT.root.weight+" set in "+dt+" ms" );
-        
+        showGraph.intentDrawSPT();
         
         // show paths in a list panel
         DefaultListModel data = new DefaultListModel();
         for(GraphPath gp : paths ){
-
         	data.addElement( new PathPrinter(gp) );
         }
         pathsList.setModel(data);

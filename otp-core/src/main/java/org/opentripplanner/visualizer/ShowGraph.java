@@ -160,6 +160,7 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 	public SimpleSPT simpleSPT;
 	private LinkedBlockingQueue<State> newSPTEdges = new LinkedBlockingQueue<State>();
 	private boolean drawEdges = true;
+	private boolean drawSPTNext;
 	
 	class Trunk{
 		public Edge edge;
@@ -194,6 +195,17 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 		
 		void setWeights(){
 			root.setWeight();
+		}
+
+		public void draw() {
+			stroke(255,255,0);
+			strokeWeight(1);
+			for( SPTNode node : nodes.values() ){
+				if( node.state.getBackEdge() != null ){
+					strokeWeight( (float) (0.1*Math.pow(node.weight,0.3)) );
+					drawEdge( node.state.getBackEdge() );
+				}
+			}
 		}
 	}
 	
@@ -527,6 +539,10 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
         } else if (drawLevel == DRAW_MINIMAL) {
             drawMinimal();
             drawNewEdges();
+            if(drawSPTNext){
+            	simpleSPT.draw();
+            	drawSPTNext = false;
+            }
         }
         
         drawOffset = 0;
@@ -944,6 +960,10 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 
 	public void resetSPT() {
 		this.simpleSPT = new SimpleSPT();
+	}
+
+	public void intentDrawSPT() {
+		this.drawSPTNext = true;
 	}
 
 }
