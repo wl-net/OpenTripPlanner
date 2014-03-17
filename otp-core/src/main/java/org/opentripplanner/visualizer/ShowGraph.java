@@ -159,6 +159,8 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 	private boolean drawEdges = true;
 	private LinkedBlockingQueue<SPTNode> sptEdgeQueue;
 	private boolean sptVisible = true;
+	private float sptFlattening = 0.3f;
+	private float sptThickness = 0.1f;
 	
 	class Trunk{
 		public Edge edge;
@@ -258,7 +260,7 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 			
 			if(state.getBackEdge() != null){
 				stroke( colorRamp( (int)(state.getWeight()/10.0) ) );
-				strokeWeight( (float) (0.1*Math.pow(weight,0.3)) );
+				strokeWeight( (float) (sptThickness*Math.pow(weight,sptFlattening)) );
 				drawEdge( state.getBackEdge() );
 			}
 			
@@ -1042,6 +1044,14 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 
 	public void setShowSPT(boolean selected) {
 		sptVisible = selected;
+	}
+
+	public void setSPTFlattening(float sptFlattening) {
+		this.sptFlattening  = sptFlattening;
+	}
+
+	public void setSPTThickness(float sptThickness) {
+		this.sptThickness  = sptThickness;
 	}
 
 }
