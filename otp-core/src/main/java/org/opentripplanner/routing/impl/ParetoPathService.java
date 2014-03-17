@@ -31,6 +31,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class ParetoPathService implements PathService {
+	public class SPTVisitor{
+		public ShortestPathTree spt;
+	}
 
     private static final Logger LOG = LoggerFactory.getLogger(ParetoPathService.class);
 
@@ -38,12 +41,18 @@ public class ParetoPathService implements PathService {
     private GraphService graphService;
     @Autowired
     private SPTService sptService;
+    
+    private SPTVisitor sptVisitor = null;
 
     private double timeout = 0; // seconds
     
     /** Give up on searching for itineraries after this many seconds have elapsed. */
     public void setTimeout (double seconds) {
         timeout = seconds;
+    }
+    
+    public void setSPTVisitor(SPTVisitor sptVisitor){
+    	this.sptVisitor = sptVisitor;
     }
 
     @Override
@@ -62,6 +71,14 @@ public class ParetoPathService implements PathService {
         long searchBeginTime = System.currentTimeMillis();
         
         ShortestPathTree spt = sptService.getShortestPathTree(options, timeout);
+        
+        if(sptVisitor!=null){
+        	System.out.println( "setting spt" );
+        	sptVisitor.spt = spt;
+        } else {
+        	System.out.println( "no spt visitor" );
+        }
+        
         if (spt == null) {
             // Serious failure, no paths provided. This could be signaled with an exception.
             LOG.warn("Aborting search. {} paths found, elapsed time {} sec", 
