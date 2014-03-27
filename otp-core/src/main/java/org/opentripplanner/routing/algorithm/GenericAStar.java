@@ -48,6 +48,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
 
     private static final Logger LOG = LoggerFactory.getLogger(GenericAStar.class);
     private static final MonitoringStore store = MonitoringStoreFactory.getStore();
+    private static final double OVERSEARCH_MULTIPLIER = 4.0;
 
     private boolean verbose = false;
 
@@ -56,7 +57,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
     private TraverseVisitor traverseVisitor;
     
     /** The number of paths to attempt to find */
-    @Setter private int nPaths = 1;
+    @Setter private int nPaths = 3; // TODO this should really be set based on the routing request
     
     enum RunStatus {
 		RUNNING, STOPPED
@@ -74,6 +75,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
 		private RoutingRequest options;
 		private SearchTerminationStrategy terminationStrategy;
 		public Vertex u_vertex;
+		Double foundPathWeight = null;
 
 		public RunState(RoutingRequest options, SearchTerminationStrategy terminationStrategy) {
 			this.options = options;
@@ -138,7 +140,6 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
 //        options.setMaxWalkDistance(Math.max(options.getMaxWalkDistance(), rctx.getMinWalkDistance()));
 
         runState.nVisited = 0;
-        
         runState.targetAcceptedStates = Lists.newArrayList();
         
         return runState;
@@ -237,10 +238,6 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
         return true;
     }
     
-    /**
-     * 
-     * @param abortTime - negative means no abort time
-     */
     void runSearch(RunState runState, double relTimeout){
     	long abortTime = DateUtils.absoluteTimeout(relTimeout);
     	
@@ -276,6 +273,12 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
             /*
              * Should we terminate the search?
              */
+            // Don't search too far past the most recently found accepted path/state
+            if (runState.foundPathWeight != null &&
+                runState.u.getWeight() > runState.foundPathWeight * OVERSEARCH_MULTIPLIER ) {
+
+                break;
+            }
             if (runState.terminationStrategy != null) {
                 if (!runState.terminationStrategy.shouldSearchContinue(
                     runState.rctx.origin, runState.rctx.target, runState.u, runState.spt, runState.options))
@@ -284,6 +287,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
             // TODO AMB: Replace isFinal with bicycle conditions in BasicPathParser
             }  else if (!runState.options.batch && runState.u_vertex == runState.rctx.target && runState.u.isFinal() && runState.u.allPathParsersAccept()) {
                 runState.targetAcceptedStates.add(runState.u);
+                runState.foundPathWeight = runState.u.getWeight();
                 runState.options.rctx.debug.foundPath();
                 if (runState.targetAcceptedStates.size() >= nPaths) {
                     LOG.debug("total vertices visited {}", runState.nVisited);
