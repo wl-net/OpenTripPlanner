@@ -405,13 +405,14 @@ public class GTFSPatternHopFactory {
 
     
     
-    /** Generate the edges. Assumes that there are already vertices in the graph for the stops. */
+    /** Generate the edges. */
     public void run(Graph graph) {
         if (fareServiceFactory == null) {
             fareServiceFactory = new DefaultFareServiceFactory();
         }
         fareServiceFactory.setDao(_dao);
 
+        /* First create vertices in the graph for the stops. */
         loadStops(graph);
         loadPathways(graph);
         loadAgencies(graph);
