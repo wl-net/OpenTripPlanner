@@ -84,7 +84,7 @@ public class TripPattern implements Serializable {
      * than one route, but we make the assumption that all trips with the same pattern belong to the
      * same Route.
      */
-    @Getter 
+    @Getter
     public final Route route;
     
     /**
@@ -287,15 +287,18 @@ public class TripPattern implements Serializable {
 
     // TODO: These should probably be deprecated. That would require grabbing the scheduled timetable,
     // and would avoid mistakes where real-time updates are accidentally not taken into account.
-    
-    public void addTrip(Trip trip, List<StopTime> stopTimes) {
-        // Only scheduled trips (added via the pattern rather than directly to the timetable) are in the trips list.
-        this.trips.add(trip);
-        this.scheduledTimetable.addTrip(trip, stopTimes);
+
+    /**
+     * Add the given tripTimes to this pattern, recording the trip itself.
+     */
+    public void add(TripTimes tt) {
+        // Only scheduled trips (added at graph build time, rather than directly to the timetable via updates) are in this list.
+        trips.add(tt.getTrip());
+        scheduledTimetable.addTripTimes(tt);
         // Check that all trips added to this pattern are on the initially declared route.
-        if (this.route != trip.getRoute()){
-            // Identity equality is valid on GTFS entity objects
-            LOG.warn("The trip {} is on a different route than its stop pattern, which is on {}.", trip, route);
+        // Identity equality is valid on GTFS entity objects.
+        if (this.route != tt.getTrip().getRoute()) {
+            LOG.warn("The trip {} is on a different route than its stop pattern, which is on {}.", tt.getTrip(), route);
         }
     }
 
