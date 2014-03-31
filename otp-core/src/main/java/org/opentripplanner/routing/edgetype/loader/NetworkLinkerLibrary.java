@@ -151,16 +151,6 @@ public class NetworkLinkerLibrary {
 //        }
 //    }
 
-    /****
-     * Private Methods
-     ****/
-
-
-    public void markLocalStops() {
-        LocalStopFinder localStopFinder = new LocalStopFinder(index, graph);
-        localStopFinder.markLocalStops();
-    }
-
     public DistanceLibrary getDistanceLibrary() {
         return distanceLibrary ;
     }
