@@ -234,9 +234,6 @@ public class OTPConfigurator {
                 graphBuilder.addGraphBuilder(new TransitToStreetNetworkGraphBuilderImpl());
             }
             List<GraphBuilderWithGtfsDao> gtfsBuilders = new ArrayList<GraphBuilderWithGtfsDao>();
-            if (params.transitIndex) {
-                gtfsBuilders.add(new TransitIndexBuilder());
-            }
             gtfsBuilder.setFareServiceFactory(new DefaultFareServiceFactory());
             gtfsBuilder.setGtfsGraphBuilders(gtfsBuilders);
             gtfsBuilder.setDeleteUselessDwells(params.deleteUselessDwells);
