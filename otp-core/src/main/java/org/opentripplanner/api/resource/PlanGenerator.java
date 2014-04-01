@@ -43,8 +43,6 @@ import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.EdgeWithElevation;
 import org.opentripplanner.routing.edgetype.ElevatorAlightEdge;
 import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.FrequencyBasedTripPattern;
-import org.opentripplanner.routing.edgetype.FrequencyBoard;
 import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.PatternEdge;
 import org.opentripplanner.routing.edgetype.PatternInterlineDwell;
@@ -388,6 +386,7 @@ public class PlanGenerator {
     }
 
 	private void addFrequencyFields(State[] states, Leg leg) {
+        /* TODO adapt to new frequency handling.
 		if( states[0].getBackEdge() instanceof FrequencyBoard ){
         	State preBoardState= states[0].getBackState();
         	
@@ -400,6 +399,7 @@ public class PlanGenerator {
         	leg.headway = period;
         	
         }
+        */
 	}
 
     /**
@@ -747,7 +747,6 @@ public class PlanGenerator {
      * 
      * @param previous a non-transit leg that immediately precedes this one (bike-walking, say), or null
      * 
-     * @param edges : A list of street edges
      * @return
      */
     private List<WalkStep> generateWalkSteps(State[] states, WalkStep previous) {

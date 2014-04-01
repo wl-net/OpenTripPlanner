@@ -104,7 +104,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
         return this.getShortestPathTree(req, timeoutSeconds, null);
     }
     
-    public RunState startSearch(RoutingRequest options, SearchTerminationStrategy terminationStrategy) {
+    public RunState startSearch(RoutingRequest options, SearchTerminationStrategy terminationStrategy, long abortTime) {
     	RunState runState = new RunState( options, terminationStrategy );
     	
         runState.rctx = options.getRoutingContext();
@@ -119,13 +119,13 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
 
         // heuristic calc could actually be done when states are constructed, inside state
         State initialState = new State(options);
-        heuristic.initialize(initialState, rctx.target, abortTime);
+        runState.heuristic.initialize(initialState, runState.rctx.target, abortTime);
         if (abortTime < Long.MAX_VALUE  && System.currentTimeMillis() > abortTime) {
             LOG.warn("Timeout during initialization of interleaved bidirectional heuristic.");
             options.rctx.debug.timedOut = true;
             return null; // Search timed out
         }
-        spt.add(initialState);
+        runState.spt.add(initialState);
 
         // Priority Queue.
         // NOTE(flamholz): the queue is self-resizing, so we initialize it to have 
@@ -243,9 +243,8 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
         return true;
     }
     
-    void runSearch(RunState runState, double relTimeout){
-    	long abortTime = DateUtils.absoluteTimeout(relTimeout);
-    	
+    void runSearch(RunState runState, double abortTime){
+
         /* the core of the A* algorithm */
         while (!runState.pq.empty()) { // Until the priority queue is empty:
             /*
@@ -308,9 +307,11 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
     public ShortestPathTree getShortestPathTree(RoutingRequest options, double relTimeout,
             SearchTerminationStrategy terminationStrategy) {
 
-    	RunState runState = startSearch( options, terminationStrategy );
+        long abortTime = DateUtils.absoluteTimeout(relTimeout);
 
-    	runSearch( runState, relTimeout );
+    	RunState runState = startSearch( options, terminationStrategy, abortTime );
+
+    	runSearch( runState, abortTime );
         
         storeMemory();
         return runState.spt;
