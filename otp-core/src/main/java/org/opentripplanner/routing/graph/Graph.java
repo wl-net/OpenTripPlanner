@@ -58,7 +58,7 @@ import org.opentripplanner.model.GraphBundle;
 import org.opentripplanner.routing.core.MortonVertexComparatorFactory;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.TableTripPattern;
+import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.impl.DefaultStreetVertexIndexFactory;
 import org.opentripplanner.routing.services.StreetVertexIndexFactory;
 import org.opentripplanner.routing.services.StreetVertexIndexService;
@@ -69,10 +69,11 @@ import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.internal.Sets;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
+import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Envelope;
 
 /**
@@ -104,12 +105,29 @@ public class Graph implements Serializable {
 
     private boolean debugData = true;
 
+    /**
+      * Indicates that zero-time dwell edges have been removed from this graph. If we receive real-time updates containing
+      * nonzero dwell times, they can't be applied to the dwell edge, because it isn't there.
+      */
+    @Getter
+    @Setter
+    private boolean dwellsDeleted;
+
     private transient Map<Integer, Vertex> vertexById;
 
     private transient Map<Integer, Edge> edgeById;
 
     public transient StreetVertexIndexService streetIndex;
 
+    @Getter
+    private transient GraphIndex index;
+    
+    /** 
+     * Map from GTFS ServiceIds to integers close to 0. Allows using BitSets instead of Set<Object>.
+     * An empty Map is created before the Graph is built to allow registering IDs from multiple feeds.   
+     */
+    public final Map<AgencyAndId,Integer> serviceCodes = Maps.newHashMap();
+    
     @Getter
     @Setter
     private transient TimetableSnapshotSource timetableSnapshotSource = null;
@@ -187,7 +205,7 @@ public class Graph implements Serializable {
         }        
     }
 
-    /* Fetching vertices by label is convenient in tests and such, but avoid using in general. */
+    /* Convenient in tests and such, but avoid using in general */
     public Vertex getVertex(String label) {
         return vertices.get(label);
     }
@@ -485,13 +503,15 @@ public class Graph implements Serializable {
         LOG.debug("street index built.");
         LOG.debug("Rebuilding edge and vertex indices.");
         rebuildVertexAndEdgeIndices();
-        Set<TableTripPattern> tableTripPatterns = Sets.newHashSet();
+        Set<TripPattern> tableTripPatterns = Sets.newHashSet();
         for (PatternArriveVertex pav : IterableLibrary.filter(this.getVertices(), PatternArriveVertex.class)) {
             tableTripPatterns.add(pav.getTripPattern());
         }
-        for (TableTripPattern ttp : tableTripPatterns) {
-            if (ttp != null) ttp.finish(); // skip frequency-based patterns with no table (null)
+        for (TripPattern ttp : tableTripPatterns) {
+            if (ttp != null) ttp.getScheduledTimetable().finish(); // skip frequency-based patterns with no table (null)
         }
+        // TODO: Move this ^ stuff into the graph index
+        this.index = new GraphIndex(this);
     }
     
     /**
@@ -746,5 +766,5 @@ public class Graph implements Serializable {
             LOG.info("    {} - {}", name, count);
         }
     }
-
+    
 }

@@ -38,7 +38,7 @@ public class ServiceDay implements Serializable {
     protected long midnight;
     protected ServiceDate serviceDate;
     protected BitSet serviceIdsRunning;
-    
+
     /* 
      * make a ServiceDay including the given time's day's starting second and a set of 
      * serviceIds running on that day.
@@ -53,22 +53,24 @@ public class ServiceDay implements Serializable {
         this.midnight = d.getTime() / 1000;
         serviceIdsRunning = new BitSet(cs.getServiceIds().size());
         
-        ServiceIdToNumberService service = graph.getService(ServiceIdToNumberService.class);
         for (AgencyAndId serviceId : cs.getServiceIdsOnDate(serviceDate)) {
-            int n = service.getNumber(serviceId);
+            int n = graph.serviceCodes.get(serviceId);
             if (n < 0)
                 continue;
             serviceIdsRunning.set(n);
         }
     }
 
-    /* 
-     * Does the given serviceId run on this ServiceDay?
-     */
-    public boolean serviceIdRunning(int serviceId) {
-        return this.serviceIdsRunning.get(serviceId);
+    /** Does the given serviceId run on this ServiceDay? */
+    public boolean serviceRunning(int serviceCode) {
+        return this.serviceIdsRunning.get(serviceCode);
     }
-    
+
+    /** Do any of the services for this set of service codes run on this ServiceDay? */
+    public boolean anyServiceRunning(BitSet serviceCodes) {
+        return this.serviceIdsRunning.intersects(serviceCodes);
+    }
+
     /**
      * Return the ServiceDate for this ServiceDay.
      */
@@ -113,28 +115,6 @@ public class ServiceDay implements Serializable {
     @Override
     public int hashCode() {
         return (int) midnight;
-    }
-
-//    public static ServiceDay universalService(Graph graph) {
-//        //FIXME: assumes all service is in the same tz
-//        final String agencyId = graph.getAgencyIds().iterator().next();
-//        ServiceDay universal = new ServiceDay(graph, 0, graph.getCalendarService(), agencyId);
-//
-//        return universal;
-//    }
-    
-    /** Used in RAPTOR graph analysis to board everything. */
-    public static class UniversalService extends ServiceDay {
-        
-        private static final long serialVersionUID = 1L;
-
-        public UniversalService(Graph graph) {
-            super(graph, 0, graph.getCalendarService(), graph.getAgencyIds().iterator().next());
-        }
-
-        @Override
-        public boolean serviceIdRunning(int serviceId) { return true; }
-        
     }
     
 }

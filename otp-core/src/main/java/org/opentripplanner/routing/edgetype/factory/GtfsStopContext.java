@@ -21,9 +21,9 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.common.model.T2;
-import org.opentripplanner.routing.edgetype.TableTripPattern;
+import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.vertextype.TransitStop;
+import org.opentripplanner.routing.vertextype.TransitStationStop;
 import org.opentripplanner.routing.vertextype.TransitStopArrive;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
 
@@ -32,7 +32,7 @@ public class GtfsStopContext {
 
     public HashSet<AgencyAndId> stops = new HashSet<AgencyAndId>();
 
-    public Map<Stop, TransitStop> stopNodes = new HashMap<Stop, TransitStop>();
+    public Map<Stop, TransitStationStop> stationStopNodes = new HashMap<Stop, TransitStationStop>();
 
     public Map<Stop, TransitStopArrive> stopArriveNodes = new HashMap<Stop, TransitStopArrive>();
 
@@ -41,9 +41,8 @@ public class GtfsStopContext {
     public Map<T2<Stop, Trip>, Vertex> patternArriveNodes = new HashMap<T2<Stop, Trip>, Vertex>();
 
     public Map<T2<Stop, Trip>, Vertex> patternDepartNodes = new HashMap<T2<Stop, Trip>, Vertex>(); // exemplar
-                                                                                                   // trip
-    public HashMap<AgencyAndId, Integer> serviceIds = new HashMap<AgencyAndId, Integer>();
 
-    public HashMap<TableTripPattern, Integer> tripPatternIds = new HashMap<TableTripPattern, Integer>();
+    // Why?
+    public HashMap<TripPattern, Integer> tripPatternIds = new HashMap<TripPattern, Integer>();
 
 }

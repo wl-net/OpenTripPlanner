@@ -1,3 +1,16 @@
+/* This program is free software: you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public License
+ as published by the Free Software Foundation, either version 3 of
+ the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>. */
+
 package org.opentripplanner.routing.edgetype;
 
 import static org.junit.Assert.*;
@@ -29,7 +42,6 @@ public class PlainStreetEdgeTest {
         v0 = vertex("maple_0th", 0.0, 0.0);
         v1 = vertex("maple_1st", 2.0, 2.0);
         v2 = vertex("maple_2nd", 1.0, 2.0);
-        v1.setTrafficLight(true);
         
         proto = new RoutingRequest();
         proto.setCarSpeed(15.0f);
@@ -139,16 +151,55 @@ public class PlainStreetEdgeTest {
     }
     
     /**
-     * Test the traversal of two edges with different traverse modes.
+     * Test the traversal of two edges with different traverse modes, with a focus on cycling.
+     * This test will fail unless the following three conditions are met:
+     * 1. Turn costs are computed based on the back edge's traverse mode during reverse traversal.
+     * 2. Turn costs are computed such that bike walking is taken into account correctly.
+     * 3. User-specified bike speeds are applied correctly during turn cost computation.
+     */
+    @Test
+    public void testTraverseModeSwitchBike() {
+        PlainStreetEdge e0 = edge(v0, v1, 50.0, StreetTraversalPermission.PEDESTRIAN);
+        PlainStreetEdge e1 = edge(v1, v2, 18.4, StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE);
+
+        v1.setTrafficLight(true);
+
+        RoutingRequest forward = proto.clone();
+        forward.setMode(TraverseMode.BICYCLE);
+        forward.setBikeSpeed(3.0f);
+        forward.setRoutingContext(_graph, v0, v2);
+
+        State s0 = new State(forward);
+        State s1 = e0.traverse(s0);
+        State s2 = e1.traverse(s1);
+
+        RoutingRequest reverse = proto.clone();
+        reverse.setMode(TraverseMode.BICYCLE);
+        reverse.setArriveBy(true);
+        reverse.setBikeSpeed(3.0f);
+        reverse.setRoutingContext(_graph, v0, v2);
+
+        State s3 = new State(reverse);
+        State s4 = e1.traverse(s3);
+        State s5 = e0.traverse(s4);
+
+        assertEquals(73, s2.getElapsedTimeSeconds());
+        assertEquals(73, s5.getElapsedTimeSeconds());
+    }
+
+    /**
+     * Test the traversal of two edges with different traverse modes, with a focus on walking.
      * This test will fail unless the following three conditions are met:
      * 1. Turn costs are computed based on the back edge's traverse mode during reverse traversal.
      * 2. Turn costs are computed such that bike walking is taken into account correctly.
      * 3. Enabling bike mode on a routing request bases the bike walking speed on the walking speed.
      */
     @Test
-    public void testTraverseModeSwitch() {
+    public void testTraverseModeSwitchWalk() {
         PlainStreetEdge e0 = edge(v0, v1, 50.0, StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE);
         PlainStreetEdge e1 = edge(v1, v2, 18.4, StreetTraversalPermission.PEDESTRIAN);
+
+        v1.setTrafficLight(true);
 
         RoutingRequest forward = proto.clone();
         forward.setMode(TraverseMode.BICYCLE);
@@ -169,6 +220,56 @@ public class PlainStreetEdgeTest {
 
         assertEquals(42, s2.getElapsedTimeSeconds());
         assertEquals(42, s5.getElapsedTimeSeconds());
+    }
+
+    /**
+     * Test the bike switching penalty feature, both its cost penalty and its separate time penalty.
+     */
+    @Test
+    public void testBikeSwitch() {
+        PlainStreetEdge e0 = edge(v0, v1, 0.0, StreetTraversalPermission.PEDESTRIAN);
+        PlainStreetEdge e1 = edge(v1, v2, 0.0, StreetTraversalPermission.BICYCLE);
+        PlainStreetEdge e2 = edge(v2, v0, 0.0, StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE);
+
+        RoutingRequest noPenalty = proto.clone();
+        noPenalty.setMode(TraverseMode.BICYCLE);
+        noPenalty.setRoutingContext(_graph, v0, v0);
+
+        State s0 = new State(noPenalty);
+        State s1 = e0.traverse(s0);
+        State s2 = e1.traverse(s1);
+        State s3 = e2.traverse(s2);
+
+        RoutingRequest withPenalty = proto.clone();
+        withPenalty.setBikeSwitchTime(42);
+        withPenalty.setBikeSwitchCost(23);
+        withPenalty.setMode(TraverseMode.BICYCLE);
+        withPenalty.setRoutingContext(_graph, v0, v0);
+
+        State s4 = new State(withPenalty);
+        State s5 = e0.traverse(s4);
+        State s6 = e1.traverse(s5);
+        State s7 = e2.traverse(s6);
+
+        assertEquals(0, s0.getElapsedTimeSeconds());
+        assertEquals(0, s1.getElapsedTimeSeconds());
+        assertEquals(0, s2.getElapsedTimeSeconds());
+        assertEquals(0, s3.getElapsedTimeSeconds());
+
+        assertEquals(0.0, s0.getWeight(), 0.0);
+        assertEquals(0.0, s1.getWeight(), 0.0);
+        assertEquals(0.0, s2.getWeight(), 0.0);
+        assertEquals(0.0, s3.getWeight(), 0.0);
+
+        assertEquals(0.0, s4.getWeight(), 0.0);
+        assertEquals(23.0, s5.getWeight(), 0.0);
+        assertEquals(23.0, s6.getWeight(), 0.0);
+        assertEquals(23.0, s7.getWeight(), 0.0);
+
+        assertEquals(0, s4.getElapsedTimeSeconds());
+        assertEquals(42, s5.getElapsedTimeSeconds());
+        assertEquals(42, s6.getElapsedTimeSeconds());
+        assertEquals(42, s7.getElapsedTimeSeconds());
     }
 
     /****

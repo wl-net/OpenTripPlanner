@@ -1,30 +1,48 @@
 package org.opentripplanner.profile;
 
-import java.util.Set;
+import java.util.Collections;
+import java.util.List;
 
 import lombok.Getter;
 
-import org.onebusaway.gtfs.model.Stop;
-import org.opentripplanner.profile.ProfileData.Pattern;
-import org.opentripplanner.profile.ProfileRouter.Ride;
-import org.opentripplanner.profile.ProfileRouter.Stats;
-
-import com.beust.jcommander.internal.Sets;
+import com.beust.jcommander.internal.Lists;
 
 public class Segment {
+
+    public static class SegmentPattern implements Comparable<SegmentPattern> {
+        public String patternId;
+        public int fromIndex;
+        public int toIndex;
+        public int nTrips;
+        //public Stats stats;
+        public SegmentPattern (PatternRide patternRide) {
+            this.patternId = patternRide.pattern.getCode();
+            this.fromIndex = patternRide.fromIndex;
+            this.toIndex   = patternRide.toIndex;
+            this.nTrips    = patternRide.pattern.getNumScheduledTrips();
+            //this.stats     = patternRide.stats;
+        }
+        @Override
+        public int compareTo (SegmentPattern other) {
+            return other.nTrips - this.nTrips;
+        }
+    }
+    
+    @Getter int walkTime;
+    @Getter int walkDistance;
+    @Getter Stats waitStats;
 
     @Getter String route;
     @Getter String from;
     @Getter String to;
     @Getter String fromName;
     @Getter String toName;
-    @Getter String qualifier;
     @Getter String routeShortName;
     @Getter String routeLongName;
-    @Getter Stats  stats;
-    @Getter Set<String> stops = Sets.newHashSet();
-    
-    public Segment (Ride ride) {
+    @Getter Stats rideStats;
+    @Getter List<SegmentPattern> segmentPatterns = Lists.newArrayList();
+
+    public Segment (Ride ride, TimeWindow window) {
         route = ride.route.getId().getId();
         routeShortName = ride.route.getShortName();
         routeLongName = ride.route.getLongName();
@@ -32,18 +50,15 @@ public class Segment {
         to = ride.to.getId().getId();
         fromName = ride.from.getName();
         toName = ride.to.getName();
-        stats  = ride.stats;
-        for (Pattern pattern : ride.patterns) {
-            boolean onboard = false;
-            for (Stop stop : pattern.stops) {
-                if (!onboard) {
-                    if (stop == ride.from) onboard = true;
-                    else continue;
-                }
-                stops.add(stop.getId().getId());
-                if (stop == ride.to) break;
-            }
+        rideStats = ride.getStats();
+        for (PatternRide patternRide : ride.patternRides) {
+            segmentPatterns.add(new SegmentPattern(patternRide));
         }
+        Collections.sort(segmentPatterns);
+        walkDistance = (int) ride.getTransferDistance();
+        walkTime = (int) (ride.getTransferDistance() / ProfileRouter.WALK_SPEED);
+        /* At this point we know all patterns on rides. Calculate transfer time information. */
+        waitStats = ride.statsForTransfer (window);
     }
-    
+
 }

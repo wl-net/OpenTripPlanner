@@ -58,6 +58,10 @@ public class CommandLineParameters {
             description = "the directory under which to cache OSM and NED tiles")
     String cacheDirectory;
 
+    @Parameter(names = { "-d", "--deleteUselessDwells"},
+            description = "delete useless dwell edges (do not use with real-time updates)")
+    boolean deleteUselessDwells;
+
     @Parameter(names = { "-e", "--elevation"},
             description = "download and use elevation data for the graph")
     boolean elevation;
@@ -90,16 +94,16 @@ public class CommandLineParameters {
     description = "Skip embedding config in graph (Embed.properties)")
     boolean noEmbedConfig = false;
 
-    @Parameter(names = {"--transitIndex"},
-    description = "build a transit index for GTFS data")
-    boolean transitIndex;
-
     /* Options for the server sub-task. */
 
     @Parameter( names = { "-a", "--analyst"}, 
             description = "enable OTP Analyst extensions")
     boolean analyst;
     
+    @Parameter( names = { "-f", "--graphConfigFile"}, validateWith = ReadableFile.class,
+            description = "path to graph configuration file")
+    String graphConfigFile;
+
     @Parameter( names = { "-g", "--graphs"}, validateWith = ReadableDirectory.class, 
             description = "path to graph directory")
     String graphDirectory;

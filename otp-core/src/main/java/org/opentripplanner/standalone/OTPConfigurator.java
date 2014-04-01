@@ -1,9 +1,10 @@
 package org.opentripplanner.standalone;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.prefs.Preferences;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -27,7 +28,6 @@ import org.opentripplanner.graph_builder.impl.ned.NEDGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.ned.NEDGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.transit_index.TransitIndexBuilder;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.graph_builder.services.GraphBuilderWithGtfsDao;
@@ -47,6 +47,7 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.services.RemainingWeightHeuristicFactory;
 import org.opentripplanner.routing.services.SPTService;
+import org.opentripplanner.updater.PropertiesPreferences;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +130,14 @@ public class OTPConfigurator {
     public void makeGraphService(Graph graph) {
         /* Hand off graph in memory to server in a single-graph in-memory GraphServiceImpl. */
         if (graph != null && params.inMemory) {
-            this.graphService = new GraphServiceBeanImpl(graph);
+            try {
+                FileInputStream graphConfiguration = new FileInputStream(params.graphConfigFile);
+                Preferences config = new PropertiesPreferences(graphConfiguration);
+                this.graphService = new GraphServiceBeanImpl(graph, config);
+            } catch (Exception e) {
+                if (params.graphConfigFile != null) LOG.error("Can't read config file", e);
+                this.graphService = new GraphServiceBeanImpl(graph, null);
+            }
         } else {
             /* Create a conventional GraphService that loads graphs from disk. */
             GraphServiceImpl graphService = new GraphServiceImpl();
@@ -232,11 +240,9 @@ public class OTPConfigurator {
                 graphBuilder.addGraphBuilder(new TransitToStreetNetworkGraphBuilderImpl());
             }
             List<GraphBuilderWithGtfsDao> gtfsBuilders = new ArrayList<GraphBuilderWithGtfsDao>();
-            if (params.transitIndex) {
-                gtfsBuilders.add(new TransitIndexBuilder());
-            }
             gtfsBuilder.setFareServiceFactory(new DefaultFareServiceFactory());
             gtfsBuilder.setGtfsGraphBuilders(gtfsBuilders);
+            gtfsBuilder.setDeleteUselessDwells(params.deleteUselessDwells);
         }
         if (configFile != null) {
             EmbeddedConfigGraphBuilderImpl embeddedConfigBuilder = new EmbeddedConfigGraphBuilderImpl();

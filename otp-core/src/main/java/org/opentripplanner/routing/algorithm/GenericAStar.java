@@ -119,8 +119,13 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
 
         // heuristic calc could actually be done when states are constructed, inside state
         State initialState = new State(options);
-        runState.heuristic.initialize(initialState, runState.rctx.target);
-        runState.spt.add(initialState);
+        heuristic.initialize(initialState, rctx.target, abortTime);
+        if (abortTime < Long.MAX_VALUE  && System.currentTimeMillis() > abortTime) {
+            LOG.warn("Timeout during initialization of interleaved bidirectional heuristic.");
+            options.rctx.debug.timedOut = true;
+            return null; // Search timed out
+        }
+        spt.add(initialState);
 
         // Priority Queue.
         // NOTE(flamholz): the queue is self-resizing, so we initialize it to have 

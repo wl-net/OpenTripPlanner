@@ -50,7 +50,6 @@ import org.opentripplanner.routing.edgetype.PatternEdge;
 import org.opentripplanner.routing.edgetype.PatternInterlineDwell;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.TransitUtils;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.routing.error.TrivialPathException;
@@ -59,7 +58,6 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.patch.Alert;
-import org.opentripplanner.routing.patch.Patch;
 import org.opentripplanner.routing.services.FareService;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
@@ -134,9 +132,9 @@ public class PlanGenerator {
                     continue;
                 }
                 Leg firstLeg = i.legs.get(0);
-                firstLeg.from.orig = options.getFrom().getName();
+                firstLeg.from.orig = plan.from.orig;
                 Leg lastLeg = i.legs.get(i.legs.size() - 1);
-                lastLeg.to.orig = options.getTo().getName();
+                lastLeg.to.orig = plan.to.orig;
             }
         }
         options.rctx.debug.finishedRendering();
@@ -163,6 +161,9 @@ public class PlanGenerator {
         }
         Place from = new Place(tripStartVertex.getX(), tripStartVertex.getY(), startName);
         Place to = new Place(tripEndVertex.getX(), tripEndVertex.getY(), endName);
+
+        from.orig = request.getFrom().getName();
+        to.orig = request.getTo().getName();
 
         TripPlan plan = new TripPlan(from, to, request.getDateTime());
 
@@ -215,7 +216,6 @@ public class PlanGenerator {
         Graph graph = path.getRoutingContext().graph;
 
         FareService fareService = graph.getService(FareService.class);
-        TransitIndexService transitIndexService = graph.getService(TransitIndexService.class);
 
         State[][] legsStates = sliceStates(states);
 
@@ -224,7 +224,7 @@ public class PlanGenerator {
         }
 
         for (State[] legStates : legsStates) {
-            itinerary.addLeg(generateLeg(legStates, transitIndexService, showIntermediateStops));
+            itinerary.addLeg(generateLeg(legStates, showIntermediateStops));
         }
 
         addWalkSteps(itinerary.legs, legsStates);
@@ -344,12 +344,10 @@ public class PlanGenerator {
      * Generate one leg of an itinerary from a {@link State} array.
      *
      * @param states The array of states to base the leg on
-     * @param transitIndexService The service to use for transit agency lookups
      * @param showIntermediateStops Whether to include intermediate stops in the leg or not
      * @return The generated leg
      */
-    private Leg generateLeg(State[] states, TransitIndexService transitIndexService,
-            boolean showIntermediateStops) {
+    private Leg generateLeg(State[] states, boolean showIntermediateStops) {
         Leg leg = new Leg();
 
         Edge[] edges = new Edge[states.length - 1];
@@ -369,7 +367,7 @@ public class PlanGenerator {
         TimeZone timeZone = leg.startTime.getTimeZone();
         leg.agencyTimeZoneOffset = timeZone.getOffset(leg.startTime.getTimeInMillis());
 
-        addTripFields(leg, states, transitIndexService);
+        addTripFields(leg, states);
 
         addPlaces(leg, states, edges, showIntermediateStops);
 
@@ -428,6 +426,23 @@ public class PlanGenerator {
     }
 
     /**
+     * This was originally in TransitUtils.handleBoardAlightType.
+     * Edges that always block traversal (forbidden pickups/dropoffs) are simply not ever created.
+     */
+    public String getBoardAlightMessage (int boardAlightType) {
+        switch (boardAlightType) {
+        case 1:
+            return "impossible";
+        case 2:
+            return "mustPhone";
+        case 3:
+            return "coordinateWithDriver";
+        default:
+            return null;
+        }
+    }
+
+    /**
      * Fix up a {@link Leg} {@link List} using the information available at the leg boundaries.
      * This method will fill holes in the arrival and departure times associated with a
      * {@link Place} within a leg and add board and alight rules. It will also ensure that stop
@@ -450,12 +465,12 @@ public class PlanGenerator {
 
                     Integer fromIndex = legs.get(i).from.stopIndex;
                     Integer toIndex = legs.get(i).to.stopIndex;
+ 
+                    int boardType = (fromIndex != null) ? (tripPattern.getBoardType(fromIndex)) : null;
+                    int alightType = (toIndex != null) ? (tripPattern.getAlightType(toIndex)) : null;
 
-                    int boardType = (fromIndex != null) ? (tripPattern.getBoardType(fromIndex)) : 0;
-                    int alightType = (toIndex != null) ? (tripPattern.getAlightType(toIndex)) : 0;
-
-                    boardRules[i] = TransitUtils.determineBoardAlightType(boardType);
-                    alightRules[i] = TransitUtils.determineBoardAlightType(alightType);
+                    boardRules[i] = getBoardAlightMessage(boardType);
+                    alightRules[i] = getBoardAlightMessage(alightType);
                 }
             }
         }
@@ -474,12 +489,10 @@ public class PlanGenerator {
             }
 
             if (legs.get(i).isTransitLeg() && !legs.get(i + 1).isTransitLeg()) {
-                legs.get(i + 1).from.name = legs.get(i).to.name;
-                legs.get(i + 1).from.stopId = legs.get(i).to.stopId;
+                legs.get(i + 1).from = legs.get(i).to;
             }
             if (!legs.get(i).isTransitLeg() && legs.get(i + 1).isTransitLeg()) {
-                legs.get(i).to.name = legs.get(i + 1).from.name;
-                legs.get(i).to.stopId = legs.get(i + 1).from.stopId;
+                legs.get(i).to = legs.get(i + 1).from;
             }
         }
 
@@ -567,7 +580,6 @@ public class PlanGenerator {
         for (State state : states) {
             TraverseMode mode = state.getBackMode();
             Set<Alert> alerts = state.getBackAlerts();
-            Edge edge = state.getBackEdge();
 
             if (mode != null) {
                 leg.mode = mode.toString();
@@ -578,12 +590,6 @@ public class PlanGenerator {
                     leg.addAlert(alert);
                 }
             }
-
-            if (edge != null) {
-                for (Patch patch : edge.getPatches()) {
-                    leg.addAlert(patch.getAlert());
-                }
-            }
         }
     }
 
@@ -592,17 +598,18 @@ public class PlanGenerator {
      *
      * @param leg The leg to add the trip-related fields to
      * @param states The states that go with the leg
-     * @param transitIndexService The service to use for transit agency lookups
      */
-    private void addTripFields(Leg leg, State[] states, TransitIndexService transitIndexService) {
+    private void addTripFields(Leg leg, State[] states) {
         Trip trip = states[states.length - 1].getBackTrip();
 
         if (trip != null) {
-            String id = trip.getId().getAgencyId();
             Route route = trip.getRoute();
+            Agency agency = route.getAgency();
             ServiceDay serviceDay = states[states.length - 1].getServiceDay();
 
-            leg.agencyId = id;
+            leg.agencyId = agency.getId();
+            leg.agencyName = agency.getName();
+            leg.agencyUrl = agency.getUrl();
             leg.headsign = states[states.length - 1].getBackDirection();
             leg.route = states[states.length - 1].getBackEdge().getName();
             leg.routeColor = route.getColor();
@@ -617,12 +624,6 @@ public class PlanGenerator {
 
             if (serviceDay != null) {
                 leg.serviceDate = serviceDay.getServiceDate().getAsString();
-            }
-
-            if (transitIndexService != null) {
-                Agency agency = transitIndexService.getAgency(id);
-                leg.agencyName = agency.getName();
-                leg.agencyUrl = agency.getUrl();
             }
 
             if (leg.headsign == null) {
@@ -647,6 +648,7 @@ public class PlanGenerator {
 
         Edge firstEdge = edges[0];
         Edge lastEdge = edges[edges.length - 1];
+        TripTimes tripTimes = states[states.length - 1].getTripTimes();
 
         leg.from = new Place(firstVertex.getX(), firstVertex.getY(), firstVertex.getName(),
                 null, makeCalendar(states[0]));
@@ -665,6 +667,7 @@ public class PlanGenerator {
                 leg.from.platformCode = firstStop.getPlatformCode();
                 leg.from.zoneId = firstStop.getZoneId();
                 leg.from.stopIndex = ((OnboardEdge) firstEdge).getStopIndex();
+                leg.from.stopSequence = tripTimes.getStopSequence(leg.from.stopIndex);
             }
         }
 
@@ -677,6 +680,7 @@ public class PlanGenerator {
                 leg.to.platformCode = lastStop.getPlatformCode();
                 leg.to.zoneId = lastStop.getZoneId();
                 leg.to.stopIndex = ((OnboardEdge) lastEdge).getStopIndex() + 1;
+                leg.to.stopSequence = tripTimes.getStopSequence(leg.to.stopIndex);
             }
         }
 
@@ -712,6 +716,7 @@ public class PlanGenerator {
                     place.platformCode = currentStop.getPlatformCode();
                     place.zoneId = currentStop.getZoneId();
                     place.stopIndex = ((OnboardEdge) edges[i]).getStopIndex();
+                    place.stopSequence = tripTimes.getStopSequence(place.stopIndex);
                 }
 
                 leg.stop.add(place);

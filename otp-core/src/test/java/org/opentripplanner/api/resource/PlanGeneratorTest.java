@@ -21,11 +21,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.SimpleTimeZone;
 import java.util.TimeZone;
@@ -35,8 +33,6 @@ import org.onebusaway.gtfs.impl.calendar.CalendarServiceImpl;
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
-import org.onebusaway.gtfs.model.ServiceCalendar;
-import org.onebusaway.gtfs.model.ServiceCalendarDate;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
@@ -57,44 +53,18 @@ import org.opentripplanner.routing.core.Fare.FareType;
 import org.opentripplanner.routing.core.RoutingContext;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.ServiceDay;
-import org.opentripplanner.routing.core.ServiceIdToNumberService;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.core.WrappedCurrency;
-import org.opentripplanner.routing.edgetype.AreaEdge;
-import org.opentripplanner.routing.edgetype.AreaEdgeList;
-import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.LegSwitchingEdge;
-import org.opentripplanner.routing.edgetype.OnBoardDepartPatternHop;
-import org.opentripplanner.routing.edgetype.PartialPlainStreetEdge;
-import org.opentripplanner.routing.edgetype.PatternDwell;
-import org.opentripplanner.routing.edgetype.PatternHop;
-import org.opentripplanner.routing.edgetype.PatternInterlineDwell;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
-import org.opentripplanner.routing.edgetype.PreAlightEdge;
-import org.opentripplanner.routing.edgetype.PreBoardEdge;
-import org.opentripplanner.routing.edgetype.RentABikeOffEdge;
-import org.opentripplanner.routing.edgetype.RentABikeOnEdge;
-import org.opentripplanner.routing.edgetype.ScheduledStopPattern;
-import org.opentripplanner.routing.edgetype.SimpleTransfer;
-import org.opentripplanner.routing.edgetype.StreetBikeRentalLink;
-import org.opentripplanner.routing.edgetype.StreetTransitLink;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.edgetype.TableTripPattern;
-import org.opentripplanner.routing.edgetype.TimetableResolver;
-import org.opentripplanner.routing.edgetype.TransitBoardAlight;
+import org.opentripplanner.routing.edgetype.*;
+import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.opentripplanner.routing.patch.Alert;
 import org.opentripplanner.routing.patch.AlertPatch;
 import org.opentripplanner.routing.services.FareService;
-import org.opentripplanner.routing.services.TransitIndexService;
 import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.transit_index.RouteVariant;
-import org.opentripplanner.routing.trippattern.Update;
-import org.opentripplanner.routing.trippattern.Update.Status;
-import org.opentripplanner.routing.trippattern.TripUpdateList;
 import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.ExitVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
@@ -107,9 +77,15 @@ import org.opentripplanner.routing.vertextype.TransitStopDepart;
 import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.opentripplanner.util.model.EncodedPolylineBean;
 
+import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeEvent;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
+import org.opentripplanner.routing.patch.TimePeriod;
 
 public class PlanGeneratorTest {
     private static final double[] F_DISTANCE = {3, 9996806.8, 3539050.5, 11, 2478638.8, 4, 2, 1, 0};
@@ -248,24 +224,38 @@ public class PlanGeneratorTest {
         thirdStops.add(ferryStopDepart);
         thirdStops.add(ferryStopArrive);
 
+        // Agencies for legs 1, 2 and 4, plus initialization
+        Agency trainAgency = new Agency();
+        Agency ferryAgency = new Agency();
+
+        trainAgency.setId("Train");
+        trainAgency.setName("John Train");
+        trainAgency.setUrl("http://www.train.org/");
+        ferryAgency.setId("Ferry");
+        ferryAgency.setName("Brian Ferry");
+        ferryAgency.setUrl("http://www.ferry.org/");
+
         // Routes for legs 1, 2 and 4, plus initialization
         Route firstRoute = new Route();
         Route secondRoute = new Route();
         Route thirdRoute = new Route();
 
         firstRoute.setId(new AgencyAndId("Train", "A"));
+        firstRoute.setAgency(trainAgency);
         firstRoute.setShortName("A");
         firstRoute.setLongName("'A' Train");
         firstRoute.setType(2);
         firstRoute.setColor("White");
         firstRoute.setTextColor("Black");
         secondRoute.setId(new AgencyAndId("Train", "B"));
+        secondRoute.setAgency(trainAgency);
         secondRoute.setShortName("B");
         secondRoute.setLongName("Another Train");
         secondRoute.setType(2);
         secondRoute.setColor("Cyan");
         secondRoute.setTextColor("Yellow");
         thirdRoute.setId(new AgencyAndId("Ferry", "C"));
+        thirdRoute.setAgency(ferryAgency);
         thirdRoute.setShortName("C");
         thirdRoute.setLongName("Ferry Cross the Mersey");
         thirdRoute.setType(4);
@@ -307,28 +297,35 @@ public class PlanGeneratorTest {
 
         trainStopDepartTime.setTrip(firstTrip);
         trainStopDepartTime.setStop(trainStopDepart);
+        trainStopDepartTime.setStopSequence(Integer.MIN_VALUE);
         trainStopDepartTime.setDepartureTime(4);
         trainStopDepartTime.setPickupType(3);
         trainStopDwellTime.setTrip(firstTrip);
         trainStopDwellTime.setStop(trainStopDwell);
+        trainStopDwellTime.setStopSequence(0);
         trainStopDwellTime.setArrivalTime(8);
         trainStopDwellTime.setDepartureTime(12);
         trainStopInterlineFirstTime.setTrip(firstTrip);
         trainStopInterlineFirstTime.setStop(trainStopInterline);
+        trainStopInterlineFirstTime.setStopSequence(Integer.MAX_VALUE);
         trainStopInterlineFirstTime.setArrivalTime(16);
         trainStopInterlineSecondTime.setTrip(secondTrip);
         trainStopInterlineSecondTime.setStop(trainStopInterline);
+        trainStopInterlineSecondTime.setStopSequence(0);
         trainStopInterlineSecondTime.setDepartureTime(20);
         trainStopArriveTime.setTrip(secondTrip);
         trainStopArriveTime.setStop(trainStopArrive);
+        trainStopArriveTime.setStopSequence(1);
         trainStopArriveTime.setArrivalTime(24);
         trainStopArriveTime.setDropOffType(2);
         ferryStopDepartTime.setTrip(thirdTrip);
         ferryStopDepartTime.setStop(ferryStopDepart);
+        ferryStopDepartTime.setStopSequence(-1);
         ferryStopDepartTime.setDepartureTime(32);
         ferryStopDepartTime.setPickupType(2);
         ferryStopArriveTime.setTrip(thirdTrip);
         ferryStopArriveTime.setStop(ferryStopArrive);
+        ferryStopArriveTime.setStopSequence(0);
         ferryStopArriveTime.setArrivalTime(36);
         ferryStopArriveTime.setDropOffType(3);
 
@@ -352,9 +349,9 @@ public class PlanGeneratorTest {
         ScheduledStopPattern thirdStopPattern = ScheduledStopPattern.fromTrip(
                 thirdTrip, thirdStopTimes);
 
-        TableTripPattern firstTripPattern = new TableTripPattern(firstTrip, firstStopPattern, 0);
-        TableTripPattern secondTripPattern = new TableTripPattern(secondTrip, secondStopPattern, 1);
-        TableTripPattern thirdTripPattern = new TableTripPattern(thirdTrip, thirdStopPattern, 2);
+        TripPattern firstTripPattern = new TripPattern(firstTrip, firstStopPattern, 0);
+        TripPattern secondTripPattern = new TripPattern(secondTrip, secondStopPattern, 1);
+        TripPattern thirdTripPattern = new TripPattern(thirdTrip, thirdStopPattern, 2);
 
         firstTripPattern.addTrip(firstTrip, firstStopTimes);
         secondTripPattern.addTrip(secondTrip, secondStopTimes);
@@ -570,6 +567,7 @@ public class PlanGeneratorTest {
         // Alert for testing GTFS-RT
         AlertPatch patch = new AlertPatch();
 
+        patch.setTimePeriods(Collections.singletonList(new TimePeriod(0, Long.MAX_VALUE)));
         patch.setAlert(Alert.createSimpleAlerts(alertsExample));
 
         // Edge initialization that can't be done using the constructor
@@ -597,7 +595,7 @@ public class PlanGeneratorTest {
         serviceId.put(secondTrip.getId(), secondTripPattern.getServiceId());
         serviceId.put(thirdTrip.getId(), thirdTripPattern.getServiceId());
 
-        ServiceIdToNumberService serviceIdToNumberService = new ServiceIdToNumberService(serviceId);
+        graph.serviceIdIntegers = serviceId;
 
         CalendarServiceData calendarServiceData = new CalendarServiceDataStub(serviceId.keySet());
         CalendarServiceImpl calendarServiceImpl = new CalendarServiceImpl(calendarServiceData);
@@ -605,49 +603,55 @@ public class PlanGeneratorTest {
         calendarServiceData.putTimeZoneForAgencyId("Train", timeZone);
         calendarServiceData.putTimeZoneForAgencyId("Ferry", timeZone);
 
-        Agency trainAgency = new Agency();
-        Agency ferryAgency = new Agency();
-
-        trainAgency.setId("Train");
-        trainAgency.setName("John Train");
-        trainAgency.setUrl("http://www.train.org/");
-        ferryAgency.setId("Ferry");
-        ferryAgency.setName("Brian Ferry");
-        ferryAgency.setUrl("http://www.ferry.org/");
-
-        TransitIndexServiceStub transitIndexServiceStub = new TransitIndexServiceStub(
-                trainAgency, ferryAgency);
-
         FareServiceStub fareServiceStub = new FareServiceStub();
 
         ServiceDate serviceDate = new ServiceDate(1970, 1, 1);
 
         // Updates for leg 4, the ferry leg
-        Update ferryStopDepartUpdate = new Update(thirdTrip.getId(),
-                ferryStopDepart.getId(), 0, 40, 40, Status.PREDICTION, 0L, serviceDate);
-        Update ferryStopArriveUpdate = new Update(thirdTrip.getId(),
-                ferryStopArrive.getId(), 1, 43, 43, Status.PREDICTION, 0L, serviceDate);
+        TripDescriptor.Builder tripDescriptorBuilder = TripDescriptor.newBuilder();
 
-        ArrayList<Update> updates = new ArrayList<Update>();
+        tripDescriptorBuilder.setTripId("C");
 
-        updates.add(ferryStopDepartUpdate);
-        updates.add(ferryStopArriveUpdate);
+        StopTimeEvent.Builder ferryStopDepartTimeEventBuilder = StopTimeEvent.newBuilder();
+        StopTimeEvent.Builder ferryStopArriveTimeEventBuilder = StopTimeEvent.newBuilder();
 
-        TripUpdateList tripUpdateList = TripUpdateList.splitByTrip(updates).get(0);
+        ferryStopDepartTimeEventBuilder.setTime(40L);
+        ferryStopArriveTimeEventBuilder.setTime(43L);
+
+        StopTimeUpdate.Builder ferryStopDepartUpdateBuilder = StopTimeUpdate.newBuilder();
+        StopTimeUpdate.Builder ferryStopArriveUpdateBuilder = StopTimeUpdate.newBuilder();
+
+        ferryStopDepartUpdateBuilder.setStopSequence(-1);
+        ferryStopDepartUpdateBuilder.setDeparture(ferryStopDepartTimeEventBuilder);
+        ferryStopDepartUpdateBuilder.setArrival(ferryStopDepartTimeEventBuilder);
+        ferryStopDepartUpdateBuilder.setScheduleRelationship(ScheduleRelationship.SCHEDULED);
+        ferryStopArriveUpdateBuilder.setStopSequence(0);
+        ferryStopArriveUpdateBuilder.setDeparture(ferryStopArriveTimeEventBuilder);
+        ferryStopArriveUpdateBuilder.setArrival(ferryStopArriveTimeEventBuilder);
+        ferryStopArriveUpdateBuilder.setScheduleRelationship(ScheduleRelationship.SCHEDULED);
+
+        TripUpdate.Builder tripUpdateBuilder = TripUpdate.newBuilder();
+
+        tripUpdateBuilder.setTrip(tripDescriptorBuilder);
+        tripUpdateBuilder.addStopTimeUpdate(0, ferryStopDepartUpdateBuilder);
+        tripUpdateBuilder.addStopTimeUpdate(1, ferryStopArriveUpdateBuilder);
+
+        TripUpdate tripUpdate = tripUpdateBuilder.build();
 
         // Create dummy TimetableResolver
         TimetableResolver resolver = new TimetableResolver();
         
         // Mock TimetableSnapshotSource to return dummy TimetableResolver
         TimetableSnapshotSource timetableSnapshotSource = mock(TimetableSnapshotSource.class);
+
         when(timetableSnapshotSource.getTimetableSnapshot()).thenReturn(resolver);
 
-        timetableSnapshotSource.getTimetableSnapshot().update(thirdTripPattern, tripUpdateList);
+        timetableSnapshotSource.getTimetableSnapshot().update(
+                thirdTripPattern, tripUpdate, "Ferry", timeZone, serviceDate);
 
         // Further graph initialization
-        graph.putService(ServiceIdToNumberService.class, serviceIdToNumberService);
+        graph.serviceIdIntegers = serviceId;
         graph.putService(CalendarServiceData.class, calendarServiceData);
-        graph.putService(TransitIndexService.class, transitIndexServiceStub);
         graph.putService(FareService.class, fareServiceStub);
         graph.addAgency(trainAgency);
         graph.addAgency(ferryAgency);
@@ -1415,6 +1419,7 @@ public class PlanGeneratorTest {
             assertEquals(0, places[0][0].lon, 0.0);
             assertEquals(0, places[0][0].lat, 0.0);
             assertNull(places[0][0].stopIndex);
+            assertNull(places[0][0].stopSequence);
             assertNull(places[0][0].stopCode);
             assertNull(places[0][0].platformCode);
             assertNull(places[0][0].zoneId);
@@ -1425,10 +1430,11 @@ public class PlanGeneratorTest {
             assertEquals("Train stop depart", places[0][1].name);
             assertEquals(1, places[0][1].lon, 0.0);
             assertEquals(1, places[0][1].lat, 0.0);
-            assertNull(places[0][1].stopIndex);
-            assertNull(places[0][1].stopCode);
-            assertNull(places[0][1].platformCode);
-            assertNull(places[0][1].zoneId);
+            assertEquals(0, places[0][1].stopIndex.intValue());
+            assertEquals(Integer.MIN_VALUE, places[0][1].stopSequence.intValue());
+            assertEquals("Train depart code", places[0][1].stopCode);
+            assertEquals("Train depart platform", places[0][1].platformCode);
+            assertEquals("Train depart zone", places[0][1].zoneId);
             assertNull(places[0][1].orig);
             assertEquals(3000L, places[0][1].arrival.getTimeInMillis());
             assertEquals(4000L, places[0][1].departure.getTimeInMillis());
@@ -1437,6 +1443,7 @@ public class PlanGeneratorTest {
             assertEquals(1, places[1][0].lon, 0.0);
             assertEquals(1, places[1][0].lat, 0.0);
             assertEquals(0, places[1][0].stopIndex.intValue());
+            assertEquals(Integer.MIN_VALUE, places[1][0].stopSequence.intValue());
             assertEquals("Train depart code", places[1][0].stopCode);
             assertEquals("Train depart platform", places[1][0].platformCode);
             assertEquals("Train depart zone", places[1][0].zoneId);
@@ -1452,6 +1459,7 @@ public class PlanGeneratorTest {
             assertEquals(23, places[1][0].lon, 0.0);
             assertEquals(12, places[1][0].lat, 0.0);
             assertNull(places[1][0].stopIndex);
+            assertNull(places[1][0].stopSequence);
             assertNull(places[1][0].stopCode);
             assertNull(places[1][0].platformCode);
             assertNull(places[1][0].zoneId);
@@ -1464,6 +1472,7 @@ public class PlanGeneratorTest {
         assertEquals(45, places[1][1].lon, 0.0);
         assertEquals(23, places[1][1].lat, 0.0);
         assertEquals(1, places[1][1].stopIndex.intValue());
+        assertEquals(0, places[1][1].stopSequence.intValue());
         assertEquals("Train dwell code", places[1][1].stopCode);
         assertEquals("Train dwell platform", places[1][1].platformCode);
         assertEquals("Train dwell zone", places[1][1].zoneId);
@@ -1475,6 +1484,7 @@ public class PlanGeneratorTest {
         assertEquals(89, places[1][2].lon, 0.0);
         assertEquals(45, places[1][2].lat, 0.0);
         assertEquals(2, places[1][2].stopIndex.intValue());
+        assertEquals(Integer.MAX_VALUE, places[1][2].stopSequence.intValue());
         assertEquals("Train interline code", places[1][2].stopCode);
         assertEquals("Train interline platform", places[1][2].platformCode);
         assertEquals("Train interline zone", places[1][2].zoneId);
@@ -1486,6 +1496,7 @@ public class PlanGeneratorTest {
         assertEquals(89, places[2][0].lon, 0.0);
         assertEquals(45, places[2][0].lat, 0.0);
         assertEquals(0, places[2][0].stopIndex.intValue());
+        assertEquals(0, places[2][0].stopSequence.intValue());
         assertEquals("Train interline code", places[2][0].stopCode);
         assertEquals("Train interline platform", places[2][0].platformCode);
         assertEquals("Train interline zone", places[2][0].zoneId);
@@ -1497,6 +1508,7 @@ public class PlanGeneratorTest {
         assertEquals(133, places[2][1].lon, 0.0);
         assertEquals(67, places[2][1].lat, 0.0);
         assertEquals(1, places[2][1].stopIndex.intValue());
+        assertEquals(1, places[2][1].stopSequence.intValue());
         assertEquals("Train arrive code", places[2][1].stopCode);
         assertEquals("Train arrive platform", places[2][1].platformCode);
         assertEquals("Train arrive zone", places[2][1].zoneId);
@@ -1511,10 +1523,11 @@ public class PlanGeneratorTest {
         assertEquals("Train stop arrive", places[3][0].name);
         assertEquals(133, places[3][0].lon, 0.0);
         assertEquals(67, places[3][0].lat, 0.0);
-        assertNull(places[3][0].stopIndex);
-        assertNull(places[3][0].stopCode);
-        assertNull(places[3][0].platformCode);
-        assertNull(places[3][0].zoneId);
+        assertEquals(1, places[3][0].stopIndex.intValue());
+        assertEquals(1, places[3][0].stopSequence.intValue());
+        assertEquals("Train arrive code", places[3][0].stopCode);
+        assertEquals("Train arrive platform", places[3][0].platformCode);
+        assertEquals("Train arrive zone", places[3][0].zoneId);
         assertNull(places[3][0].orig);
         assertEquals(24000L, places[3][0].arrival.getTimeInMillis());
         if (type == Type.FORWARD || type == Type.ONBOARD) {
@@ -1526,10 +1539,11 @@ public class PlanGeneratorTest {
         assertEquals("Ferry stop depart", places[3][1].name);
         assertEquals(135, places[3][1].lon, 0.0);
         assertEquals(67, places[3][1].lat, 0.0);
-        assertNull(places[3][1].stopIndex);
-        assertNull(places[3][1].stopCode);
-        assertNull(places[3][1].platformCode);
-        assertNull(places[3][1].zoneId);
+        assertEquals(0, places[3][1].stopIndex.intValue());
+        assertEquals(-1, places[3][1].stopSequence.intValue());
+        assertEquals("Ferry depart code", places[3][1].stopCode);
+        assertEquals("Ferry depart platform", places[3][1].platformCode);
+        assertEquals("Ferry depart zone", places[3][1].zoneId);
         assertNull(places[3][1].orig);
         if (type == Type.FORWARD || type == Type.ONBOARD) {
             assertEquals(32000L, places[3][1].arrival.getTimeInMillis());
@@ -1542,6 +1556,7 @@ public class PlanGeneratorTest {
         assertEquals(135, places[4][0].lon, 0.0);
         assertEquals(67, places[4][0].lat, 0.0);
         assertEquals(0, places[4][0].stopIndex.intValue());
+        assertEquals(-1, places[4][0].stopSequence.intValue());
         assertEquals("Ferry depart code", places[4][0].stopCode);
         assertEquals("Ferry depart platform", places[4][0].platformCode);
         assertEquals("Ferry depart zone", places[4][0].zoneId);
@@ -1557,6 +1572,7 @@ public class PlanGeneratorTest {
         assertEquals(179, places[4][1].lon, 0.0);
         assertEquals(89, places[4][1].lat, 0.0);
         assertEquals(1, places[4][1].stopIndex.intValue());
+        assertEquals(0, places[4][1].stopSequence.intValue());
         assertEquals("Ferry arrive code", places[4][1].stopCode);
         assertEquals("Ferry arrive platform", places[4][1].platformCode);
         assertEquals("Ferry arrive zone", places[4][1].zoneId);
@@ -1567,10 +1583,11 @@ public class PlanGeneratorTest {
         assertEquals("Ferry stop arrive", places[5][0].name);
         assertEquals(179, places[5][0].lon, 0.0);
         assertEquals(89, places[5][0].lat, 0.0);
-        assertNull(places[5][0].stopIndex);
-        assertNull(places[5][0].stopCode);
-        assertNull(places[5][0].platformCode);
-        assertNull(places[5][0].zoneId);
+        assertEquals(1, places[5][0].stopIndex.intValue());
+        assertEquals(0, places[5][0].stopSequence.intValue());
+        assertEquals("Ferry arrive code", places[5][0].stopCode);
+        assertEquals("Ferry arrive platform", places[5][0].platformCode);
+        assertEquals("Ferry arrive zone", places[5][0].zoneId);
         assertNull(places[5][0].orig);
         assertEquals(43000L, places[5][0].arrival.getTimeInMillis());
         assertEquals(44000L, places[5][0].departure.getTimeInMillis());
@@ -1579,6 +1596,7 @@ public class PlanGeneratorTest {
         assertEquals(180, places[5][1].lon, 0.0);
         assertEquals(90, places[5][1].lat, 0.0);
         assertNull(places[5][1].stopIndex);
+        assertNull(places[5][1].stopSequence);
         assertNull(places[5][1].stopCode);
         assertNull(places[5][1].platformCode);
         assertNull(places[5][1].zoneId);
@@ -1590,6 +1608,7 @@ public class PlanGeneratorTest {
         assertEquals(180, places[6][0].lon, 0.0);
         assertEquals(90, places[6][0].lat, 0.0);
         assertNull(places[6][0].stopIndex);
+        assertNull(places[6][0].stopSequence);
         assertNull(places[6][0].stopCode);
         assertNull(places[6][0].platformCode);
         assertNull(places[6][0].zoneId);
@@ -1601,6 +1620,7 @@ public class PlanGeneratorTest {
         assertEquals(90, places[6][1].lon, 0.0);
         assertEquals(90, places[6][1].lat, 0.0);
         assertNull(places[6][1].stopIndex);
+        assertNull(places[6][1].stopSequence);
         assertNull(places[6][1].stopCode);
         assertNull(places[6][1].platformCode);
         assertNull(places[6][1].zoneId);
@@ -1612,6 +1632,7 @@ public class PlanGeneratorTest {
         assertEquals(90, places[7][0].lon, 0.0);
         assertEquals(90, places[7][0].lat, 0.0);
         assertNull(places[7][0].stopIndex);
+        assertNull(places[7][0].stopSequence);
         assertNull(places[7][0].stopCode);
         assertNull(places[7][0].platformCode);
         assertNull(places[7][0].zoneId);
@@ -1623,6 +1644,7 @@ public class PlanGeneratorTest {
         assertEquals(0, places[7][1].lon, 0.0);
         assertEquals(90, places[7][1].lat, 0.0);
         assertNull(places[7][1].stopIndex);
+        assertNull(places[7][1].stopSequence);
         assertNull(places[7][1].stopCode);
         assertNull(places[7][1].platformCode);
         assertNull(places[7][1].zoneId);
@@ -1634,6 +1656,7 @@ public class PlanGeneratorTest {
         assertEquals(0, places[8][0].lon, 0.0);
         assertEquals(90, places[8][0].lat, 0.0);
         assertNull(places[8][0].stopIndex);
+        assertNull(places[8][0].stopSequence);
         assertNull(places[8][0].stopCode);
         assertNull(places[8][0].platformCode);
         assertNull(places[8][0].zoneId);
@@ -1645,6 +1668,7 @@ public class PlanGeneratorTest {
         assertEquals(0, places[8][1].lon, 0.0);
         assertEquals(90, places[8][1].lat, 0.0);
         assertNull(places[8][1].stopIndex);
+        assertNull(places[8][1].stopSequence);
         assertNull(places[8][1].stopCode);
         assertNull(places[8][1].platformCode);
         assertNull(places[8][1].zoneId);
@@ -1849,125 +1873,6 @@ public class PlanGeneratorTest {
         @Override
         public TimeZone getTimeZoneForAgencyId(String agencyId) {
             return timeZone;
-        }
-    }
-
-    /**
-     * This class implements the {@link TransitIndexService} interface to allow for testing.
-     * It only really implements the getAgency method. Everything else returns meaningless results.
-     */
-    private static final class TransitIndexServiceStub implements TransitIndexService {
-        final Agency train;
-        final Agency ferry;
-
-        public TransitIndexServiceStub(Agency train, Agency ferry) {
-            this.train = train;
-            this.ferry = ferry;
-        }
-
-        @Override
-        public List<RouteVariant> getVariantsForAgency(String agency) {
-            return null;
-        }
-
-        @Override
-        public List<RouteVariant> getVariantsForRoute(AgencyAndId route) {
-            return null;
-        }
-
-        @Override
-        public RouteVariant getVariantForTrip(AgencyAndId trip) {
-            return null;
-        }
-
-        @Override
-        public PreBoardEdge getPreBoardEdge(AgencyAndId stop) {
-            return null;
-        }
-
-        @Override
-        public PreAlightEdge getPreAlightEdge(AgencyAndId stop) {
-            return null;
-        }
-
-        @Override
-        public TableTripPattern getTripPatternForTrip(AgencyAndId tripId) {
-            return null;
-        }
-
-        @Override
-        public List<AgencyAndId> getRoutesForStop(AgencyAndId stop) {
-            return null;
-        }
-
-        @Override
-        public Collection<String> getDirectionsForRoute(AgencyAndId route) {
-            return null;
-        }
-
-        @Override
-        public Collection<Stop> getStopsForRoute(AgencyAndId route) {
-            return null;
-        }
-
-        @Override
-        public List<TraverseMode> getAllModes() {
-            return null;
-        }
-
-        @Override
-        public Collection<AgencyAndId> getAllRouteIds() {
-            return null;
-        }
-
-        @Override
-        public void addCalendars(Collection<ServiceCalendar> allCalendars) {
-        }
-
-        @Override
-        public void addCalendarDates(Collection<ServiceCalendarDate> allDates) {
-        }
-
-        @Override
-        public List<String> getAllAgencies() {
-            return null;
-        }
-
-        @Override
-        public List<ServiceCalendarDate> getCalendarDatesByAgency(String agency) {
-            return null;
-        }
-
-        @Override
-        public List<ServiceCalendar> getCalendarsByAgency(String agency) {
-            return null;
-        }
-
-        @Override
-        public Agency getAgency(String id) {
-            if (train.getId().equals(id)) return train;
-            if (ferry.getId().equals(id)) return ferry;
-            return null;
-        }
-
-        @Override
-        public Coordinate getCenter() {
-            return null;
-        }
-
-        @Override
-        public int getOvernightBreak() {
-            return 0;
-        }
-
-        @Override
-        public Map<AgencyAndId, Route> getAllRoutes() {
-            return null;
-        }
-
-        @Override
-        public Map<AgencyAndId, Stop> getAllStops() {
-            return null;
         }
     }
 

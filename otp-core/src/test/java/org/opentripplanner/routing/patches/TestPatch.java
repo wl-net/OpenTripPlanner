@@ -40,7 +40,7 @@ import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
-import org.opentripplanner.routing.edgetype.TableTripPattern;
+import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.edgetype.factory.GTFSPatternHopFactory;
 import org.opentripplanner.routing.graph.Graph;
@@ -109,7 +109,7 @@ public class TestPatch extends TestCase {
                 PatternHop somePatternHop = (PatternHop) somePatternBoard.getToVertex()
                         .getOutgoing().iterator().next();
 
-                Stop stopA = somePatternHop.getStartStop();
+                Stop stopA = somePatternHop.getBeginStop();
                 ArrayList<Stop> stops = new ArrayList<Stop>();
                 stops.add(stopA);
 
@@ -174,6 +174,11 @@ public class TestPatch extends TestCase {
             }
 
             @Override
+            public List<TripPattern> getTripPatternsForStop(AgencyAndId stop) {
+                return null;
+            }
+
+            @Override
             public Coordinate getCenter() {
                 return null;
             }
@@ -189,7 +194,7 @@ public class TestPatch extends TestCase {
             }
 
             @Override
-            public TableTripPattern getTripPatternForTrip(AgencyAndId tripId) {
+            public TripPattern getTripPatternForTrip(AgencyAndId tripId) {
                 return null;
             }
 
@@ -201,6 +206,11 @@ public class TestPatch extends TestCase {
 
             @Override
             public Map<AgencyAndId, Route> getAllRoutes() {
+                return null;
+            }
+
+            @Override
+            public List<Stop> getStopsForStation(AgencyAndId stop) {
                 return null;
             }
         };

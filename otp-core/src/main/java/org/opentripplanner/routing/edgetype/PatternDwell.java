@@ -35,13 +35,13 @@ public class PatternDwell extends TablePatternEdge implements OnboardEdge, Dwell
 
     private int stopIndex;
     
-    public PatternDwell(PatternArriveVertex from, PatternDepartVertex to, int stopIndex, TableTripPattern tripPattern) {
+    public PatternDwell(PatternArriveVertex from, PatternDepartVertex to, int stopIndex, TripPattern tripPattern) {
         super(from, to);
         this.stopIndex = stopIndex;
     }
 
     public String getDirection() {
-        return getPattern().getExemplar().getTripHeadsign();
+        return getPattern().getDirection();
     }
 
     public double getDistance() {
@@ -49,11 +49,11 @@ public class PatternDwell extends TablePatternEdge implements OnboardEdge, Dwell
     }
         
     public TraverseMode getMode() {
-        return GtfsLibrary.getTraverseMode(getPattern().getExemplar().getRoute());
+        return GtfsLibrary.getTraverseMode(getPattern().getRoute());
     }
 
     public String getName() {
-        return GtfsLibrary.getRouteName(getPattern().getExemplar().getRoute());
+        return GtfsLibrary.getRouteName(getPattern().getRoute());
     }
 
     public State traverse(State state0) {

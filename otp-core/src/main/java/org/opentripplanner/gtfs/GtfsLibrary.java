@@ -90,6 +90,7 @@ public class GtfsLibrary {
         return aid.getAgencyId() + ID_SEPARATOR + aid.getId();
     }
 
+    /** @return the route's short name, or the long name if the short name is null. */
     public static String getRouteName(Route route) {
         if (route.getShortName() != null)
             return route.getShortName();
@@ -98,6 +99,7 @@ public class GtfsLibrary {
 
     public static TraverseMode getTraverseMode(Route route) {
         int routeType = route.getType();
+        /* TPEG Extension  https://groups.google.com/d/msg/gtfs-changes/keT5rTPS7Y0/71uMz2l6ke0J */
         if (routeType >= 100 && routeType < 200){ // Railway Service
             return TraverseMode.RAIL;
         }else if (routeType >= 200 && routeType < 300){ //Coach Service
@@ -125,6 +127,7 @@ public class GtfsLibrary {
         }else if (routeType >= 1600 && routeType < 1700){ //Self drive
             return TraverseMode.CAR;
         }
+        /* Original GTFS route types. Should these be checked before TPEG types? */
         switch (routeType) {
         case 0:
             return TraverseMode.TRAM;

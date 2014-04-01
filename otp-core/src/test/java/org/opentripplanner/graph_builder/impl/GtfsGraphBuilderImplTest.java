@@ -28,12 +28,11 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.IdentityBean;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.services.MockGtfs;
-import org.opentripplanner.graph_builder.impl.transit_index.TransitIndexBuilder;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.model.GtfsBundles;
 import org.opentripplanner.graph_builder.services.GraphBuilderWithGtfsDao;
 import org.opentripplanner.gtfs.BikeAccess;
-import org.opentripplanner.routing.edgetype.TableTripPattern;
+import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.services.TransitIndexService;
 
@@ -65,7 +64,7 @@ public class GtfsGraphBuilderImplTest {
         _builder.buildGraph(graph, _extra);
 
         TransitIndexService index = graph.getService(TransitIndexService.class);
-        TableTripPattern pattern = index.getTripPatternForTrip(new AgencyAndId("a0", "t0"));
+        TripPattern pattern = index.getTripPatternForTrip(new AgencyAndId("a0", "t0"));
         List<Trip> trips = pattern.getTrips();
         assertEquals(BikeAccess.UNKNOWN,
                 BikeAccess.fromTrip(withId(trips, new AgencyAndId("a0", "t0"))));
@@ -89,7 +88,7 @@ public class GtfsGraphBuilderImplTest {
         _builder.buildGraph(graph, _extra);
 
         TransitIndexService index = graph.getService(TransitIndexService.class);
-        TableTripPattern pattern = index.getTripPatternForTrip(new AgencyAndId("a0", "t0"));
+        TripPattern pattern = index.getTripPatternForTrip(new AgencyAndId("a0", "t0"));
         List<Trip> trips = pattern.getTrips();
         assertEquals(BikeAccess.ALLOWED,
                 BikeAccess.fromTrip(withId(trips, new AgencyAndId("a0", "t0"))));
