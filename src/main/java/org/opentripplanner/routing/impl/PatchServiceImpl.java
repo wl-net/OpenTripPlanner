@@ -22,19 +22,16 @@ import org.opentripplanner.routing.patch.AlertPatch;
 import org.opentripplanner.routing.patch.Patch;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PatchService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
+import javax.ws.rs.core.Context;
 import java.util.*;
 import java.util.Map.Entry;
 
-@Component
 public class PatchServiceImpl implements PatchService {
 
     private Graph graph;
 
-    @Autowired
-    @Setter
+    @Context // FIXME inject Application
     private GraphService graphService;
 
     private Map<String, Patch> patches = new HashMap<String, Patch>();

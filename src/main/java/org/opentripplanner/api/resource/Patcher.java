@@ -22,6 +22,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
 
@@ -33,23 +34,13 @@ import org.opentripplanner.api.model.patch.PatchSet;
 import org.opentripplanner.routing.patch.AlertPatch;
 import org.opentripplanner.routing.patch.Patch;
 import org.opentripplanner.routing.services.PatchService;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import com.sun.jersey.api.spring.Autowire;
-
-// NOTE - /ws/patch is the full path -- see web_client.xml
 
 @Path("/patch")
 @XmlRootElement
-@Autowire
 public class Patcher {
 
+    @Context // FIXME inject Application
     private PatchService patchservice;
-
-    @Autowired
-    public void setPatchService(PatchService patchService) {
-        this.patchservice = patchService;
-    }
 
     /**
      * Return a list of all patches that apply to a given stop

@@ -78,8 +78,7 @@ public class OTPApplication extends Application {
         );
         // JerseyInjector
         // replace with simple Parameter classes that have String constructors.
-        // CRSStringReaderProvider.class,
-        // EnvelopeStringReaderProvider.class
+
     }
 
     @Override
