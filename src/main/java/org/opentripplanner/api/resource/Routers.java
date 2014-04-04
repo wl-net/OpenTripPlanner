@@ -174,7 +174,7 @@ public class Routers {
             LOG.debug("pre-evicting graph");
             server.graphService.evictGraph(routerId);
         }
-        LOG.debug("attempting to load graph from server's local filsystem.");
+        LOG.debug("attempting to load graph from server's local filesystem.");
         boolean success = server.graphService.registerGraph(routerId, preEvict);
         if (success)
             return Response.status(201).entity("graph registered.").build();
