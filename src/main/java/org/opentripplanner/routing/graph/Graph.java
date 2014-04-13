@@ -50,6 +50,7 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.gtfs.services.calendar.CalendarService;
+import org.opentripplanner.api.resource.GraphMetadata;
 import org.opentripplanner.common.IterableLibrary;
 import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.gbannotation.GraphBuilderAnnotation;
@@ -143,7 +144,9 @@ public class Graph implements Serializable {
     private VertexComparatorFactory vertexComparatorFactory = new MortonVertexComparatorFactory();
 
     private transient TimeZone timeZone = null;
-    
+
+    private transient GraphMetadata graphMetadata = null;
+
     /**
      * Makes it possible to embed a default configuration inside a graph.
      * 
@@ -764,5 +767,12 @@ public class Graph implements Serializable {
             LOG.info("    {} - {}", name, count);
         }
     }
-    
+
+    public GraphMetadata getMetadata() {
+        // Lazy-initialize the graph metadata since it is not serialized.
+        if (graphMetadata == null) {
+            graphMetadata = new GraphMetadata(this);
+        }
+        return graphMetadata;
+    }
 }
