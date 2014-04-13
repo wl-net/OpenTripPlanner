@@ -94,7 +94,7 @@ otp.config = {
         },
         {
             id : 'analyst',
-            className : 'otp.modules.analyst.AnalystModule',
+            className : 'otp.modules.analyst.AnalystModule'
         }
     ],
     
@@ -111,6 +111,11 @@ otp.config = {
      */
 
     geocoders : [
+        {
+            name: 'OTP built-in geocoder',
+            className: 'otp.core.GeocoderBuiltin'
+            // URL and query parameter do not need to be set for built-in geocoder.
+        }
     ],
 
     
