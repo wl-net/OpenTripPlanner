@@ -58,6 +58,7 @@ import org.opentripplanner.common.geometry.GraphUtils;
 import org.opentripplanner.gbannotation.GraphBuilderAnnotation;
 import org.opentripplanner.gbannotation.NoFutureDates;
 import org.opentripplanner.model.GraphBundle;
+import org.opentripplanner.profile.ProfileData;
 import org.opentripplanner.routing.core.MortonVertexComparatorFactory;
 import org.opentripplanner.routing.core.TransferTable;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -150,6 +151,8 @@ public class Graph implements Serializable {
     private transient GraphMetadata graphMetadata = null;
 
     private transient Geometry hull = null;
+
+    private transient ProfileData profileData = null;
 
     /**
      * Makes it possible to embed a default configuration inside a graph.
@@ -452,6 +455,14 @@ public class Graph implements Serializable {
 
     public List<GraphBuilderAnnotation> getBuilderAnnotations() {
         return this.graphBuilderAnnotations;
+    }
+
+    public ProfileData getProfileData() {
+        if (profileData == null) {
+            LOG.info("Lazy-initializing profile router data.");
+            profileData = new ProfileData(this);
+        }
+        return profileData;
     }
 
     /* (de) serialization */
