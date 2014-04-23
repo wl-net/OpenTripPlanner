@@ -619,4 +619,7 @@ public class TripPattern implements Serializable {
         }
     }
 
+    public String toString () {
+        return String.format("<TripPattern %s>", this.code);
+    }
 }
