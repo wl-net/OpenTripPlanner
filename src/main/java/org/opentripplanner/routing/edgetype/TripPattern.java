@@ -103,9 +103,9 @@ public class TripPattern implements Serializable {
     public final StopPattern stopPattern;
     
     /** 
-     * This timetable holds the scheduled stop times from GTFS. If realtime stoptime updates are
-     * applied, trip searches will be conducted using a different, updated timetable and this one will serve to
-     * find early/late offsets, or as a fallback if the updated timetable expires or becomes corrupted.
+     * This is the "original" timetable holding the scheduled stop times from GTFS, with no
+     * realtime updates applied. If realtime stoptime updates are applied, next/previous departure
+     * searches will be conducted using a different, updated timetable in a snapshot.
      */
     @Getter
     protected final Timetable scheduledTimetable = new Timetable(this);
@@ -299,7 +299,8 @@ public class TripPattern implements Serializable {
     // and would avoid mistakes where real-time updates are accidentally not taken into account.
 
     /**
-     * Add the given tripTimes to this pattern, recording the trip itself.
+     * Add the given tripTimes to this pattern's scheduled timetable, recording the corresponding
+     * trip as one of the scheduled trips on this pattern.
      */
     public void add(TripTimes tt) {
         // Only scheduled trips (added at graph build time, rather than directly to the timetable via updates) are in this list.
@@ -310,26 +311,6 @@ public class TripPattern implements Serializable {
         if (this.route != tt.getTrip().getRoute()) {
             LOG.warn("The trip {} is on a different route than its stop pattern, which is on {}.", tt.getTrip(), route);
         }
-    }
-
-    public TripTimes getTripTimes(int tripIndex) {
-        return scheduledTimetable.getTripTimes(tripIndex);
-    }
-    
-    public int getTripIndex(AgencyAndId tripId) {
-        return scheduledTimetable.getTripIndex(tripId);
-    }
-    
-    public int getDepartureTime(int hop, int trip) {
-        return scheduledTimetable.getDepartureTime(hop, trip);
-    }
-
-    public int getBestRunningTime(int stopIndex) {
-        return scheduledTimetable.getBestRunningTime(stopIndex);
-    }
-
-    public int getBestDwellTime(int stopIndex) {
-        return scheduledTimetable.getBestDwellTime(stopIndex);
     }
 
     /* OTHER METHODS */
