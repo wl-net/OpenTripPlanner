@@ -11,11 +11,20 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.opentripplanner.routing.car_rental;
+package org.opentripplanner.updater.car_rental;
 
-/**
- * This class represents a Car Rental Service Vehicle.
- */
-public abstract class CarRentalVehicle {
-	// TOOD
+import java.util.prefs.Preferences;
+
+import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.updater.PreferencesConfigurable;
+
+public class Car2GoUpdater implements PreferencesConfigurable {
+
+	@Override
+	public void configure(Graph graph, Preferences preferences)
+			throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
