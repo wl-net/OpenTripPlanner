@@ -13,9 +13,15 @@
 
 package org.opentripplanner.routing.car_rental;
 
+import javax.xml.bind.annotation.XmlAttribute;
+
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 /**
  * This class represents a Car Rental Service Vehicle.
  */
 public abstract class CarRentalVehicle {
-	// TOOD
+    @XmlAttribute
+    @JsonSerialize
+    public double x, y; //longitude, latitude
 }

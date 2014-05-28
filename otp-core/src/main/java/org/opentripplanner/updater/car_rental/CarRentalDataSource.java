@@ -15,7 +15,7 @@ package org.opentripplanner.updater.car_rental;
 
 import java.util.List;
 
-import org.opentripplanner.routing.car_rental.Car2GoVehicle;
+import org.opentripplanner.routing.car_rental.CarRentalVehicle;
 
 public interface CarRentalDataSource {
 	/**
@@ -24,5 +24,5 @@ public interface CarRentalDataSource {
 	 */
 	boolean update();
 
-	List<Car2GoVehicle> getVehicles();
+	List<CarRentalVehicle> getVehicles();
 }

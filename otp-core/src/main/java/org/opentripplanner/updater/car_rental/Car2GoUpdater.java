@@ -13,18 +13,32 @@
 
 package org.opentripplanner.updater.car_rental;
 
+import java.util.List;
 import java.util.prefs.Preferences;
 
+import org.opentripplanner.routing.car_rental.CarRentalVehicle;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.updater.PreferencesConfigurable;
 
-public class Car2GoUpdater implements PreferencesConfigurable {
+public class Car2GoUpdater implements PreferencesConfigurable, CarRentalDataSource {
 
 	@Override
 	public void configure(Graph graph, Preferences preferences)
 			throws Exception {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public boolean update() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public List<CarRentalVehicle> getVehicles() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }
